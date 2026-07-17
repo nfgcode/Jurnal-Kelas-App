@@ -1,0 +1,106 @@
+// Bootstrap core
+@import "bootstrap/scss/bootstrap";
+
+// Custom variables & overrides
+$primary: #4361ee;
+$secondary: #3f37c9;
+$success: #06d6a0;
+$info: #4cc9f0;
+$warning: #f72585;
+$danger: #e63946;
+$dark: #1d3557;
+$light: #f8f9fa;
+
+$body-bg: #f0f2f5;
+$font-family-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+// Sidebar custom styles
+.sidebar {
+    min-height: 100vh;
+    background: linear-gradient(180deg, $dark 0%, darken($dark, 10%) 100%);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+
+    .nav-link {
+        color: rgba(255, 255, 255, 0.7);
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.5rem;
+        margin: 0.15rem 0.75rem;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        i {
+            width: 24px;
+            text-align: center;
+            margin-right: 0.75rem;
+        }
+    }
+}
+
+// Card styling
+.card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+}
+
+// Stat cards
+.stat-card {
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+}
+
+// Content area
+.content-wrapper {
+    min-height: 100vh;
+    background: $body-bg;
+}
+
+// Table styling
+.table {
+    th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+    }
+}
+
+// Badge styling for attendance
+.badge-hadir { background-color: $success; }
+.badge-sakit { background-color: $info; }
+.badge-izin { background-color: $warning; }
+.badge-alpa { background-color: $danger; }
+
+// Login page
+.login-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(135deg, $primary 0%, $secondary 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-card {
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
