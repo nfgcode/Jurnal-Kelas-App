@@ -25,8 +25,23 @@ class MataPelajaran extends Model
     protected $fillable = [
         'nama',
         'kode',
+        'kelompok',
+        'jp_per_minggu',
         'deskripsi',
     ];
+
+    /**
+     * Human label for the curriculum group, as shown on the chip column.
+     */
+    public function kelompokLabel(): string
+    {
+        return match ($this->kelompok) {
+            'peminatan' => 'Peminatan',
+            'muatan_lokal' => 'Muatan Lokal',
+            'kejuruan' => 'Kejuruan',
+            default => 'Wajib',
+        };
+    }
 
     /**
      * Get the jadwal (schedules) for this subject.

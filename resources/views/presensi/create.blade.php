@@ -1,156 +1,123 @@
 @extends('layouts.app')
 
-@section('title', 'Input Presensi')
+@section('title', 'Presensi')
 
 @section('content')
-<div class="mb-4">
-    <a href="{{ route('jurnal.show', $jurnal->id) }}" class="text-decoration-none text-muted small">
-        <i class="bi bi-arrow-left me-1"></i> Kembali ke Detail Jurnal
-    </a>
-</div>
+    @php
+        $kelas = $jurnal->jadwal?->kelas;
+        $ditandai = array_sum($rekap);
+        $tidakHadir = $rekap['sakit'] + $rekap['izin'] + $rekap['alpa'];
+        $totalSiswa = $siswaList->count();
+    @endphp
 
-{{-- Jurnal Info --}}
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(13,110,253,0.1);">
-                        <i class="bi bi-calendar3 text-primary"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Tanggal</small>
-                        <span class="fw-medium">{{ \Carbon\Carbon::parse($jurnal->tanggal)->format('d F Y') }}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(25,135,84,0.1);">
-                        <i class="bi bi-building text-success"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Kelas</small>
-                        <span class="fw-medium">{{ $jurnal->jadwal->kelas->nama ?? '-' }}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                         style="width: 40px; height: 40px; background: rgba(111,66,193,0.1);">
-                        <i class="bi bi-book" style="color: #6f42c1;"></i>
-                    </div>
-                    <div>
-                        <small class="text-muted d-block">Materi</small>
-                        <span class="fw-medium">{{ Str::limit($jurnal->materi, 50) }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <x-page-head
+        title="Presensi Siswa"
+        :sub="collect([$kelas?->nama_kelas, $jurnal->jadwal?->mataPelajaran?->nama, 'JP ' . $jurnal->jadwal?->jpLabel(), $jurnal->tanggal->translatedFormat('l, j F Y')])->filter()->join(' · ')">
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.show', $jurnal) }}">Lihat Jurnal</a>
+        <button class="btn-hifi" type="submit" form="formPresensi">Simpan Presensi</button>
+    </x-page-head>
+
+    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <x-stat label="Total Siswa" :value="$totalSiswa" caption="terdaftar di rombel" />
+        <x-stat label="Hadir" :value="$rekap['hadir']"
+                :caption="$ditandai ? round($rekap['hadir'] / $ditandai * 100) . '% sudah ditandai' : 'belum ditandai'" />
+        <x-stat label="Tidak Hadir" :value="$tidakHadir"
+                :caption="$rekap['sakit'] . ' sakit · ' . $rekap['izin'] . ' izin · ' . $rekap['alpa'] . ' alpa'" />
+        <x-stat label="Belum Ditandai" :value="max(0, $totalSiswa - $ditandai)"
+                :caption="$ditandai >= $totalSiswa ? 'siap disimpan' : 'perlu dilengkapi'" />
     </div>
-</div>
 
-{{-- Presensi Form --}}
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3">
-        <h6 class="fw-semibold mb-0">
-            <i class="bi bi-person-check me-2 text-success"></i>Input Presensi
-        </h6>
+    <div class="filter-bar">
+        <label class="filter-bar__search">
+            <i class="bi bi-search"></i>
+            <input class="input-hifi" type="search" id="cariSiswa" placeholder="Cari nama atau NIS...">
+        </label>
+
+        <button class="btn-hifi btn-hifi--ghost" type="button" id="tandaiSemua">Tandai semua: Hadir</button>
+
+        <span class="filter-bar__note">{{ $totalSiswa }} siswa terdaftar</span>
     </div>
-    <div class="card-body p-0">
-        <form method="POST" action="{{ route('presensi.store') }}">
-            @csrf
-            <input type="hidden" name="jurnal_id" value="{{ $jurnal->id }}">
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+    <form method="POST" action="{{ route('presensi.store') }}" id="formPresensi">
+        @csrf
+        <input type="hidden" name="jurnal_id" value="{{ $jurnal->id }}">
+
+        <x-card :title="'Daftar Siswa — ' . ($kelas?->nama_kelas ?? '')" flush>
+            <x-slot:actions>
+                <span class="card-hifi__meta">{{ $totalSiswa }} siswa terdaftar</span>
+            </x-slot:actions>
+
+            <div class="tbl-wrap">
+                <table class="tbl" id="tabelSiswa">
+                    <thead>
                         <tr>
-                            <th class="ps-3" style="width: 50px;">No</th>
+                            <th>No</th>
+                            <th>NIS</th>
                             <th>Nama Siswa</th>
-                            <th style="width: 100px;">NIS</th>
-                            <th class="text-center" style="width: 320px;">Status</th>
-                            <th style="width: 200px;">Keterangan</th>
+                            <th>Kehadiran</th>
+                            <th>Keterangan</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($siswas ?? [] as $index => $siswa)
-                            <tr>
-                                <td class="ps-3">{{ $index + 1 }}</td>
-                                <td class="fw-medium">{{ $siswa->nama }}</td>
-                                <td>{{ $siswa->nis }}</td>
-                                <td class="text-center">
-                                    <input type="hidden" name="siswa_ids[]" value="{{ $siswa->id }}">
-                                    <div class="d-flex justify-content-center gap-3">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio"
-                                                   name="status[{{ $siswa->id }}]" value="hadir"
-                                                   id="hadir_{{ $siswa->id }}" checked>
-                                            <label class="form-check-label small text-success fw-medium" for="hadir_{{ $siswa->id }}">
-                                                Hadir
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio"
-                                                   name="status[{{ $siswa->id }}]" value="sakit"
-                                                   id="sakit_{{ $siswa->id }}">
-                                            <label class="form-check-label small text-info fw-medium" for="sakit_{{ $siswa->id }}">
-                                                Sakit
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio"
-                                                   name="status[{{ $siswa->id }}]" value="izin"
-                                                   id="izin_{{ $siswa->id }}">
-                                            <label class="form-check-label small fw-medium" for="izin_{{ $siswa->id }}" style="color: #e91e8f;">
-                                                Izin
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio"
-                                                   name="status[{{ $siswa->id }}]" value="alpa"
-                                                   id="alpa_{{ $siswa->id }}">
-                                            <label class="form-check-label small text-danger fw-medium" for="alpa_{{ $siswa->id }}">
-                                                Alpa
-                                            </label>
-                                        </div>
-                                    </div>
+                        @foreach ($siswaList as $index => $siswa)
+                            @php $tersimpan = $presensiTersimpan[$siswa->id] ?? null; @endphp
+                            <tr data-nama="{{ Str::lower($siswa->name) }}" data-nis="{{ $siswa->nis }}">
+                                <td class="is-muted">{{ $index + 1 }}</td>
+                                <td class="is-muted">{{ $siswa->nis }}</td>
+                                <td>
+                                    <span class="name-cell">
+                                        <span class="avatar avatar--xs">{{ $siswa->inisial() }}</span>
+                                        {{ $siswa->name }}
+                                    </span>
+                                    <input type="hidden" name="presensi[{{ $index }}][siswa_id]" value="{{ $siswa->id }}">
                                 </td>
                                 <td>
-                                    <input type="text"
-                                           name="keterangan[{{ $siswa->id }}]"
-                                           class="form-control form-control-sm"
-                                           placeholder="Opsional...">
+                                    <span class="seg">
+                                        @foreach (['hadir' => 'H', 'sakit' => 'S', 'izin' => 'I', 'alpa' => 'A'] as $nilai => $huruf)
+                                            <label class="seg__opt seg__opt--{{ substr($nilai, 0, 1) }}">
+                                                <input type="radio" name="presensi[{{ $index }}][status]" value="{{ $nilai }}"
+                                                       @checked(($tersimpan->status ?? 'hadir') === $nilai) required>
+                                                {{ $huruf }}
+                                            </label>
+                                        @endforeach
+                                    </span>
+                                </td>
+                                <td>
+                                    <input class="input-hifi" type="text" style="height: 28px; font-size: 11px"
+                                           name="presensi[{{ $index }}][keterangan]"
+                                           value="{{ $tersimpan->keterangan ?? '' }}" placeholder="—">
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="text-center py-4">
-                                    <div class="text-muted">
-                                        <i class="bi bi-people fs-2 d-block mb-2 opacity-25"></i>
-                                        <p class="mb-0">Tidak ada siswa di kelas ini.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
 
-            @if(isset($siswas) && count($siswas) > 0)
-                <div class="card-footer bg-white border-top py-3 px-4">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i> Simpan Presensi
-                    </button>
-                    <a href="{{ route('jurnal.show', $jurnal->id) }}" class="btn btn-secondary ms-2">
-                        <i class="bi bi-x-lg me-1"></i> Batal
-                    </a>
-                </div>
-            @endif
-        </form>
-    </div>
-</div>
+            <x-slot:foot>
+                <span>Menampilkan {{ $totalSiswa }} siswa</span>
+                <button class="btn-hifi" type="submit">Simpan Presensi</button>
+            </x-slot:foot>
+        </x-card>
+    </form>
+
+    @push('scripts')
+        <script>
+            const baris = [...document.querySelectorAll('#tabelSiswa tbody tr')];
+
+            document.getElementById('cariSiswa')?.addEventListener('input', (event) => {
+                const kata = event.target.value.toLowerCase().trim();
+                baris.forEach((tr) => {
+                    const cocok = tr.dataset.nama.includes(kata) || tr.dataset.nis.includes(kata);
+                    tr.style.display = cocok ? '' : 'none';
+                });
+            });
+
+            document.getElementById('tandaiSemua')?.addEventListener('click', () => {
+                baris.forEach((tr) => {
+                    const hadir = tr.querySelector('input[value="hadir"]');
+                    if (hadir) hadir.checked = true;
+                });
+            });
+        </script>
+    @endpush
 @endsection

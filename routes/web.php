@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\LaporanController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JadwalController;
@@ -18,8 +21,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Redirect root to login
-Route::get('/', fn () => redirect('/login'));
+// Public landing page
+Route::get('/', fn () => view('welcome'))->name('landing');
 
 // Authentication routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -48,4 +51,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/presensi/create/{jurnal_id}', [PresensiController::class, 'create'])->name('presensi.create');
     Route::post('/presensi', [PresensiController::class, 'store'])->name('presensi.store');
     Route::get('/presensi/{jurnal_id}', [PresensiController::class, 'show'])->name('presensi.show');
+
+    /*
+    |----------------------------------------------------------------------
+    | Admin-only routes
+    |----------------------------------------------------------------------
+    */
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        // Admin dashboard
+        Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        // User management (admin, guru, siswa accounts)
+        Route::resource('users', UserController::class);
+
+        // Read-only reports
+        Route::get('/laporan/jurnal', [LaporanController::class, 'jurnal'])->name('laporan.jurnal');
+        Route::get('/laporan/presensi', [LaporanController::class, 'presensi'])->name('laporan.presensi');
+    });
 });

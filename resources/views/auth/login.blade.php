@@ -1,91 +1,152 @@
-@extends('layouts.guest')
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masuk · Jurnal Kelas</title>
 
-@section('title', 'Login')
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-@section('content')
-<div class="w-100" style="max-width: 420px;">
-    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
-        <div class="card-body p-4 p-md-5">
-            {{-- App branding --}}
-            <div class="text-center mb-4">
-                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-                     style="width: 60px; height: 60px; background: linear-gradient(135deg, #4361ee, #3f37c9);">
-                    <i class="bi bi-journal-bookmark-fill text-white fs-3"></i>
+    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+</head>
+<body>
+
+@php
+    // The tab drives the identifier label, so it must survive a failed attempt.
+    $peran = old('role', 'guru');
+
+    $identitas = [
+        'admin' => ['label' => 'Email', 'placeholder' => 'admin@sekolah.sch.id'],
+        'guru' => ['label' => 'NIP', 'placeholder' => '19850412 200604 1 012'],
+        'siswa' => ['label' => 'NIS', 'placeholder' => '20261079'],
+    ];
+@endphp
+
+<div class="auth">
+    <section class="auth__brand">
+        <a class="sidebar__brand p-0" href="{{ route('landing') }}">
+            <span class="sidebar__mark"><i class="bi bi-journal-text"></i></span>
+            <span class="sidebar__wordmark">Jurnal Kelas</span>
+        </a>
+
+        <div class="my-auto">
+            <h1 class="auth__headline">Catat jurnal mengajar<br>tanpa ribet.</h1>
+            <p class="auth__lede">Satu tempat untuk jurnal mengajar, presensi siswa, dan rekap laporan sekolah.</p>
+
+            <div class="auth__feature">
+                <i class="bi bi-check-lg"></i>
+                <div>
+                    <p class="auth__feature-title">Jurnal terisi otomatis dari jadwal</p>
+                    <p class="auth__feature-sub">Tidak perlu ketik ulang kelas, mapel, atau jam.</p>
                 </div>
-                <h4 class="fw-bold text-dark mb-1">Jurnal Kelas</h4>
-                <p class="text-muted small">Masuk ke akun Anda</p>
+            </div>
+            <div class="auth__feature">
+                <i class="bi bi-check-lg"></i>
+                <div>
+                    <p class="auth__feature-title">Presensi dalam satu ketukan</p>
+                    <p class="auth__feature-sub">Tandai hadir, sakit, izin, alpa langsung dari daftar siswa.</p>
+                </div>
+            </div>
+            <div class="auth__feature">
+                <i class="bi bi-check-lg"></i>
+                <div>
+                    <p class="auth__feature-title">Rekap siap diekspor</p>
+                    <p class="auth__feature-sub">Laporan bulanan per kelas dan per guru.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth__stats">
+            @foreach ($ringkasan as $label => $nilai)
+                <div>
+                    <div class="auth__stat-value">{{ number_format($nilai, 0, ',', '.') }}</div>
+                    <div class="auth__stat-label">{{ $label }}</div>
+                </div>
+            @endforeach
+        </div>
+    </section>
+
+    <section class="auth__panel">
+        <div class="auth__top">
+            <span>Belum punya akun?</span>
+            <span class="auth__link">Hubungi admin sekolah</span>
+        </div>
+
+        <form class="auth__form" method="POST" action="{{ route('login') }}">
+            @csrf
+
+            <h2 class="auth__title">Masuk ke akun Anda</h2>
+            <p class="auth__sub">Gunakan NIP untuk guru dan admin, atau NIS untuk siswa.</p>
+
+            <div class="role-tabs">
+                @foreach (['admin' => 'Administrator', 'guru' => 'Guru', 'siswa' => 'Siswa'] as $value => $label)
+                    <label class="role-tabs__opt">
+                        <input type="radio" name="role" value="{{ $value }}" @checked($peran === $value) data-role-tab>
+                        {{ $label }}
+                    </label>
+                @endforeach
             </div>
 
-            {{-- Validation Errors --}}
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show py-2 px-3" role="alert">
-                    <ul class="mb-0 small list-unstyled">
-                        @foreach ($errors->all() as $error)
-                            <li><i class="bi bi-exclamation-circle me-1"></i>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="auth__field">
+                <label class="field__label d-block mb-1" for="user" id="userLabel">
+                    {{ $identitas[$peran]['label'] }}
+                </label>
+                <input class="input-hifi" type="text" id="user" name="user" value="{{ old('user') }}"
+                       placeholder="{{ $identitas[$peran]['placeholder'] }}" autofocus required>
+                @error('user')<span class="field__error">{{ $message }}</span>@enderror
+            </div>
+
+            <div class="auth__field">
+                <div class="auth__label-row">
+                    <label class="field__label" for="password">Kata Sandi</label>
+                    <span class="auth__link">Lupa kata sandi?</span>
                 </div>
-            @endif
-
-            {{-- Login Form --}}
-            <form method="POST" action="{{ route('login') }}">
-                @csrf
-
-                {{-- Email --}}
-                <div class="mb-3">
-                    <label for="email" class="form-label fw-medium small">Email</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0">
-                            <i class="bi bi-envelope text-muted"></i>
-                        </span>
-                        <input type="email"
-                               id="email"
-                               name="email"
-                               class="form-control border-start-0 @error('email') is-invalid @enderror"
-                               value="{{ old('email') }}"
-                               placeholder="nama@email.com"
-                               required
-                               autofocus>
-                    </div>
+                <div class="password-wrap">
+                    <input class="input-hifi" type="password" id="password" name="password" required>
+                    <button class="password-toggle" type="button" id="togglePassword" aria-label="Tampilkan kata sandi">
+                        <i class="bi bi-eye"></i>
+                    </button>
                 </div>
+                @error('password')<span class="field__error">{{ $message }}</span>@enderror
+            </div>
 
-                {{-- Password --}}
-                <div class="mb-3">
-                    <label for="password" class="form-label fw-medium small">Password</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0">
-                            <i class="bi bi-lock text-muted"></i>
-                        </span>
-                        <input type="password"
-                               id="password"
-                               name="password"
-                               class="form-control border-start-0 @error('password') is-invalid @enderror"
-                               placeholder="••••••••"
-                               required>
-                    </div>
-                </div>
+            <label class="checkbox-row">
+                <input type="checkbox" name="remember" value="1" @checked(old('remember'))>
+                Biarkan saya tetap masuk di perangkat ini
+            </label>
 
-                {{-- Remember Me --}}
-                <div class="mb-4">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="remember" id="remember"
-                               {{ old('remember') ? 'checked' : '' }}>
-                        <label class="form-check-label small" for="remember">
-                            Ingat Saya
-                        </label>
-                    </div>
-                </div>
+            <button class="auth__submit" type="submit">Masuk</button>
+        </form>
 
-                {{-- Submit --}}
-                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"
-                        style="background: linear-gradient(135deg, #4361ee, #3f37c9); border: none; border-radius: 10px;">
-                    <i class="bi bi-box-arrow-in-right me-1"></i> Masuk
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <p class="text-center text-white-50 small mt-4">&copy; {{ date('Y') }} Jurnal Kelas. All rights reserved.</p>
+        <p class="auth__foot mb-0">© {{ date('Y') }} Jurnal Kelas · Seluruh hak cipta dilindungi.</p>
+    </section>
 </div>
-@endsection
+
+<script>
+    // Keep the identifier field labelled for whichever role tab is selected.
+    const labels = @json(collect($identitas)->map(fn ($i) => [$i['label'], $i['placeholder']]));
+    const userLabel = document.getElementById('userLabel');
+    const userInput = document.getElementById('user');
+    const passwordInput = document.getElementById('password');
+
+    document.querySelectorAll('[data-role-tab]').forEach((tab) => {
+        tab.addEventListener('change', () => {
+            const [label, placeholder] = labels[tab.value];
+            userLabel.textContent = label;
+            userInput.placeholder = placeholder;
+        });
+    });
+
+    const toggle = document.getElementById('togglePassword');
+    toggle?.addEventListener('click', () => {
+        const hidden = passwordInput.type === 'password';
+        passwordInput.type = hidden ? 'text' : 'password';
+        toggle.querySelector('i').className = hidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+</script>
+
+</body>
+</html>

@@ -25,9 +25,12 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'status',
         'nip',
         'nis',
         'kelas_id',
+        'last_active_at',
+        'is_ketua_kelas',
     ];
 
     /**
@@ -49,8 +52,26 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_active_at' => 'datetime',
+            'is_ketua_kelas' => 'boolean',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * The student allowed to fill the class journal on the teacher's behalf.
+     */
+    public function isKetuaKelas(): bool
+    {
+        return $this->role === 'siswa' && $this->is_ketua_kelas;
+    }
+
+    /**
+     * Initial used by the circular avatar on every screen.
+     */
+    public function inisial(): string
+    {
+        return mb_strtoupper(mb_substr($this->name ?? '?', 0, 1));
     }
 
     /**

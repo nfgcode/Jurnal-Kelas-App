@@ -4,21 +4,57 @@ namespace App\Http\Controllers;
 
 use App\Models\Kelas;
 use App\Models\User;
+use App\Support\Ringkasan;
 use Illuminate\Http\Request;
 
 class KelasController extends Controller
 {
     /**
-     * Display a listing of all kelas.
+     * Display a listing of all kelas, with roll counts and how completely each
+     * class's journals have been filled.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $kelas = Kelas::with('waliKelas')
-            ->withCount('siswa')
-            ->latest()
-            ->paginate(15);
+        $filters = $request->validate([
+            'tingkat' => ['nullable', 'in:X,XI,XII'],
+            'jurusan' => ['nullable', 'string', 'max:50'],
+            'q' => ['nullable', 'string', 'max:255'],
+        ]);
 
-        return view('kelas.index', compact('kelas'));
+        $kelas = Kelas::query()
+            ->with('waliKelas')
+            ->withCount(['siswa', 'jadwals'])
+            ->when($filters['tingkat'] ?? null, fn ($query, $tingkat) => $query->where('tingkat', $tingkat))
+            ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan', $jurusan))
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(
+                fn ($inner) => $inner->where('nama_kelas', 'like', "%{$q}%")
+                    ->orWhereHas('waliKelas', fn ($w) => $w->where('name', 'like', "%{$q}%"))
+            ))
+            // CASE rather than MySQL's FIELD(): the test suite runs on SQLite.
+            ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
+            ->orderBy('jurusan')
+            ->orderBy('nama_kelas')
+            ->paginate(18)
+            ->withQueryString();
+
+        $kelengkapan = Ringkasan::kelengkapan('kelas_id');
+        $totalSiswa = User::where('role', 'siswa')->count();
+        $totalKelas = Kelas::count();
+        $tanpaWali = Kelas::whereNull('wali_kelas_id')->pluck('nama_kelas');
+
+        return view('kelas.index', [
+            'kelas' => $kelas,
+            'kelengkapan' => $kelengkapan,
+            'jurusanList' => Kelas::whereNotNull('jurusan')->distinct()->orderBy('jurusan')->pluck('jurusan'),
+            'filters' => $filters,
+            'statistik' => [
+                'totalKelas' => $totalKelas,
+                'rataSiswa' => $totalKelas > 0 ? round($totalSiswa / $totalKelas) : 0,
+                'waliTerisi' => $totalKelas - $tanpaWali->count(),
+                'tanpaWali' => $tanpaWali,
+                'rataKelengkapan' => $kelengkapan ? round(array_sum($kelengkapan) / count($kelengkapan)) : 0,
+            ],
+        ]);
     }
 
     /**
@@ -40,6 +76,8 @@ class KelasController extends Controller
             'nama_kelas' => 'required|string|max:255',
             'tingkat' => 'required|in:X,XI,XII',
             'jurusan' => 'nullable|string|max:255',
+            'ruang' => 'nullable|string|max:50',
+            'kapasitas' => 'required|integer|min:1|max:60',
             'tahun_ajaran' => 'required|string|max:9',
             'wali_kelas_id' => 'nullable|exists:users,id',
         ]);
@@ -79,6 +117,8 @@ class KelasController extends Controller
             'nama_kelas' => 'required|string|max:255',
             'tingkat' => 'required|in:X,XI,XII',
             'jurusan' => 'nullable|string|max:255',
+            'ruang' => 'nullable|string|max:50',
+            'kapasitas' => 'required|integer|min:1|max:60',
             'tahun_ajaran' => 'required|string|max:9',
             'wali_kelas_id' => 'nullable|exists:users,id',
         ]);

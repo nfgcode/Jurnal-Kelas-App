@@ -2,19 +2,53 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Jadwal;
 use App\Models\MataPelajaran;
+use App\Models\User;
+use App\Support\Ringkasan;
 use Illuminate\Http\Request;
 
 class MataPelajaranController extends Controller
 {
     /**
-     * Display a listing of all mata pelajaran.
+     * Display a listing of all mata pelajaran, ordered by teaching load, with
+     * the teacher who covers each one and how complete its journals are.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $mataPelajaran = MataPelajaran::latest()->paginate(15);
+        $filters = $request->validate([
+            'kelompok' => ['nullable', 'in:wajib,peminatan,muatan_lokal,kejuruan'],
+            'q' => ['nullable', 'string', 'max:255'],
+        ]);
 
-        return view('mata-pelajaran.index', compact('mataPelajaran'));
+        $mataPelajaran = MataPelajaran::query()
+            ->withCount('jadwals')
+            ->with(['jadwals.guru', 'jadwals.kelas'])
+            ->when($filters['kelompok'] ?? null, fn ($query, $kelompok) => $query->where('kelompok', $kelompok))
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where('nama', 'like', "%{$q}%"))
+            ->orderByDesc('jp_per_minggu')
+            ->orderBy('nama')
+            ->paginate(18)
+            ->withQueryString();
+
+        // A subject with no scheduled meeting has nobody teaching it.
+        $tanpaGuru = MataPelajaran::doesntHave('jadwals')->pluck('nama');
+
+        return view('mata-pelajaran.index', [
+            'mataPelajaran' => $mataPelajaran,
+            'kelengkapan' => Ringkasan::kelengkapan('mata_pelajaran_id'),
+            'filters' => $filters,
+            'statistik' => [
+                'total' => MataPelajaran::count(),
+                'totalJadwal' => Jadwal::count(),
+                'totalJp' => (int) Jadwal::query()
+                    ->join('mata_pelajaran', 'jadwal.mata_pelajaran_id', '=', 'mata_pelajaran.id')
+                    ->sum('mata_pelajaran.jp_per_minggu'),
+                'guruPengampu' => Jadwal::distinct()->count('guru_id'),
+                'totalGuru' => User::where('role', 'guru')->count(),
+                'tanpaGuru' => $tanpaGuru,
+            ],
+        ]);
     }
 
     /**
@@ -33,6 +67,8 @@ class MataPelajaranController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'kode' => 'required|string|max:20|unique:mata_pelajaran,kode',
+            'kelompok' => 'required|in:wajib,peminatan,muatan_lokal,kejuruan',
+            'jp_per_minggu' => 'required|integer|min:1|max:12',
             'deskripsi' => 'nullable|string',
         ]);
 
@@ -68,6 +104,8 @@ class MataPelajaranController extends Controller
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'kode' => 'required|string|max:20|unique:mata_pelajaran,kode,' . $mataPelajaran->id,
+            'kelompok' => 'required|in:wajib,peminatan,muatan_lokal,kejuruan',
+            'jp_per_minggu' => 'required|integer|min:1|max:12',
             'deskripsi' => 'nullable|string',
         ]);
 

@@ -1,112 +1,84 @@
 @extends('layouts.app')
 
-@section('title', 'Detail Kelas')
+@section('title', 'Kelas')
 
 @section('content')
-<div class="mb-4">
-    <a href="{{ route('kelas.index') }}" class="text-decoration-none text-muted small">
-        <i class="bi bi-arrow-left me-1"></i> Kembali ke Data Kelas
-    </a>
-</div>
+    <x-page-head
+        :title="'Kelas ' . $kelas->nama_kelas"
+        :sub="collect([$kelas->jurusan, $kelas->ruang, $kelas->tahun_ajaran])->filter()->join(' · ')">
+        @if (Auth::user()->isAdmin())
+            <a class="btn-hifi btn-hifi--ghost" href="{{ route('kelas.edit', $kelas) }}">Ubah</a>
+        @endif
+        <a class="btn-hifi" href="{{ route('jadwal.index', ['kelas_id' => $kelas->id]) }}">Lihat Jadwal</a>
+    </x-page-head>
 
-<div class="row g-4">
-    {{-- Kelas Info Card --}}
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3">
-                <h6 class="fw-semibold mb-0">
-                    <i class="bi bi-building me-2 text-primary"></i>Informasi Kelas
-                </h6>
-            </div>
-            <div class="card-body">
-                <table class="table table-borderless mb-0">
-                    <tr>
-                        <td class="text-muted ps-0" style="width: 120px;">Nama Kelas</td>
-                        <td class="fw-medium">{{ $kelas->nama }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted ps-0">Tingkat</td>
-                        <td>{{ $kelas->tingkat }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted ps-0">Jurusan</td>
-                        <td>{{ $kelas->jurusan }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted ps-0">Tahun Ajaran</td>
-                        <td>{{ $kelas->tahun_ajaran }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted ps-0">Wali Kelas</td>
-                        <td>{{ $kelas->waliKelas->name ?? '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted ps-0">Jumlah Siswa</td>
-                        <td>
-                            <span class="badge bg-primary">{{ $kelas->siswas->count() ?? 0 }} siswa</span>
-                        </td>
-                    </tr>
-                </table>
-
-                <div class="mt-3 d-flex gap-2">
-                    <a href="{{ route('kelas.edit', $kelas->id) }}" class="btn btn-warning btn-sm">
-                        <i class="bi bi-pencil-square me-1"></i> Edit
-                    </a>
-                    <form action="{{ route('kelas.destroy', $kelas->id) }}" method="POST"
-                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus kelas ini?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger btn-sm">
-                            <i class="bi bi-trash me-1"></i> Hapus
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <x-stat label="Jumlah Siswa" :value="$kelas->siswa->count()" :caption="'kapasitas ' . $kelas->kapasitas" />
+        <x-stat label="Tingkat" :value="$kelas->tingkat" :caption="$kelas->jurusan ?? 'tanpa jurusan'" />
+        <x-stat label="Jadwal" :value="$kelas->jadwals->count()" caption="slot per minggu" />
+        <x-stat label="Ruang" :value="$kelas->ruang ?? '—'" caption="ruang kelas utama" />
     </div>
 
-    {{-- Siswa List --}}
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3">
-                <h6 class="fw-semibold mb-0">
-                    <i class="bi bi-people me-2 text-success"></i>Daftar Siswa
-                </h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle mb-0">
-                        <thead class="table-light">
+    <div class="grid-row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)">
+        <x-card title="Daftar Siswa" flush>
+            <x-slot:actions>
+                <span class="card-hifi__meta">{{ $kelas->siswa->count() }} siswa</span>
+            </x-slot:actions>
+
+            <div class="tbl-wrap">
+                <table class="tbl">
+                    <thead>
+                        <tr><th>No</th><th>NIS</th><th>Nama</th><th class="is-num">Peran</th></tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($kelas->siswa as $index => $siswa)
                             <tr>
-                                <th class="ps-3" style="width: 50px;">No</th>
-                                <th>NIS</th>
-                                <th>Nama Siswa</th>
-                                <th>Jenis Kelamin</th>
+                                <td class="is-muted">{{ $index + 1 }}</td>
+                                <td class="is-muted">{{ $siswa->nis }}</td>
+                                <td>
+                                    <span class="name-cell">
+                                        <span class="avatar avatar--xs">{{ $siswa->inisial() }}</span>
+                                        {{ $siswa->name }}
+                                    </span>
+                                </td>
+                                <td class="is-num">
+                                    @if ($siswa->is_ketua_kelas)
+                                        <x-chip tone="solid" label="Ketua Kelas" />
+                                    @endif
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($kelas->siswas ?? [] as $index => $siswa)
-                                <tr>
-                                    <td class="ps-3">{{ $index + 1 }}</td>
-                                    <td>{{ $siswa->nis }}</td>
-                                    <td class="fw-medium">{{ $siswa->nama }}</td>
-                                    <td>{{ $siswa->jenis_kelamin ?? '-' }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center py-4">
-                                        <div class="text-muted">
-                                            <i class="bi bi-people fs-2 d-block mb-2 opacity-25"></i>
-                                            <p class="mb-0">Belum ada siswa di kelas ini.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                        @empty
+                            <tr><td colspan="4" class="empty-state">Belum ada siswa di kelas ini.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-        </div>
+        </x-card>
+
+        <x-card title="Jadwal Pelajaran" flush>
+            <x-slot:actions>
+                <span class="card-hifi__meta">{{ $kelas->jadwals->count() }} slot</span>
+            </x-slot:actions>
+
+            <div class="tbl-wrap">
+                <table class="tbl">
+                    <thead>
+                        <tr><th>Hari</th><th>JP</th><th>Mata Pelajaran</th><th>Guru</th></tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($kelas->jadwals->sortBy(['hari', 'jam_ke_mulai']) as $jadwal)
+                            <tr>
+                                <td class="is-muted is-nowrap">{{ $jadwal->hari }}</td>
+                                <td class="is-muted">{{ $jadwal->jpLabel() }}</td>
+                                <td class="is-strong">{{ $jadwal->mataPelajaran?->nama }}</td>
+                                <td class="is-muted is-nowrap">{{ $jadwal->guru?->name }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="empty-state">Belum ada jadwal untuk kelas ini.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </x-card>
     </div>
-</div>
 @endsection

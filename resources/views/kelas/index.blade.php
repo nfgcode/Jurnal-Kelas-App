@@ -1,91 +1,124 @@
 @extends('layouts.app')
 
-@section('title', 'Data Kelas')
+@section('title', 'Kelas')
 
 @section('content')
-{{-- Header --}}
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-    <div>
-        <h5 class="fw-semibold text-dark mb-1">Data Kelas</h5>
-        <p class="text-muted small mb-0">Kelola data kelas yang tersedia</p>
-    </div>
-    <a href="{{ route('kelas.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i> Tambah Kelas
-    </a>
-</div>
+    <x-page-head
+        title="Data Kelas"
+        :sub="$statistik['totalKelas'] . ' rombongan belajar aktif · Semester Gasal ' . now()->year . '/' . (now()->year + 1)">
+        <form method="GET">
+            <select class="select-hifi" name="tingkat" style="width: 170px" onchange="this.form.submit()">
+                <option value="">Semua Tingkat</option>
+                @foreach (['X', 'XI', 'XII'] as $tingkat)
+                    <option value="{{ $tingkat }}" @selected(($filters['tingkat'] ?? null) === $tingkat)>Tingkat {{ $tingkat }}</option>
+                @endforeach
+            </select>
+        </form>
+        @if (Auth::user()->isAdmin())
+            <a class="btn-hifi" href="{{ route('kelas.create') }}">+ Tambah Kelas</a>
+        @endif
+    </x-page-head>
 
-{{-- Flash Message --}}
-@if (session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <x-stat label="Total Kelas" :value="$statistik['totalKelas']" caption="rombongan belajar aktif" />
+        <x-stat label="Rata Siswa / Kelas" :value="$statistik['rataSiswa']" caption="kapasitas ideal 36" />
+        <x-stat label="Wali Kelas Terisi" :value="$statistik['waliTerisi']"
+                :caption="$statistik['tanpaWali']->isEmpty() ? 'seluruh kelas terisi' : $statistik['tanpaWali']->take(2)->join(', ') . ' kosong'" />
+        <x-stat label="Kelengkapan Jurnal" :value="$statistik['rataKelengkapan'] . '%'" caption="rata-rata seluruh kelas" />
     </div>
-@endif
 
-{{-- Table Card --}}
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle mb-0">
-                <thead class="table-light">
+    <form class="filter-bar" method="GET">
+        <label class="filter-bar__search">
+            <i class="bi bi-search"></i>
+            <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
+                   placeholder="Cari kelas atau wali kelas...">
+        </label>
+
+        <select class="select-hifi" name="tingkat" style="width: 160px" onchange="this.form.submit()">
+            <option value="">Semua Tingkat</option>
+            @foreach (['X', 'XI', 'XII'] as $tingkat)
+                <option value="{{ $tingkat }}" @selected(($filters['tingkat'] ?? null) === $tingkat)>Tingkat {{ $tingkat }}</option>
+            @endforeach
+        </select>
+
+        <select class="select-hifi" name="jurusan" style="width: 160px" onchange="this.form.submit()">
+            <option value="">Semua Jurusan</option>
+            @foreach ($jurusanList as $jurusan)
+                <option value="{{ $jurusan }}" @selected(($filters['jurusan'] ?? null) === $jurusan)>{{ $jurusan }}</option>
+            @endforeach
+        </select>
+
+        <span class="filter-bar__note">
+            Menampilkan {{ $kelas->count() }} dari {{ $kelas->total() }}
+        </span>
+    </form>
+
+    <x-card title="Daftar Kelas" flush>
+        <x-slot:actions>
+            <span class="card-hifi__meta">diurutkan: tingkat, jurusan</span>
+        </x-slot:actions>
+
+        <div class="tbl-wrap">
+            <table class="tbl">
+                <thead>
                     <tr>
-                        <th class="ps-3" style="width: 50px;">No</th>
-                        <th>Nama Kelas</th>
-                        <th>Tingkat</th>
-                        <th>Jurusan</th>
-                        <th>Tahun Ajaran</th>
+                        <th>Kelas</th>
                         <th>Wali Kelas</th>
-                        <th class="text-center" style="width: 150px;">Aksi</th>
+                        <th>Ruang</th>
+                        <th class="is-num">Siswa</th>
+                        <th>Mata Pelajaran</th>
+                        <th>Kelengkapan Jurnal</th>
+                        <th class="is-num">Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($kelas as $index => $item)
+                    @forelse ($kelas as $item)
+                        @php $persen = $kelengkapan[$item->id] ?? 0; @endphp
                         <tr>
-                            <td class="ps-3">{{ $index + 1 }}</td>
-                            <td class="fw-medium">{{ $item->nama }}</td>
-                            <td>{{ $item->tingkat }}</td>
-                            <td>{{ $item->jurusan }}</td>
-                            <td>{{ $item->tahun_ajaran }}</td>
-                            <td>{{ $item->waliKelas->name ?? '-' }}</td>
-                            <td class="text-center">
-                                <a href="{{ route('kelas.show', $item->id) }}" class="btn btn-info btn-sm me-1" title="Lihat">
-                                    <i class="bi bi-eye"></i>
+                            <td class="is-strong">
+                                <a class="text-reset text-decoration-none" href="{{ route('kelas.show', $item) }}">
+                                    {{ $item->nama_kelas }}
                                 </a>
-                                <a href="{{ route('kelas.edit', $item->id) }}" class="btn btn-warning btn-sm me-1" title="Edit">
-                                    <i class="bi bi-pencil-square"></i>
-                                </a>
-                                <form action="{{ route('kelas.destroy', $item->id) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus kelas ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                            </td>
+                            <td>
+                                @if ($item->waliKelas)
+                                    <span class="name-cell">
+                                        <span class="avatar avatar--xs">{{ $item->waliKelas->inisial() }}</span>
+                                        {{ $item->waliKelas->name }}
+                                    </span>
+                                @else
+                                    <span class="is-muted">Belum ditetapkan</span>
+                                @endif
+                            </td>
+                            <td class="is-muted">{{ $item->ruang ?? '—' }}</td>
+                            <td class="is-num">{{ $item->siswa_count }}</td>
+                            <td class="is-muted">{{ $item->jadwals_count }} jadwal</td>
+                            <td>
+                                <span class="meter-cell">
+                                    <x-meter :percent="$persen" />
+                                    <span class="is-strong">{{ round($persen) }}%</span>
+                                </span>
+                            </td>
+                            <td class="is-num">
+                                @if ($persen >= 85)
+                                    <x-chip tone="green" label="Normal" />
+                                @elseif ($persen >= 70)
+                                    <x-chip tone="yellow" label="Perhatian" />
+                                @else
+                                    <x-chip tone="red" label="Kritis" />
+                                @endif
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="bi bi-building fs-1 d-block mb-2 opacity-25"></i>
-                                    <p class="mb-1">Belum ada data kelas.</p>
-                                    <a href="{{ route('kelas.create') }}" class="btn btn-sm btn-outline-primary mt-2">
-                                        <i class="bi bi-plus-lg me-1"></i> Tambah Kelas Baru
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="7" class="empty-state">Tidak ada kelas yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
 
-    @if(method_exists($kelas, 'links') && $kelas->hasPages())
-        <div class="card-footer bg-white border-top py-3">
-            {{ $kelas->links() }}
-        </div>
-    @endif
-</div>
+        <x-slot:foot>
+            <span>Menampilkan {{ $kelas->firstItem() ?? 0 }}–{{ $kelas->lastItem() ?? 0 }} dari {{ $kelas->total() }} kelas</span>
+            <x-pager :paginator="$kelas" />
+        </x-slot:foot>
+    </x-card>
 @endsection

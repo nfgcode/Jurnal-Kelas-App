@@ -27,6 +27,8 @@ class Kelas extends Model
         'nama_kelas',
         'tingkat',
         'jurusan',
+        'ruang',
+        'kapasitas',
         'tahun_ajaran',
         'wali_kelas_id',
     ];

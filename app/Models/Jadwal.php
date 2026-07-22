@@ -28,9 +28,22 @@ class Jadwal extends Model
         'mata_pelajaran_id',
         'guru_id',
         'hari',
+        'jam_ke_mulai',
+        'jam_ke_selesai',
         'jam_mulai',
         'jam_selesai',
+        'ruang',
     ];
+
+    /**
+     * Lesson-period range as the screens render it, e.g. "1 - 2".
+     */
+    public function jpLabel(): string
+    {
+        return $this->jam_ke_mulai === $this->jam_ke_selesai
+            ? (string) $this->jam_ke_mulai
+            : "{$this->jam_ke_mulai} - {$this->jam_ke_selesai}";
+    }
 
     /**
      * Get the kelas (class) for this schedule.
