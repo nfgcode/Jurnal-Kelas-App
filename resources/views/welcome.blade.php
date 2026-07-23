@@ -76,9 +76,9 @@
             <div class="landing__preview d-flex flex-column gap-3">
                 <div class="landing__card">
                     <span class="kpi__label">Kelengkapan Jurnal</span>
-                    <div class="kpi__value mt-1">86%</div>
+                    <div class="kpi__value mt-1">{{ $kelengkapan }}%</div>
                     <span class="meter mt-2" style="width: 100%">
-                        <span class="meter__fill" style="width: 86%"></span>
+                        <span class="meter__fill" style="width: {{ $kelengkapan }}%"></span>
                     </span>
                     <p class="kpi__caption mt-2 mb-0">rata-rata seluruh kelas, semester berjalan</p>
                 </div>
@@ -86,10 +86,13 @@
                 <div class="landing__card">
                     <span class="kpi__label">Kehadiran Guru</span>
                     <div class="mt-2 d-flex flex-column gap-2">
-                        @foreach ([['Hadir', 'green'], ['Ada Tugas', 'yellow'], ['Tanpa Tugas', 'red']] as [$label, $tone])
+                        @foreach ([['Hadir', 'green', 'hadir'], ['Ada Tugas', 'yellow', 'ada_tugas'], ['Tanpa Tugas', 'red', 'tanpa_tugas']] as [$label, $tone, $key])
                             <div class="d-flex align-items-center justify-content-between" style="font-size: 11.5px">
                                 <span>{{ $label }}</span>
-                                <x-chip :tone="$tone" :label="$label" />
+                                <span class="d-flex align-items-center gap-2">
+                                    <strong>{{ number_format($kehadiranGuru[$key]) }}</strong>
+                                    <x-chip :tone="$tone" :label="$label" />
+                                </span>
                             </div>
                         @endforeach
                     </div>

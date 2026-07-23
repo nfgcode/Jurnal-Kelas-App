@@ -1,7 +1,7 @@
 # Makefile - Convenience commands for Jurnal Kelas App
 # Usage: make <command>
 
-.PHONY: help build up down restart logs shell artisan migrate seed fresh npm-dev npm-build setup
+.PHONY: help build up down restart logs shell artisan migrate seed fresh dev build-assets setup
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -12,7 +12,7 @@ build: ## Build Docker images
 up: ## Start all containers
 	docker compose up -d
 
-up-dev: ## Start all containers including dev tools (phpMyAdmin, Node)
+up-dev: ## Start all containers including dev tools (phpMyAdmin, Bun/Vite)
 	docker compose --profile dev up -d
 
 down: ## Stop all containers

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\User;
+use App\Support\LoginResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -75,14 +76,7 @@ class LoginController extends Controller
      */
     private function resolveUser(string $identifier, ?string $role = null): ?User
     {
-        return User::query()
-            ->when($role, fn ($query, $role) => $query->where('role', $role))
-            ->where(function ($query) use ($identifier) {
-                $query->where('nip', $identifier)
-                    ->orWhere('nis', $identifier)
-                    ->orWhere('email', $identifier);
-            })
-            ->first();
+        return LoginResolver::resolve($identifier, $role);
     }
 
     /**

@@ -58,9 +58,18 @@ WORKDIR /var/www/html
 # Copy supervisor config
 COPY docker/php/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Create supervisor log directory (writable by appuser) and Laravel
+# storage framework directories that must exist before artisan runs.
+RUN mkdir -p /var/log/supervisor \
+    && chown -R appuser:appuser /var/log/supervisor \
+    && mkdir -p /var/run \
+    && chmod 1777 /var/run
+
 # Switch to non-root user
 USER appuser
 
 EXPOSE 9000
 
-CMD ["php-fpm"]
+# Use supervisord so php-fpm, the queue worker, and the scheduler all run
+# inside the same container (see supervisord.conf for the program list).
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

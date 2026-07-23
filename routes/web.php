@@ -21,8 +21,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public landing page
-Route::get('/', fn () => view('welcome'))->name('landing');
+// Public landing page (preview figures computed live from the DB)
+Route::get('/', [\App\Http\Controllers\LandingController::class, 'index'])->name('landing');
 
 // Authentication routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
