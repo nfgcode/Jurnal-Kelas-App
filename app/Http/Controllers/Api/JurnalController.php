@@ -7,7 +7,9 @@ use App\Http\Requests\Api\JurnalRequest;
 use App\Http\Resources\JurnalResource;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
+use App\Models\JurnalAudit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class JurnalController extends Controller
@@ -18,7 +20,15 @@ class JurnalController extends Controller
      */
     public function index(Request $request)
     {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
+            'sort' => ['nullable', 'in:tanggal,id,materi'],
+            'dir' => ['nullable', 'in:asc,desc'],
+        ]);
+
         $user = $request->user();
+        $sort = $filters['sort'] ?? 'tanggal';
+        $dir = $filters['dir'] ?? 'desc';
 
         $jurnals = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
@@ -28,11 +38,37 @@ class JurnalController extends Controller
             ])
             ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
             ->when($user->isSiswa(), fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $user->kelas_id)))
-            ->latest('tanggal')
-            ->latest('id')
-            ->paginate(15);
+            ->when($filters['q'] ?? null, function ($query, $q) {
+                // Natural-language full-text search on MySQL; LIKE fallback (SQLite/tests).
+                if (DB::connection()->getDriverName() === 'mysql') {
+                    $query->whereRaw('MATCH(materi, kegiatan) AGAINST (? IN NATURAL LANGUAGE MODE)', [$q]);
+                } else {
+                    $query->where(fn ($inner) => $inner
+                        ->where('materi', 'like', "%{$q}%")
+                        ->orWhere('kegiatan', 'like', "%{$q}%"));
+                }
+            })
+            ->orderBy($sort, $dir)
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
 
         return JurnalResource::collection($jurnals);
+    }
+
+    /**
+     * Change history for a journal, written by the AFTER UPDATE/DELETE triggers.
+     */
+    public function audit(Jurnal $jurnal)
+    {
+        Gate::authorize('update', $jurnal);
+
+        $audit = JurnalAudit::where('jurnal_id', $jurnal->id)
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+
+        return response()->json(['data' => $audit]);
     }
 
     public function show(Jurnal $jurnal)

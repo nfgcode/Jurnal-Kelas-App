@@ -38,6 +38,9 @@ services:
     image: mysql:8.0
     container_name: jurnal-kelas-mysql
     restart: unless-stopped
+    # Let the non-SUPER app user create the stored functions in migrations
+    # (otherwise MySQL raises error 1419 when binary logging is enabled).
+    command: --log-bin-trust-function-creators=1
     ports:
       - "3306:3306"
     environment:

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\JurnalController;
 use App\Http\Controllers\Api\KelasController;
 use App\Http\Controllers\Api\MataPelajaranController;
 use App\Http\Controllers\Api\PresensiController;
+use App\Http\Controllers\Api\StatistikController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -41,7 +42,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('jadwal', JadwalController::class)->only(['index', 'show']);
 
     // Jurnal — index/show role-scoped in the controller; writes authorized by policy
+    Route::get('jurnal/{jurnal}/audit', [JurnalController::class, 'audit']);
     Route::apiResource('jurnal', JurnalController::class);
+
+    // Attendance percentages (stored functions)
+    Route::get('statistik/kehadiran', [StatistikController::class, 'kehadiran']);
 
     // Presensi — attendance is addressed by its jurnal
     Route::get('presensi', [PresensiController::class, 'index']);
@@ -59,5 +64,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('laporan/jurnal', [LaporanController::class, 'jurnal']);
         Route::get('laporan/presensi', [LaporanController::class, 'presensi']);
+        Route::get('laporan/rekap-kelas', [LaporanController::class, 'rekapKelas']);
     });
 });

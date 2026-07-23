@@ -7,6 +7,7 @@ use App\Http\Resources\PresensiResource;
 use App\Models\Jurnal;
 use App\Models\Presensi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class PresensiController extends Controller
@@ -60,16 +61,33 @@ class PresensiController extends Controller
         $jurnal = Jurnal::findOrFail($validated['jurnal_id']);
         Gate::authorize('update', $jurnal);
 
-        $now = now();
-        $jurnal->presensis()->delete();
-        Presensi::insert(array_map(fn ($data) => [
-            'jurnal_id' => $jurnal->id,
-            'siswa_id' => $data['siswa_id'],
-            'status' => $data['status'],
-            'keterangan' => $data['keterangan'] ?? null,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], $validated['presensi']));
+        // On MySQL the whole replace runs inside sp_simpan_presensi (one
+        // transaction, rolled back by its handler on any error); elsewhere a
+        // Laravel transaction gives the same all-or-nothing guarantee. The
+        // unique index on (jurnal_id, siswa_id) is the final guard against races.
+        if (DB::connection()->getDriverName() === 'mysql') {
+            DB::statement('CALL sp_simpan_presensi(?, ?)', [
+                $jurnal->id,
+                json_encode(array_map(fn ($data) => [
+                    'siswa_id' => (int) $data['siswa_id'],
+                    'status' => $data['status'],
+                    'keterangan' => $data['keterangan'] ?? null,
+                ], $validated['presensi'])),
+            ]);
+        } else {
+            DB::transaction(function () use ($jurnal, $validated) {
+                $now = now();
+                $jurnal->presensis()->delete();
+                Presensi::insert(array_map(fn ($data) => [
+                    'jurnal_id' => $jurnal->id,
+                    'siswa_id' => $data['siswa_id'],
+                    'status' => $data['status'],
+                    'keterangan' => $data['keterangan'] ?? null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], $validated['presensi']));
+            });
+        }
 
         return PresensiResource::collection(
             $jurnal->presensis()->with('siswa')->get()

@@ -9,6 +9,7 @@ use App\Models\Presensi;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PresensiController extends Controller
 {
@@ -135,18 +136,24 @@ class PresensiController extends Controller
             'presensi.*.keterangan' => 'nullable|string',
         ]);
 
-        // Replace the whole set so re-submitting the form is idempotent.
-        Presensi::where('jurnal_id', $validated['jurnal_id'])->delete();
+        // Replace the whole set atomically so a re-submitted form is idempotent.
+        // Locking the journal row serialises two people marking the same roster
+        // at once; the unique index on (jurnal_id, siswa_id) is the final guard.
+        DB::transaction(function () use ($validated) {
+            Jurnal::whereKey($validated['jurnal_id'])->lockForUpdate()->first();
 
-        $now = now();
-        Presensi::insert(array_map(fn ($data) => [
-            'jurnal_id' => $validated['jurnal_id'],
-            'siswa_id' => $data['siswa_id'],
-            'status' => $data['status'],
-            'keterangan' => $data['keterangan'] ?? null,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ], $validated['presensi']));
+            Presensi::where('jurnal_id', $validated['jurnal_id'])->delete();
+
+            $now = now();
+            Presensi::insert(array_map(fn ($data) => [
+                'jurnal_id' => $validated['jurnal_id'],
+                'siswa_id' => $data['siswa_id'],
+                'status' => $data['status'],
+                'keterangan' => $data['keterangan'] ?? null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], $validated['presensi']));
+        });
 
         return redirect()->route('presensi.show', $validated['jurnal_id'])
             ->with('success', 'Presensi berhasil disimpan.');

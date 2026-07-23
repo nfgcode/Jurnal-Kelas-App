@@ -8,6 +8,7 @@ use App\Models\Jurnal;
 use App\Support\Periode;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Read-only school-wide reports, mirroring the web Admin\LaporanController but
@@ -94,6 +95,33 @@ class LaporanController extends Controller
                 'kehadiran_per_kelas' => Ringkasan::presensiPerKelas($periode),
             ],
         ]);
+    }
+
+    /**
+     * Per-class attendance rollup, read from the v_rekap_presensi_kelas view on
+     * MySQL (equivalent query-builder aggregate elsewhere).
+     */
+    public function rekapKelas()
+    {
+        if (DB::connection()->getDriverName() === 'mysql') {
+            $rows = DB::table('v_rekap_presensi_kelas')->orderBy('nama_kelas')->get();
+        } else {
+            $rows = DB::table('presensi as p')
+                ->join('jurnal as j', 'p.jurnal_id', '=', 'j.id')
+                ->join('jadwal as jd', 'j.jadwal_id', '=', 'jd.id')
+                ->join('kelas as k', 'jd.kelas_id', '=', 'k.id')
+                ->selectRaw("k.id as kelas_id, k.nama_kelas,
+                    SUM(p.status = 'hadir') as hadir,
+                    SUM(p.status = 'sakit') as sakit,
+                    SUM(p.status = 'izin') as izin,
+                    SUM(p.status = 'alpa') as alpa,
+                    COUNT(*) as total")
+                ->groupBy('k.id', 'k.nama_kelas')
+                ->orderBy('k.nama_kelas')
+                ->get();
+        }
+
+        return response()->json(['data' => $rows]);
     }
 
     /**
