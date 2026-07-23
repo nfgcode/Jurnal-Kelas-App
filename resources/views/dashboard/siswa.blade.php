@@ -21,7 +21,7 @@
         @endif
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(6, minmax(0, 1fr))">
+    <div class="grid-row grid-row--6">
         <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar" :caption="now()->translatedFormat('l')" />
         <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$datar" caption="hari ini" />
         <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar" caption="menunggu guru" />
@@ -30,7 +30,7 @@
         <x-kpi label="Alpa" :value="$kpi['alpa']" :spark="$datar" caption="tanpa keterangan" />
     </div>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 613fr) minmax(0, 278fr) minmax(0, 202fr)">
+    <div class="grid-row grid-row--split">
         <x-card title="Jadwal Kelas Hari Ini" flush>
             <x-slot:actions>
                 <span class="card-hifi__meta">{{ now()->translatedFormat('l, j F Y') }}</span>
@@ -115,7 +115,7 @@
         </x-card>
     </div>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)">
+    <div class="grid-row grid-row--2">
         <x-card title="Kehadiran per Mata Pelajaran" :meta="now()->translatedFormat('F Y')">
             <x-legend class="mb-2" :items="[
                 'Hadir' => 'var(--green-200)',

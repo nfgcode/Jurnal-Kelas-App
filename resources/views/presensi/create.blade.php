@@ -17,7 +17,7 @@
         <button class="btn-hifi" type="submit" form="formPresensi">Simpan Presensi</button>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Total Siswa" :value="$totalSiswa" caption="terdaftar di rombel" />
         <x-stat label="Hadir" :value="$rekap['hadir']"
                 :caption="$ditandai ? round($rekap['hadir'] / $ditandai * 100) . '% sudah ditandai' : 'belum ditandai'" />

@@ -100,6 +100,19 @@ class Jurnal extends Model
     }
 
     /**
+     * A SQL predicate matching late journals — filed more than a day after the
+     * lesson they describe. Date arithmetic has no portable syntax, so the
+     * expression is chosen per driver (MySQL in production, SQLite in tests).
+     * Shared by the report and the dashboard drill-down.
+     */
+    public static function ekspresiTerlambat(): string
+    {
+        return \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite'
+            ? "jurnal.created_at > datetime(jurnal.tanggal, '+2 day')"
+            : 'jurnal.created_at > DATE_ADD(jurnal.tanggal, INTERVAL 2 DAY)';
+    }
+
+    /**
      * The user who actually wrote the entry — the ketua kelas when the guru
      * delegated it, otherwise the guru themselves.
      */

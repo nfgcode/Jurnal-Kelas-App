@@ -8,19 +8,19 @@
     <x-page-head
         title="Rekap Presensi"
         :sub="number_format($total, 0, ',', '.') . ' kehadiran tercatat · rata-rata ' . round($rekap['hadir'] / $pembagi * 100) . '% hadir'">
-        <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
+        <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'excel']) }}">Ekspor Excel</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
-        <x-stat label="Hadir" :value="number_format($rekap['hadir'], 0, ',', '.')"
-                :caption="round($rekap['hadir'] / $pembagi * 100) . '% dari total'" />
-        <x-stat label="Sakit" :value="number_format($rekap['sakit'], 0, ',', '.')"
-                :caption="round($rekap['sakit'] / $pembagi * 100) . '% dari total'" />
-        <x-stat label="Izin" :value="number_format($rekap['izin'], 0, ',', '.')"
-                :caption="round($rekap['izin'] / $pembagi * 100) . '% dari total'" />
-        <x-stat label="Alpa" :value="number_format($rekap['alpa'], 0, ',', '.')"
-                :caption="round($rekap['alpa'] / $pembagi * 100) . '% dari total'" />
+    {{-- Each status tile drills into the students behind it, honouring the
+         active period and any kelas/guru filter. --}}
+    <div class="grid-row grid-row--4">
+        @foreach (['hadir' => 'Hadir', 'sakit' => 'Sakit', 'izin' => 'Izin', 'alpa' => 'Alpa'] as $kunci => $label)
+            <x-stat :label="$label" :value="number_format($rekap[$kunci], 0, ',', '.')"
+                    :caption="round($rekap[$kunci] / $pembagi * 100) . '% dari total'"
+                    class="is-clickable" role="button" tabindex="0"
+                    data-detail-tipe="presensi" data-detail-status="{{ $kunci }}" />
+        @endforeach
     </div>
 
     <form class="filter-bar" method="GET">
@@ -48,6 +48,40 @@
             Menampilkan {{ $pertemuan->count() }} dari {{ number_format($pertemuan->total(), 0, ',', '.') }}
         </span>
     </form>
+
+    {{-- Per-class comparison: which classes attend best, over the chosen period.
+         Each row drills into that class's attendance. --}}
+    <x-card title="Kehadiran per Kelas" :meta="$periode->label()">
+        <x-slot:actions>
+            <x-legend :items="[
+                'Hadir' => 'var(--green-200)',
+                'Sakit' => 'var(--s-300)',
+                'Izin' => 'var(--yellow-200)',
+                'Alpa' => 'var(--red-100)',
+            ]" />
+        </x-slot:actions>
+
+        @php $adaData = false; @endphp
+        @foreach ($kelasList as $kelas)
+            @php
+                $r = $kehadiranPerKelas[$kelas->id] ?? collect();
+                $totalKelas = $r instanceof \Illuminate\Support\Collection ? $r->sum() : array_sum((array) $r);
+            @endphp
+            @if ($totalKelas > 0)
+                @php $adaData = true; @endphp
+                <div class="breakdown breakdown--wide mb-2 is-clickable" role="button" tabindex="0"
+                     data-detail-tipe="presensi" data-detail-kelas="{{ $kelas->id }}">
+                    <span class="breakdown__label">{{ $kelas->nama_kelas }}</span>
+                    <x-stack-bar :hadir="$r['hadir'] ?? 0" :sakit="$r['sakit'] ?? 0"
+                                 :izin="$r['izin'] ?? 0" :alpa="$r['alpa'] ?? 0" />
+                    <span class="breakdown__value">{{ round(($r['hadir'] ?? 0) / max(1, $totalKelas) * 100) }}%</span>
+                </div>
+            @endif
+        @endforeach
+        @unless ($adaData)
+            <p class="empty-state">Belum ada presensi pada periode ini.</p>
+        @endunless
+    </x-card>
 
     <x-card title="Rekap Presensi per Pertemuan" flush>
         <x-slot:actions>
@@ -86,12 +120,7 @@
                             <td class="is-muted">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
                             <td class="is-strong">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                            <td>
-                                <span class="name-cell">
-                                    <span class="avatar avatar--xs">{{ $jurnal->guru?->inisial() }}</span>
-                                    {{ $jurnal->guru?->name }}
-                                </span>
-                            </td>
+                            <td><x-guru-link :guru="$jurnal->guru" /></td>
                             <td><x-chip :tone="$guruChip['tone']" :label="$guruChip['label']" /></td>
                             <td class="is-num">{{ $jurnal->total_siswa }}</td>
                             <td class="is-num">{{ $jurnal->hadir_count }}</td>
@@ -121,4 +150,6 @@
             <x-pager :paginator="$pertemuan" />
         </x-slot:foot>
     </x-card>
+
+    <x-detail-modal />
 @endsection

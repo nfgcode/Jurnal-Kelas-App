@@ -1,8 +1,9 @@
-@props(['series' => [], 'height' => 110])
+@props(['series' => [], 'height' => 110, 'drill' => null])
 
 @php
-    // $series is [label => value]; the final column is emphasised as "today".
-    $peak = max([1, ...array_map('floatval', array_values($series))]);
+    // $series is a list of ['key','label','value'] rows; the last is "today".
+    $values = array_map(fn ($row) => (float) ($row['value'] ?? 0), $series);
+    $peak = max([1, ...$values]);
 @endphp
 
 <div class="barchart-frame">
@@ -14,12 +15,16 @@
     </div>
 
     <div class="barchart" style="height: {{ $height }}px">
-        @foreach ($series as $label => $value)
+        @foreach ($series as $row)
             <div class="barchart__col">
-                <div class="barchart__bar {{ $loop->last ? 'barchart__bar--last' : '' }}"
-                     style="height: {{ max(2, $value / $peak * ($height - 16)) }}px"
-                     title="{{ $label }}: {{ $value }}"></div>
-                <span class="barchart__tick">{{ $label }}</span>
+                <div class="barchart__bar {{ $loop->last ? 'barchart__bar--last' : '' }} {{ $drill ? 'is-clickable' : '' }}"
+                     style="height: {{ max(2, ($row['value'] ?? 0) / $peak * ($height - 16)) }}px"
+                     @if ($drill)
+                         role="button" tabindex="0"
+                         data-detail-tipe="{{ $drill }}" data-detail-tanggal="{{ $row['key'] ?? '' }}"
+                     @endif
+                     title="{{ $row['label'] ?? '' }}: {{ $row['value'] ?? 0 }}"></div>
+                <span class="barchart__tick">{{ $row['label'] ?? '' }}</span>
             </div>
         @endforeach
     </div>

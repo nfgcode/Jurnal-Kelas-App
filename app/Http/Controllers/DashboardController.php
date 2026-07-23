@@ -77,7 +77,7 @@ class DashboardController extends Controller
             'jurnalHariIni' => $jurnalHariIni,
             'kelasDiampu' => $kelasDiampu,
             'kehadiranPerKelas' => $kehadiranPerKelas,
-            'aktivitas' => Ringkasan::harian(Jurnal::where('guru_id', $user->id), 14),
+            'aktivitas' => Ringkasan::harian(Jurnal::where('guru_id', $user->id)),
             'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_id', $user->id)),
             'presensiSaya' => $presensiSaya,
             'kpi' => [
@@ -94,7 +94,7 @@ class DashboardController extends Controller
                 ->latest('id')
                 ->take(5)
                 ->get(),
-            'heatmap' => Ringkasan::heatmapJurnal($kelasDiampu, 20),
+            'heatmap' => Ringkasan::heatmapJurnal($kelasDiampu),
         ]);
     }
 

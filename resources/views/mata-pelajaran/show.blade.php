@@ -15,7 +15,7 @@
         @endif
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="JP per Minggu" :value="$mataPelajaran->jp_per_minggu" caption="per rombel" />
         <x-stat label="Diajarkan Di" :value="$kelasDiajar->count()" caption="kelas" />
         <x-stat label="Guru Pengampu" :value="$pengampu->count()" :caption="$pengampu->first() ?? 'belum ditetapkan'" />

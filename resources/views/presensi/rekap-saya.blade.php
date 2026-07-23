@@ -15,7 +15,7 @@
         <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'pdf']) }}">Ekspor PDF</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="number_format($rekap['hadir'], 0, ',', '.')"
                 :caption="'dari ' . number_format(array_sum($rekap), 0, ',', '.') . ' pertemuan'" />
         <x-stat label="Sakit" :value="$rekap['sakit']" :caption="round($rekap['sakit'] / $total * 100) . '% dari total'" />

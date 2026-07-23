@@ -17,7 +17,7 @@
     }
 @endphp
 
-<div class="kpi">
+<div {{ $attributes->class('kpi') }}>
     <span class="kpi__label">{{ $label }}</span>
 
     <div class="d-flex align-items-baseline gap-2">

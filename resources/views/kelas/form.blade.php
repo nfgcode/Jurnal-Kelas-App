@@ -1,6 +1,6 @@
 @php $kelas ??= null; @endphp
 
-<div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+<div class="form-grid form-grid--2">
     <x-field label="Nama Kelas" name="nama_kelas" required>
         <input class="input-hifi" type="text" name="nama_kelas" id="nama_kelas"
                value="{{ old('nama_kelas', $kelas?->nama_kelas) }}" placeholder="mis. X IPA 1" required>

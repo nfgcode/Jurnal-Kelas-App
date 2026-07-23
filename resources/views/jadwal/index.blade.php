@@ -36,7 +36,7 @@
         @endif
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Jadwal Aktif" :value="$statistik['totalJadwal']" caption="seluruh rombel" />
         <x-stat label="JP / Minggu" :value="$statistik['jpKelas']"
                 :caption="'kelas ' . ($kelasAktif?->nama_kelas ?? '—')" />
@@ -83,7 +83,8 @@
             ]" />
         </x-slot:actions>
 
-        <div class="matrix" style="grid-template-columns: 44px repeat(6, minmax(0, 1fr))">
+        <div class="scroll-x">
+        <div class="matrix">
             <span></span>
             @foreach ($hariList as $hari)
                 <span class="matrix__head">{{ $hari }}</span>
@@ -112,6 +113,7 @@
                     @endif
                 @endforeach
             @endfor
+        </div>
         </div>
     </x-card>
 @endsection

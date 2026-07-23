@@ -15,7 +15,7 @@
         <a class="btn-hifi" href="{{ route('presensi.create', $jurnal->id) }}">Ubah Presensi</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="$rekap['hadir']" :caption="round($rekap['hadir'] / $total * 100) . '% dari kelas'" />
         <x-stat label="Sakit" :value="$rekap['sakit']" caption="dengan keterangan" />
         <x-stat label="Izin" :value="$rekap['izin']" caption="dengan keterangan" />

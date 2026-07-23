@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\User;
+use App\Support\Periode;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class LaporanController extends Controller
 {
@@ -17,6 +17,9 @@ class LaporanController extends Controller
      */
     public function jurnal(Request $request)
     {
+        $periode = Periode::dari($request);
+        $rentang = [$periode->mulaiString(), $periode->selesaiString()];
+
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_id' => ['nullable', 'exists:users,id'],
@@ -24,7 +27,7 @@ class LaporanController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $jurnals = $this->kueriJurnal($filters)
+        $jurnals = $this->kueriJurnal($filters, $periode)
             ->withCount([
                 'presensis as total_siswa',
                 'presensis as hadir_count' => fn ($query) => $query->where('status', 'hadir'),
@@ -34,22 +37,27 @@ class LaporanController extends Controller
             ->paginate(18)
             ->withQueryString();
 
-        // Completeness measures what was written against what was scheduled, so
-        // "belum diisi" is a gap in the timetable rather than a row in the table.
-        $kelengkapan = Ringkasan::kelengkapan('kelas_id');
+        // Completeness measures what was written against what was scheduled over
+        // the same period, so "belum diisi" is a gap in the timetable rather than
+        // a row in the table. The schedule is counted directly instead of being
+        // reverse-engineered from a rounded percentage (which double-rounded
+        // "belum" off by a handful of meetings).
+        $kelengkapan = Ringkasan::kelengkapan('kelas_id', $periode);
         $rataKelengkapan = $kelengkapan ? round(array_sum($kelengkapan) / count($kelengkapan)) : 0;
-        $terisi = Jurnal::count();
-        $terjadwal = $rataKelengkapan > 0 ? (int) round($terisi / ($rataKelengkapan / 100)) : 0;
+        $terjadwal = Ringkasan::terjadwal($periode);
+        $terisi = Jurnal::whereBetween('tanggal', $rentang)->count();
 
         return view('admin.laporan.jurnal', [
+            'periode' => $periode,
             'jurnals' => $jurnals,
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'kelasList' => Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get(),
             'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
+            'kelengkapan' => $kelengkapan,
             'filters' => $filters,
             'statistik' => [
                 'terisi' => $terisi,
                 'belum' => max(0, $terjadwal - $terisi),
-                'telat' => Jurnal::whereRaw($this->ekspresiTerlambat())->count(),
+                'telat' => Jurnal::whereBetween('tanggal', $rentang)->whereRaw($this->ekspresiTerlambat())->count(),
                 'kelengkapan' => $rataKelengkapan,
             ],
         ]);
@@ -61,13 +69,16 @@ class LaporanController extends Controller
      */
     public function presensi(Request $request)
     {
+        $periode = Periode::dari($request);
+        $rentang = [$periode->mulaiString(), $periode->selesaiString()];
+
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_id' => ['nullable', 'exists:users,id'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $pertemuan = $this->kueriJurnal($filters)
+        $pertemuan = $this->kueriJurnal($filters, $periode)
             ->withCount([
                 'presensis as total_siswa',
                 'presensis as hadir_count' => fn ($query) => $query->where('status', 'hadir'),
@@ -80,26 +91,30 @@ class LaporanController extends Controller
             ->paginate(18)
             ->withQueryString();
 
-        $rekap = Ringkasan::presensi();
+        $rekap = Ringkasan::presensi(null, $periode);
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
 
         return view('admin.laporan.presensi', [
+            'periode' => $periode,
             'pertemuan' => $pertemuan,
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'kelasList' => $kelasList,
             'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
+            'kehadiranPerKelas' => Ringkasan::presensiPerKelas($periode),
             'filters' => $filters,
             'rekap' => $rekap,
             'total' => array_sum($rekap),
-            'totalPertemuan' => Jurnal::count(),
+            'totalPertemuan' => Jurnal::whereBetween('tanggal', $rentang)->count(),
         ]);
     }
 
     /**
      * Journal rows narrowed by the filters both reports share.
      */
-    private function kueriJurnal(array $filters)
+    private function kueriJurnal(array $filters, ?Periode $periode = null)
     {
         return Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
+            ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
@@ -113,15 +128,11 @@ class LaporanController extends Controller
     }
 
     /**
-     * "Telat" is derived rather than stored: a journal filed more than a day
-     * after the lesson it describes. Date arithmetic has no portable syntax,
-     * so the expression is chosen per driver (MySQL in production, SQLite in
-     * the test suite).
+     * "Telat" is derived rather than stored; the SQL predicate lives on the
+     * model so the dashboard drill-down shares one definition.
      */
     private function ekspresiTerlambat(): string
     {
-        return DB::connection()->getDriverName() === 'sqlite'
-            ? "jurnal.created_at > datetime(jurnal.tanggal, '+2 day')"
-            : 'jurnal.created_at > DATE_ADD(jurnal.tanggal, INTERVAL 2 DAY)';
+        return Jurnal::ekspresiTerlambat();
     }
 }

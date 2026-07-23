@@ -17,13 +17,20 @@ use Illuminate\Support\Facades\Hash;
  */
 class DemoSeeder extends Seeder
 {
-    /** School days of journal history to generate. */
-    private const HARI_RIWAYAT = 20;
-
     /** Lesson periods that carry a class; JP 5 is the break. */
     private const JP_SLOT = [[1, 2], [3, 4], [6, 7], [8, 9]];
 
     private const HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    /**
+     * School days of journal history to generate. A full term keeps the "Bulan
+     * Lalu" filter populated in real use, but the suite reseeds for every test,
+     * so under `testing` it is trimmed to keep that reseed cheap.
+     */
+    private function hariRiwayat(): int
+    {
+        return app()->environment('testing') ? 20 : 90;
+    }
 
     public function run(): void
     {
@@ -278,8 +285,9 @@ class DemoSeeder extends Seeder
         $hariTerkumpul = 0;
         $jurnalRows = [];
         $now = now();
+        $hariRiwayat = $this->hariRiwayat();
 
-        while ($hariTerkumpul < self::HARI_RIWAYAT) {
+        while ($hariTerkumpul < $hariRiwayat) {
             $namaHari = self::HARI[$tanggal->dayOfWeekIso - 1] ?? null;
 
             if ($namaHari === null) {

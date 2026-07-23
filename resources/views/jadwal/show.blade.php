@@ -12,7 +12,7 @@
         <a class="btn-hifi" href="{{ route('jurnal.create', ['jadwal_id' => $jadwal->id]) }}">Isi Jurnal</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Kelas" :value="$jadwal->kelas?->nama_kelas ?? '—'" :caption="$jadwal->kelas?->jurusan" />
         <x-stat label="Guru" :value="$jadwal->guru?->inisial() ?? '—'" :caption="$jadwal->guru?->name" />
         <x-stat label="Jam Pelajaran" :value="'JP ' . $jadwal->jpLabel()"

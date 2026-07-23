@@ -1,6 +1,6 @@
 @php $jadwal ??= null; @endphp
 
-<div class="form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+<div class="form-grid form-grid--3">
     <x-field label="Kelas" name="kelas_id" required>
         <select class="select-hifi" name="kelas_id" id="kelas_id" required>
             @foreach ($kelasList as $kelas)

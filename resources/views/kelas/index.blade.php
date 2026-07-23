@@ -19,7 +19,7 @@
         @endif
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Total Kelas" :value="$statistik['totalKelas']" caption="rombongan belajar aktif" />
         <x-stat label="Rata Siswa / Kelas" :value="$statistik['rataSiswa']" caption="kapasitas ideal 36" />
         <x-stat label="Wali Kelas Terisi" :value="$statistik['waliTerisi']"
@@ -82,10 +82,7 @@
                             </td>
                             <td>
                                 @if ($item->waliKelas)
-                                    <span class="name-cell">
-                                        <span class="avatar avatar--xs">{{ $item->waliKelas->inisial() }}</span>
-                                        {{ $item->waliKelas->name }}
-                                    </span>
+                                    <x-guru-link :guru="$item->waliKelas" />
                                 @else
                                     <span class="is-muted">Belum ditetapkan</span>
                                 @endif

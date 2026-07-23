@@ -4,7 +4,7 @@
 
 @section('content')
     @php
-        $sparkAktivitas = array_values($aktivitas);
+        $sparkAktivitas = array_column($aktivitas, 'value');
         $datar = array_fill(0, 12, 0);
         $totalKehadiranGuru = $kehadiranGuru['total'] ?: 1;
     @endphp
@@ -16,7 +16,7 @@
         <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(6, minmax(0, 1fr))">
+    <div class="grid-row grid-row--6">
         <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar"
                :caption="now()->translatedFormat('l')" />
         <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$sparkAktivitas" caption="hari ini" />
@@ -26,7 +26,7 @@
         <x-kpi label="Rata Kehadiran" :value="$kpi['rataKehadiran'] . '%'" :spark="$datar" caption="siswa di kelas Anda" />
     </div>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 613fr) minmax(0, 278fr) minmax(0, 202fr)">
+    <div class="grid-row grid-row--split">
         <x-card title="Jadwal Mengajar Hari Ini" flush>
             <x-slot:actions>
                 <span class="card-hifi__meta">{{ now()->translatedFormat('l, j F Y') }}</span>
@@ -118,7 +118,7 @@
         </x-card>
     </div>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)">
+    <div class="grid-row grid-row--2">
         <x-card title="Kehadiran per Kelas" :meta="now()->translatedFormat('F Y')">
             <x-legend class="mb-2" :items="[
                 'Hadir' => 'var(--green-200)',

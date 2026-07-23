@@ -18,14 +18,14 @@
         <a class="btn-hifi" href="{{ route('jurnal.edit', $jurnal) }}">Ubah Jurnal</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="$rekap['hadir'] ?? 0" :caption="round(($rekap['hadir'] ?? 0) / $total * 100) . '% dari kelas'" />
         <x-stat label="Sakit" :value="$rekap['sakit'] ?? 0" caption="dengan keterangan" />
         <x-stat label="Izin" :value="$rekap['izin'] ?? 0" caption="dengan keterangan" />
         <x-stat label="Alpa" :value="$rekap['alpa'] ?? 0" caption="tanpa keterangan" />
     </div>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 739fr) minmax(0, 366fr)">
+    <div class="grid-row grid-row--editor">
         <div class="d-flex flex-column gap-3">
             <x-card title="Materi yang Diajarkan">
                 <p class="mb-0" style="font-size: 12.5px; line-height: 1.6; color: var(--n-900)">{{ $jurnal->materi }}</p>

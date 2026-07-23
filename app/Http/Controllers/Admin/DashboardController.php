@@ -7,18 +7,37 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
+use App\Models\Presensi;
 use App\Models\User;
+use App\Support\Periode;
 use App\Support\Ringkasan;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     /**
-     * School-wide overview: headline counts, the 14-day fill trend, attendance
-     * and teacher-attendance rollups, and the per-class completeness grid.
+     * School-wide overview: headline counts, the period's fill trend, the
+     * attendance and teacher-attendance rollups, and the per-class completeness
+     * grid — every flow figure confined to the selected {@see Periode} so its
+     * label and its number tell the same story.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $periode = Periode::dari($request);
+        $rentang = [$periode->mulaiString(), $periode->selesaiString()];
+
         $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
+
+        // Stock figures (people, classes, subjects, the timetable) are all-time
+        // by nature; only the flow figure — journals written — is scoped to the
+        // period, its delta measured against the preceding equal-length window.
+        $jurnalPeriode = Jurnal::whereBetween('tanggal', $rentang)->count();
+        $sebelumnya = $periode->sebelumnya();
+        $jurnalSebelumnya = Jurnal::whereBetween('tanggal', [$sebelumnya->mulaiString(), $sebelumnya->selesaiString()])->count();
+        $trenJurnal = $jurnalSebelumnya > 0
+            ? round(($jurnalPeriode - $jurnalSebelumnya) / $jurnalSebelumnya * 100, 1)
+            : 0;
 
         $kpi = [
             'siswa' => User::where('role', 'siswa')->count(),
@@ -26,27 +45,20 @@ class DashboardController extends Controller
             'kelas' => $kelasList->count(),
             'mapel' => MataPelajaran::count(),
             'jadwal' => Jadwal::count(),
-            'jurnal' => Jurnal::count(),
+            'jurnal' => $jurnalPeriode,
         ];
 
-        $pengisian = Ringkasan::harian(Jurnal::query(), 14);
-
-        // Week-on-week movement in journal writing — the only headline figure
-        // with a genuine time series behind it.
-        $mingguIni = array_sum(array_slice($pengisian, -7));
-        $mingguLalu = array_sum(array_slice($pengisian, 0, 7));
-        $trenJurnal = $mingguLalu > 0
-            ? round(($mingguIni - $mingguLalu) / $mingguLalu * 100, 1)
-            : 0;
-
-        // Teachers whose absence was not covered by an assignment are the ones
-        // the "perlu perhatian" callout points at.
+        // Teachers whose absence in this period was not covered by an assignment
+        // are the ones the "perlu perhatian" callout points at.
         $guruPerluPerhatian = Jurnal::query()
+            ->whereBetween('tanggal', $rentang)
             ->where('kehadiran_guru_status', 'tidak_hadir')
             ->where(fn ($query) => $query->whereNull('kehadiran_guru_ada_tugas')->orWhere('kehadiran_guru_ada_tugas', false))
             ->distinct()
             ->count('guru_id');
 
+        // "Latest journals" stays a recency feed, not a period slice — it is the
+        // newest activity whatever the filter says.
         $jurnalTerbaru = Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->withCount([
                 'presensis as total_presensi',
@@ -57,20 +69,278 @@ class DashboardController extends Controller
             ->take(7)
             ->get();
 
+        // Maps that let a heatmap cell drill down: its row label back to a
+        // kelas id, and its column label back to the real date. The label rule
+        // is shared with Ringkasan::heatmapJurnal so the keys line up exactly.
+        $hariSekolah = $periode->hariSekolah();
+        $lintasBulan = $hariSekolah !== [] && $hariSekolah[0]->format('Y-m') !== end($hariSekolah)->format('Y-m');
+        $petaTanggal = [];
+        foreach ($hariSekolah as $tanggal) {
+            $petaTanggal[Ringkasan::labelTanggal($tanggal, $lintasBulan)] = $tanggal->toDateString();
+        }
+
         return view('admin.dashboard', [
+            'periode' => $periode,
+            'petaKelas' => $kelasList->pluck('id', 'nama_kelas')->all(),
+            'petaTanggal' => $petaTanggal,
             'kpi' => $kpi,
             'trenJurnal' => $trenJurnal,
-            'pengisian' => $pengisian,
-            'presensi' => Ringkasan::presensi(),
-            'kehadiranGuru' => Ringkasan::kehadiranGuru(),
+            'pengisian' => Ringkasan::harian(Jurnal::query(), $periode),
+            'presensi' => Ringkasan::presensi(null, $periode),
+            'kehadiranGuru' => Ringkasan::kehadiranGuru(null, $periode),
             'guruPerluPerhatian' => $guruPerluPerhatian,
             'guruTeraktif' => User::where('role', 'guru')
-                ->withCount('jurnals')
+                ->withCount(['jurnals' => fn ($query) => $query->whereBetween('tanggal', $rentang)])
                 ->orderByDesc('jurnals_count')
                 ->take(5)
                 ->get(),
             'jurnalTerbaru' => $jurnalTerbaru,
-            'heatmap' => Ringkasan::heatmapJurnal($kelasList, 20),
+            'heatmap' => Ringkasan::heatmapJurnal($kelasList, $periode),
         ]);
+    }
+
+    /**
+     * The meetings behind a clickable figure, as JSON for the drill-down modal.
+     *
+     * A bar drills into one day's journals, a "guru teraktif" row into that
+     * teacher's journals across the period, and a heatmap cell into one class
+     * on one day. The active period rides along on the query string so the
+     * detail matches the figure that was clicked.
+     */
+    public function detail(Request $request)
+    {
+        $data = $request->validate([
+            'tipe' => ['required', 'in:jurnal,guru,kelas,terisi,telat,presensi,belum,kelengkapan'],
+            'tanggal' => ['nullable', 'date'],
+            'guru_id' => ['nullable', 'exists:users,id'],
+            'kelas_id' => ['nullable', 'exists:kelas,id'],
+            'status' => ['nullable', 'in:hadir,sakit,izin,alpa'],
+        ]);
+
+        $periode = Periode::dari($request);
+        $rentang = [$periode->mulaiString(), $periode->selesaiString()];
+
+        // Some figures drill into something other than the meeting list.
+        switch ($data['tipe']) {
+            case 'presensi':
+                return $this->detailPresensi($data, $periode, $rentang);
+            case 'belum':
+                return $this->detailBelum($data, $periode);
+            case 'kelengkapan':
+                return $this->detailKelengkapan($periode);
+        }
+
+        $query = Jurnal::query()
+            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
+            ->withCount([
+                'presensis as total_siswa',
+                'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
+            ])
+            ->latest('tanggal')
+            ->latest('id');
+
+        $judul = 'Detail';
+        $meta = $periode->label();
+
+        switch ($data['tipe']) {
+            case 'jurnal':
+                $tanggal = Carbon::parse($data['tanggal'] ?? $periode->selesaiString());
+                $query->whereDate('tanggal', $tanggal->toDateString());
+                $judul = 'Jurnal ' . $tanggal->translatedFormat('l, j F Y');
+                $meta = null;
+                break;
+
+            case 'guru':
+                $guru = User::findOrFail($data['guru_id']);
+                $query->where('guru_id', $guru->id)->whereBetween('tanggal', $rentang);
+                $judul = 'Jurnal ' . $guru->name;
+                break;
+
+            case 'kelas':
+                $kelas = Kelas::findOrFail($data['kelas_id']);
+                $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id));
+
+                if (! empty($data['tanggal'])) {
+                    $tanggal = Carbon::parse($data['tanggal']);
+                    $query->whereDate('tanggal', $tanggal->toDateString());
+                    $judul = $kelas->nama_kelas . ' · ' . $tanggal->translatedFormat('j F Y');
+                    $meta = null;
+                } else {
+                    $query->whereBetween('tanggal', $rentang);
+                    $judul = 'Jurnal ' . $kelas->nama_kelas;
+                }
+                break;
+
+            case 'terisi':
+                $this->terapkanFilter($query, $data);
+                $query->whereBetween('tanggal', $rentang);
+                $judul = 'Jurnal Terisi';
+                break;
+
+            case 'telat':
+                $this->terapkanFilter($query, $data);
+                $query->whereBetween('tanggal', $rentang)->whereRaw(Jurnal::ekspresiTerlambat());
+                $judul = 'Jurnal Terlambat Isi';
+                break;
+        }
+
+        $baris = $query->take(50)->get()->map(fn ($jurnal) => [
+            'tanggal' => $jurnal->tanggal->format('d/m/Y'),
+            'kelas' => $jurnal->jadwal?->kelas?->nama_kelas,
+            'mapel' => $jurnal->jadwal?->mataPelajaran?->nama,
+            'guru' => $jurnal->guru?->name,
+            'materi' => $jurnal->materi,
+            'guruChip' => $jurnal->kehadiranGuruChip(),
+            'statusChip' => $jurnal->statusPengisian(),
+            'hadir' => (int) $jurnal->hadir_count,
+            'total' => (int) $jurnal->total_siswa,
+        ]);
+
+        return response()->json([
+            'judul' => $judul,
+            'meta' => $meta,
+            'tampilan' => 'pertemuan',
+            'kosong' => $baris->isEmpty(),
+            'baris' => $baris->values(),
+        ]);
+    }
+
+    /**
+     * The attendance rows behind a "Presensi Siswa" segment: one row per
+     * student marked with $status over the period, newest meeting first.
+     */
+    private function detailPresensi(array $data, Periode $periode, array $rentang)
+    {
+        $status = $data['status'] ?? null;
+
+        $baris = Presensi::query()
+            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
+            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+            ->whereBetween('jurnal.tanggal', $rentang)
+            ->when($status, fn ($query) => $query->where('presensi.status', $status))
+            ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('jadwal.kelas_id', $id))
+            ->when($data['guru_id'] ?? null, fn ($query, $id) => $query->where('jurnal.guru_id', $id))
+            ->with(['siswa', 'jurnal.jadwal.kelas', 'jurnal.jadwal.mataPelajaran'])
+            ->orderByDesc('jurnal.tanggal')
+            ->orderByDesc('presensi.id')
+            ->select('presensi.*')
+            ->take(50)
+            ->get()
+            ->map(fn ($presensi) => [
+                'tanggal' => $presensi->jurnal?->tanggal?->format('d/m/Y'),
+                'siswa' => $presensi->siswa?->name,
+                'kelas' => $presensi->jurnal?->jadwal?->kelas?->nama_kelas,
+                'mapel' => $presensi->jurnal?->jadwal?->mataPelajaran?->nama,
+                'keterangan' => $presensi->keterangan,
+                'statusChip' => $this->presensiChip($presensi->status),
+            ]);
+
+        return response()->json([
+            'judul' => 'Presensi Siswa' . ($status ? ' · ' . ucfirst($status) : ''),
+            'meta' => $periode->label(),
+            'tampilan' => 'presensi',
+            'kosong' => $baris->isEmpty(),
+            'baris' => $baris->values(),
+        ]);
+    }
+
+    /**
+     * The chip tone each attendance status wears, matched to the report legend.
+     *
+     * @return array{label: string, tone: string}
+     */
+    private function presensiChip(string $status): array
+    {
+        $tone = ['hadir' => 'green', 'sakit' => 'khaki', 'izin' => 'yellow', 'alpa' => 'red'];
+
+        return ['label' => ucfirst($status), 'tone' => $tone[$status] ?? 'neutral'];
+    }
+
+    /**
+     * The scheduled meetings the period never got a journal for — the names
+     * behind "Belum Diisi". Each school day is checked against the timetable,
+     * and any slot without a matching journal is listed, newest day first.
+     */
+    private function detailBelum(array $data, Periode $periode)
+    {
+        $jadwalPerHari = Jadwal::query()
+            ->with(['kelas', 'mataPelajaran', 'guru'])
+            ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('kelas_id', $id))
+            ->when($data['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
+            ->get()
+            ->groupBy('hari');
+
+        // Journals already written in the period, as a fast (jadwal, date) set.
+        $terisi = Jurnal::query()
+            ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
+            ->get(['jadwal_id', 'tanggal'])
+            ->mapWithKeys(fn ($jurnal) => [$jurnal->jadwal_id . '|' . $jurnal->tanggal->toDateString() => true]);
+
+        $baris = [];
+
+        foreach (array_reverse($periode->hariSekolah()) as $tanggal) {
+            $hari = Ringkasan::HARI[$tanggal->dayOfWeekIso - 1] ?? null;
+
+            foreach ($jadwalPerHari[$hari] ?? [] as $jadwal) {
+                if (isset($terisi[$jadwal->id . '|' . $tanggal->toDateString()])) {
+                    continue;
+                }
+
+                $baris[] = [
+                    'tanggal' => $tanggal->format('d/m/Y'),
+                    'kelas' => $jadwal->kelas?->nama_kelas,
+                    'mapel' => $jadwal->mataPelajaran?->nama,
+                    'guru' => $jadwal->guru?->name,
+                ];
+
+                if (count($baris) >= 50) {
+                    break 2;
+                }
+            }
+        }
+
+        return response()->json([
+            'judul' => 'Belum Diisi',
+            'meta' => $periode->label(),
+            'tampilan' => 'belum',
+            'kosong' => $baris === [],
+            'baris' => $baris,
+        ]);
+    }
+
+    /**
+     * Journal completeness per class over the period — the classes behind the
+     * "Kelengkapan" figure, worst first so the ones needing attention lead.
+     */
+    private function detailKelengkapan(Periode $periode)
+    {
+        $kelengkapan = Ringkasan::kelengkapan('kelas_id', $periode);
+
+        $baris = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get()
+            ->map(fn ($kelas) => [
+                'kelas' => $kelas->nama_kelas,
+                'persen' => (int) round($kelengkapan[$kelas->id] ?? 0),
+            ])
+            ->sortBy('persen')
+            ->values();
+
+        return response()->json([
+            'judul' => 'Kelengkapan per Kelas',
+            'meta' => $periode->label(),
+            'tampilan' => 'kelengkapan',
+            'kosong' => $baris->isEmpty(),
+            'baris' => $baris,
+        ]);
+    }
+
+    /**
+     * Apply the report's own kelas/guru filters to a journal query, so a card's
+     * drill-down shows the same slice the table is showing.
+     */
+    private function terapkanFilter($query, array $data): void
+    {
+        $query
+            ->when($data['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
+            ->when($data['guru_id'] ?? null, fn ($q, $id) => $q->where('guru_id', $id));
     }
 }

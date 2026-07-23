@@ -61,6 +61,9 @@ Route::middleware('auth')->group(function () {
         // Admin dashboard
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
+        // JSON drill-down behind the dashboard's clickable figures.
+        Route::get('/dashboard/detail', [AdminDashboardController::class, 'detail'])->name('dashboard.detail');
+
         // User management (admin, guru, siswa accounts)
         Route::resource('users', UserController::class);
 

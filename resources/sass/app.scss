@@ -490,6 +490,20 @@ body {
 .chip--neutral { background: var(--n-200); color: var(--n-700); }
 .chip--solid { background: var(--p-300); color: #fff; }
 
+// A teacher name that links to their profile: underline on hover so it reads
+// as clickable, while staying plain when it is only text (a non-admin viewer).
+a.name-cell:hover { text-decoration: underline; }
+
+// A figure that opens the drill-down modal: pointer affordance, a faint lift on
+// hover, and a visible focus ring for keyboard users.
+.is-clickable {
+    cursor: pointer;
+    transition: filter 0.12s ease, opacity 0.12s ease;
+
+    &:hover { filter: brightness(0.97); opacity: 0.92; }
+    &:focus-visible { outline: 2px solid var(--p-300); outline-offset: 2px; }
+}
+
 .meter {
     // Fixed rather than percentage: inside a flex cell a percentage width has
     // no resolvable basis and collapses the track to nothing.
@@ -941,8 +955,12 @@ textarea.input-hifi {
    ========================================================================= */
 .matrix {
     display: grid;
+    grid-template-columns: 44px repeat(6, minmax(72px, 1fr));
     gap: 4px;
     font-size: 10px;
+    // Wrapped in .scroll-x: the day columns keep a legible width and the whole
+    // grid scrolls sideways instead of collapsing on a phone.
+    min-width: 520px;
 }
 
 .matrix__head {
@@ -1217,4 +1235,75 @@ textarea.input-hifi {
     .auth { grid-template-columns: 1fr; }
     .auth__brand { display: none; }
     .auth__panel { padding: 40px 24px; }
+}
+
+/* =========================================================================
+   Responsive column utilities
+
+   The dashboards and forms were laid out with inline `grid-template-columns`,
+   which a media query cannot override — so a six-column KPI row stayed six
+   columns even at 375px. These classes carry the wide-screen layout, and the
+   ladder below steps the column count down as the viewport narrows.
+   ========================================================================= */
+.grid-row--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.grid-row--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-row--2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.grid-row--analitik { grid-template-columns: minmax(0, 366fr) minmax(0, 259fr) minmax(0, 227fr) minmax(0, 245fr); }
+.grid-row--split { grid-template-columns: minmax(0, 613fr) minmax(0, 278fr) minmax(0, 202fr); }
+.grid-row--editor { grid-template-columns: minmax(0, 739fr) minmax(0, 366fr); }
+
+.form-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.form-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+// A wide fixed-column block (timetable matrix, completeness heatmap) scrolls
+// inside its own frame so the page body never scrolls sideways.
+.scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Breakpoint ladder — widest first, so a narrower rule wins on source order. */
+@media (max-width: 1399.98px) {
+    .grid-row--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-row--analitik { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-row--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+@media (max-width: 1199.98px) {
+    .grid-row--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-row--analitik,
+    .grid-row--split,
+    .grid-row--editor { grid-template-columns: minmax(0, 1fr); }
+    .form-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 991.98px) {
+    .grid-row--6 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-row--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .form-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+    .grid-row--6,
+    .grid-row--4,
+    .grid-row--3,
+    .grid-row--2 { grid-template-columns: minmax(0, 1fr); }
+    .form-grid--2,
+    .form-grid--3,
+    .form-grid--4 { grid-template-columns: minmax(0, 1fr); }
+
+    // Page header: title and actions stack, actions span the full width.
+    .page-head { flex-direction: column; align-items: stretch; }
+    .page-head__actions { width: 100%; flex-wrap: wrap; }
+    .page-head__actions > * { flex: 1 1 auto; }
+
+    // Tables keep their shape and scroll rather than crushing their columns.
+    .tbl { min-width: 560px; }
+
+    // Comfortable tap targets on touch screens.
+    .btn-hifi,
+    .select-hifi,
+    .input-hifi { min-height: 42px; }
 }

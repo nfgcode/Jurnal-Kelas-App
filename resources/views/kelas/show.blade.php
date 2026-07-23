@@ -12,14 +12,14 @@
         <a class="btn-hifi" href="{{ route('jadwal.index', ['kelas_id' => $kelas->id]) }}">Lihat Jadwal</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Jumlah Siswa" :value="$kelas->siswa->count()" :caption="'kapasitas ' . $kelas->kapasitas" />
         <x-stat label="Tingkat" :value="$kelas->tingkat" :caption="$kelas->jurusan ?? 'tanpa jurusan'" />
         <x-stat label="Jadwal" :value="$kelas->jadwals->count()" caption="slot per minggu" />
         <x-stat label="Ruang" :value="$kelas->ruang ?? '—'" caption="ruang kelas utama" />
     </div>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)">
+    <div class="grid-row grid-row--2">
         <x-card title="Daftar Siswa" flush>
             <x-slot:actions>
                 <span class="card-hifi__meta">{{ $kelas->siswa->count() }} siswa</span>
@@ -71,7 +71,7 @@
                                 <td class="is-muted is-nowrap">{{ $jadwal->hari }}</td>
                                 <td class="is-muted">{{ $jadwal->jpLabel() }}</td>
                                 <td class="is-strong">{{ $jadwal->mataPelajaran?->nama }}</td>
-                                <td class="is-muted is-nowrap">{{ $jadwal->guru?->name }}</td>
+                                <td class="is-nowrap"><x-guru-link :guru="$jadwal->guru" :avatar="false" /></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="empty-state">Belum ada jadwal untuk kelas ini.</td></tr>

@@ -18,7 +18,7 @@
         <span class="btn-hifi btn-hifi--ghost">Draf tersimpan otomatis</span>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 739fr) minmax(0, 366fr)">
+    <div class="grid-row grid-row--editor">
         <x-card :title="$jurnal ? 'Form Jurnal Mengajar' : 'Form Jurnal Mengajar'">
             <x-slot:actions>
                 <span class="card-hifi__meta">* wajib diisi</span>
@@ -28,7 +28,7 @@
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
-                <div class="form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+                <div class="form-grid form-grid--3">
                     <x-field label="Tanggal" name="tanggal" required>
                         <input class="input-hifi" type="date" name="tanggal"
                                value="{{ old('tanggal', $jurnal?->tanggal?->toDateString() ?? today()->toDateString()) }}" required>
@@ -43,7 +43,7 @@
                     </x-field>
                 </div>
 
-                <div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+                <div class="form-grid form-grid--2">
                     <x-field label="Jadwal (Kelas · Mata Pelajaran)" name="jadwal_id" required>
                         <select class="select-hifi" name="jadwal_id" id="jadwalSelect" required
                                 onchange="window.location = '{{ route('jurnal.create') }}?jadwal_id=' + this.value">
@@ -77,7 +77,7 @@
 
                 <x-field label="Kehadiran Guru" name="kehadiran_guru" required
                          hint="Isi sesuai kondisi Anda pada jam ini.">
-                    <div class="form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+                    <div class="form-grid form-grid--3">
                         @foreach ([
                             'hadir' => 'Hadir',
                             'ada_tugas' => 'Tidak Hadir – Ada Tugas',
@@ -101,7 +101,7 @@
                         </span>
                     </div>
 
-                    <div class="form-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+                    <div class="form-grid form-grid--4">
                         @foreach ([
                             'Hadir' => ['hadir', 'var(--green-200)'],
                             'Sakit' => ['sakit', 'var(--s-300)'],

@@ -12,7 +12,7 @@
         @endif
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Total Pertemuan" :value="number_format($statistik['total'], 0, ',', '.')" caption="semester berjalan" />
         <x-stat label="Jurnal Terisi" :value="number_format($statistik['total'], 0, ',', '.')"
                 :caption="round($statistik['kelengkapan']) . '% kelengkapan'" />

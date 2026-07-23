@@ -17,7 +17,7 @@
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.users.edit', $user) }}">Ubah</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Peran" :value="ucfirst($user->role)" :caption="$user->email" />
         <x-stat label="Terakhir Aktif" :value="$user->last_active_at?->format('d/m/Y') ?? '—'"
                 :caption="$user->last_active_at?->diffForHumans() ?? 'belum pernah masuk'" />

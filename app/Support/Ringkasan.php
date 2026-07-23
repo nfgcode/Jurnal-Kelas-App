@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Presensi;
 use Carbon\Carbon;
@@ -12,33 +13,97 @@ use Illuminate\Support\Collection;
  * The handful of derived figures the dashboard and recap screens keep asking
  * for: daily counts behind a sparkline, an attendance rollup, and the journal
  * completeness grid.
+ *
+ * Every aggregate accepts an optional {@see Periode}. When one is given the
+ * query is confined to that range; when it is omitted the figure spans all
+ * time (or, for the school-day windows, the trailing default) exactly as it
+ * did before periods existed.
  */
 class Ringkasan
 {
     /** Weekday names as stored in the jadwal table, Monday first. */
     public const HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
+    /** School days a windowless completeness/heatmap query falls back to. */
+    private const HARI_DEFAULT = 20;
+
+    /** Above this many days the fill chart aggregates weekly, not daily. */
+    private const AMBANG_MINGGUAN = 31;
+
     /**
-     * Daily counts for the last $days days, zero-filled so the sparkline keeps
-     * a stable width even on quiet days.
+     * Daily fill counts across the period, zero-filled so the chart keeps a
+     * stable shape on quiet days. Each row carries a machine key (Y-m-d, the
+     * date a bar drills into), a short display label, and the count.
      *
-     * @return array<string, int>
+     * Keying by the full date rather than day-of-month matters once a range
+     * spans two months: otherwise the 5th of June and the 5th of July would
+     * collapse onto the same bucket and silently overwrite each other.
+     *
+     * @return array<int, array{key: string, label: string, value: int}>
      */
-    public static function harian(Builder $query, int $days = 14, string $column = 'tanggal'): array
+    public static function harian(Builder $query, ?Periode $periode = null, string $column = 'tanggal'): array
     {
-        $mulai = Carbon::today()->subDays($days - 1);
+        $periode ??= Periode::hariTerakhir(14);
+        $mulai = $periode->mulai->copy()->startOfDay();
+        $selesai = $periode->selesai->copy()->startOfDay();
 
         $tercatat = $query
             ->selectRaw("DATE({$column}) as hari, COUNT(*) as total")
-            ->whereDate($column, '>=', $mulai)
+            ->whereBetween($column, [$mulai->toDateString(), $selesai->toDateString()])
             ->groupBy('hari')
             ->pluck('total', 'hari');
 
+        // A long range would render as hundreds of hair-thin bars, so past a
+        // month's worth of days the series is rolled up per ISO week instead.
+        if ($periode->jumlahHari() > self::AMBANG_MINGGUAN) {
+            return self::mingguan($tercatat, $mulai, $selesai);
+        }
+
+        $lintasBulan = $periode->lintasBulan();
         $series = [];
 
-        for ($i = 0; $i < $days; $i++) {
-            $tanggal = $mulai->copy()->addDays($i);
-            $series[$tanggal->format('j')] = (int) ($tercatat[$tanggal->toDateString()] ?? 0);
+        for ($tanggal = $mulai->copy(); $tanggal->lte($selesai); $tanggal->addDay()) {
+            $series[] = [
+                'key' => $tanggal->toDateString(),
+                'label' => $tanggal->translatedFormat($lintasBulan ? 'j/n' : 'j'),
+                'value' => (int) ($tercatat[$tanggal->toDateString()] ?? 0),
+            ];
+        }
+
+        return $series;
+    }
+
+    /**
+     * Weekly rollup of a daily count map, one row per ISO week the range
+     * touches. The key is the week's Monday, which the drill-down reads back.
+     *
+     * @param  Collection<string, int>  $tercatat  counts keyed Y-m-d
+     * @return array<int, array{key: string, label: string, value: int}>
+     */
+    private static function mingguan(Collection $tercatat, Carbon $mulai, Carbon $selesai): array
+    {
+        $series = [];
+        $awalPekan = $mulai->copy()->startOfWeek(Carbon::MONDAY);
+
+        while ($awalPekan->lte($selesai)) {
+            $akhirPekan = $awalPekan->copy()->endOfWeek(Carbon::SUNDAY);
+            $total = 0;
+
+            for ($hari = $awalPekan->copy(); $hari->lte($akhirPekan) && $hari->lte($selesai); $hari->addDay()) {
+                if ($hari->lt($mulai)) {
+                    continue;
+                }
+
+                $total += (int) ($tercatat[$hari->toDateString()] ?? 0);
+            }
+
+            $series[] = [
+                'key' => $awalPekan->toDateString(),
+                'label' => $awalPekan->translatedFormat('j/n'),
+                'value' => $total,
+            ];
+
+            $awalPekan->addWeek();
         }
 
         return $series;
@@ -49,9 +114,15 @@ class Ringkasan
      *
      * @return array<string, int>
      */
-    public static function presensi(?Builder $query = null): array
+    public static function presensi(?Builder $query = null, ?Periode $periode = null): array
     {
-        $rows = ($query ?? Presensi::query())
+        $query ??= Presensi::query();
+
+        if ($periode) {
+            $query->whereHas('jurnal', fn ($jurnal) => $jurnal->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]));
+        }
+
+        $rows = $query
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -69,9 +140,15 @@ class Ringkasan
      *
      * @return array{hadir: int, ada_tugas: int, tanpa_tugas: int, total: int}
      */
-    public static function kehadiranGuru(?Builder $query = null): array
+    public static function kehadiranGuru(?Builder $query = null, ?Periode $periode = null): array
     {
-        $rows = ($query ?? Jurnal::query())
+        $query ??= Jurnal::query();
+
+        if ($periode) {
+            $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
+        }
+
+        $rows = $query
             ->selectRaw('kehadiran_guru_status, kehadiran_guru_ada_tugas, COUNT(*) as total')
             ->groupBy('kehadiran_guru_status', 'kehadiran_guru_ada_tugas')
             ->get();
@@ -100,17 +177,23 @@ class Ringkasan
      * @param  Collection<int, \App\Models\Kelas>  $kelasList
      * @return array<string, array<string, int>>
      */
-    public static function heatmapJurnal(Collection $kelasList, int $days = 20): array
+    public static function heatmapJurnal(Collection $kelasList, ?Periode $periode = null): array
     {
         if ($kelasList->isEmpty()) {
             return [];
         }
 
-        $tanggalList = self::hariSekolah($days);
+        $tanggalList = $periode ? $periode->hariSekolah() : self::hariSekolah(self::HARI_DEFAULT);
+
+        if ($tanggalList === []) {
+            return [];
+        }
+
+        $lintasBulan = $tanggalList[0]->format('Y-m') !== end($tanggalList)->format('Y-m');
         $kelasIds = $kelasList->pluck('id');
 
         // Scheduled meetings per class per weekday.
-        $terjadwal = \App\Models\Jadwal::query()
+        $terjadwal = Jadwal::query()
             ->selectRaw('kelas_id, hari, COUNT(*) as total')
             ->whereIn('kelas_id', $kelasIds)
             ->groupBy('kelas_id', 'hari')
@@ -141,7 +224,7 @@ class Ringkasan
                 $target = (int) ($terjadwal[$kelas->id][$hari] ?? 0);
                 $aktual = (int) ($terisi[$kelas->id][$tanggal->toDateString()] ?? 0);
 
-                $cells[$tanggal->format('j')] = $target === 0
+                $cells[self::labelTanggal($tanggal, $lintasBulan)] = $target === 0
                     ? 0
                     : min(4, (int) ceil($aktual / $target * 4));
             }
@@ -153,6 +236,31 @@ class Ringkasan
     }
 
     /**
+     * Attendance totals per class over the period, keyed by kelas id then by
+     * status — the per-class comparison the recap chart draws.
+     *
+     * @return array<int, \Illuminate\Support\Collection<string, int>>
+     */
+    public static function presensiPerKelas(?Periode $periode = null): array
+    {
+        $query = Presensi::query()
+            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
+            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+            ->selectRaw('jadwal.kelas_id, presensi.status, COUNT(*) as total');
+
+        if ($periode) {
+            $query->whereBetween('jurnal.tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
+        }
+
+        return $query
+            ->groupBy('jadwal.kelas_id', 'presensi.status')
+            ->get()
+            ->groupBy('kelas_id')
+            ->map(fn ($rows) => $rows->pluck('total', 'status'))
+            ->all();
+    }
+
+    /**
      * Journal completeness as a percentage, grouped by a jadwal column.
      *
      * Completeness compares journals actually written against the meetings the
@@ -161,22 +269,18 @@ class Ringkasan
      *
      * @return array<int, float>  keyed by the grouping column's value
      */
-    public static function kelengkapan(string $kolom = 'kelas_id', int $days = 20): array
+    public static function kelengkapan(string $kolom = 'kelas_id', ?Periode $periode = null): array
     {
-        $tanggalList = self::hariSekolah($days);
+        $tanggalList = $periode ? $periode->hariSekolah() : self::hariSekolah(self::HARI_DEFAULT);
 
-        // How many times each weekday fell inside the window.
-        $bobot = [];
-        foreach ($tanggalList as $tanggal) {
-            $hari = self::HARI[$tanggal->dayOfWeekIso - 1] ?? null;
-
-            if ($hari !== null) {
-                $bobot[$hari] = ($bobot[$hari] ?? 0) + 1;
-            }
+        if ($tanggalList === []) {
+            return [];
         }
 
+        $bobot = self::bobotHari($tanggalList);
+
         $target = [];
-        $terjadwal = \App\Models\Jadwal::query()
+        $terjadwal = Jadwal::query()
             ->selectRaw("{$kolom} as kunci, hari, COUNT(*) as total")
             ->groupBy($kolom, 'hari')
             ->get();
@@ -205,6 +309,56 @@ class Ringkasan
     }
 
     /**
+     * Total meetings the timetable scheduled over the window — the honest
+     * denominator behind "belum diisi", counted directly from the jadwal
+     * rather than reconstructed from a rounded completeness percentage.
+     */
+    public static function terjadwal(?Periode $periode = null): int
+    {
+        $tanggalList = $periode ? $periode->hariSekolah() : self::hariSekolah(self::HARI_DEFAULT);
+
+        if ($tanggalList === []) {
+            return 0;
+        }
+
+        $bobot = self::bobotHari($tanggalList);
+
+        $perHari = Jadwal::query()
+            ->selectRaw('hari, COUNT(*) as total')
+            ->groupBy('hari')
+            ->pluck('total', 'hari');
+
+        $total = 0;
+
+        foreach ($perHari as $hari => $jumlah) {
+            $total += (int) $jumlah * ($bobot[$hari] ?? 0);
+        }
+
+        return $total;
+    }
+
+    /**
+     * How many times each weekday falls inside a list of dates.
+     *
+     * @param  array<int, Carbon>  $tanggalList
+     * @return array<string, int>
+     */
+    private static function bobotHari(array $tanggalList): array
+    {
+        $bobot = [];
+
+        foreach ($tanggalList as $tanggal) {
+            $hari = self::HARI[$tanggal->dayOfWeekIso - 1] ?? null;
+
+            if ($hari !== null) {
+                $bobot[$hari] = ($bobot[$hari] ?? 0) + 1;
+            }
+        }
+
+        return $bobot;
+    }
+
+    /**
      * The last $days school days (Monday–Saturday), oldest first.
      *
      * @return array<int, Carbon>
@@ -223,6 +377,36 @@ class Ringkasan
         }
 
         return array_reverse($hasil);
+    }
+
+    /**
+     * The school days (Monday–Saturday) between two dates inclusive, oldest
+     * first — the window a {@see Periode} filters on.
+     *
+     * @return array<int, Carbon>
+     */
+    public static function hariSekolahAntara(Carbon $mulai, Carbon $selesai): array
+    {
+        $hasil = [];
+
+        for ($tanggal = $mulai->copy()->startOfDay(); $tanggal->lte($selesai); $tanggal->addDay()) {
+            if ($tanggal->dayOfWeekIso <= 6) {
+                $hasil[] = $tanggal->copy();
+            }
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * The short column label a date carries in the heatmap — day-of-month, or
+     * day/month once a range straddles two months so the columns stay unique.
+     * Shared with the dashboard so a heatmap cell's drill-down can map its
+     * column back to a real date.
+     */
+    public static function labelTanggal(Carbon $tanggal, bool $lintasBulan): string
+    {
+        return $tanggal->translatedFormat($lintasBulan ? 'j/n' : 'j');
     }
 
     /**

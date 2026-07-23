@@ -28,7 +28,7 @@
         @endif
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <div class="grid-row grid-row--4">
         <x-stat label="Total Mapel" :value="$statistik['total']" caption="aktif semester ini" />
         <x-stat label="Total JP / Minggu" :value="number_format($statistik['totalJp'], 0, ',', '.')" caption="seluruh rombel" />
         <x-stat label="Guru Pengampu" :value="$statistik['guruPengampu']"

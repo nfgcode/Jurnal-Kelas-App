@@ -5,16 +5,22 @@
 @section('content')
     <x-page-head
         title="Rekap Jurnal Mengajar"
-        :sub="number_format($statistik['terisi'], 0, ',', '.') . ' jurnal tercatat · ' . $statistik['kelengkapan'] . '% kelengkapan semester ini'">
-        <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
+        :sub="number_format($statistik['terisi'], 0, ',', '.') . ' jurnal tercatat · ' . $statistik['kelengkapan'] . '% kelengkapan · ' . $periode->label()">
+        <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'excel']) }}">Ekspor Excel</a>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
-        <x-stat label="Jurnal Terisi" :value="number_format($statistik['terisi'], 0, ',', '.')" caption="semester berjalan" />
-        <x-stat label="Belum Diisi" :value="number_format($statistik['belum'], 0, ',', '.')" caption="perlu ditindaklanjuti" />
-        <x-stat label="Terlambat Isi" :value="number_format($statistik['telat'], 0, ',', '.')" caption=">24 jam setelah KBM" />
-        <x-stat label="Kelengkapan" :value="$statistik['kelengkapan'] . '%'" caption="target 90%" />
+    {{-- Each tile drills into the meetings behind it — e.g. "Belum Diisi" lists
+         the scheduled meetings still missing a journal, and whose guru. --}}
+    <div class="grid-row grid-row--4">
+        <x-stat label="Jurnal Terisi" :value="number_format($statistik['terisi'], 0, ',', '.')" :caption="$periode->label()"
+                class="is-clickable" role="button" tabindex="0" data-detail-tipe="terisi" />
+        <x-stat label="Belum Diisi" :value="number_format($statistik['belum'], 0, ',', '.')" caption="perlu ditindaklanjuti"
+                class="is-clickable" role="button" tabindex="0" data-detail-tipe="belum" />
+        <x-stat label="Terlambat Isi" :value="number_format($statistik['telat'], 0, ',', '.')" caption=">24 jam setelah KBM"
+                class="is-clickable" role="button" tabindex="0" data-detail-tipe="telat" />
+        <x-stat label="Kelengkapan" :value="$statistik['kelengkapan'] . '%'" caption="target 90%"
+                class="is-clickable" role="button" tabindex="0" data-detail-tipe="kelengkapan" />
     </div>
 
     <form class="filter-bar" method="GET">
@@ -49,6 +55,24 @@
         </span>
     </form>
 
+    {{-- Per-class comparison of journal completeness over the chosen period.
+         Each row drills into that class's journals. --}}
+    <x-card title="Kelengkapan Jurnal per Kelas" :meta="$periode->label()">
+        @forelse ($kelasList as $kelas)
+            @php $persen = (int) round($kelengkapan[$kelas->id] ?? 0); @endphp
+            <div class="breakdown breakdown--wide mb-2 is-clickable" role="button" tabindex="0"
+                 data-detail-tipe="kelas" data-detail-kelas="{{ $kelas->id }}">
+                <span class="breakdown__label">{{ $kelas->nama_kelas }}</span>
+                <span class="meter" style="width: 100%">
+                    <span class="meter__fill" style="width: {{ $persen }}%"></span>
+                </span>
+                <span class="breakdown__value">{{ $persen }}%</span>
+            </div>
+        @empty
+            <p class="empty-state">Belum ada kelas.</p>
+        @endforelse
+    </x-card>
+
     <x-card title="Rekap Jurnal Mengajar" flush>
         <x-slot:actions>
             <span class="card-hifi__meta">diurutkan: terbaru</span>
@@ -80,12 +104,7 @@
                             <td class="is-muted">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
                             <td class="is-strong">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                            <td>
-                                <span class="name-cell">
-                                    <span class="avatar avatar--xs">{{ $jurnal->guru?->inisial() }}</span>
-                                    {{ $jurnal->guru?->name }}
-                                </span>
-                            </td>
+                            <td><x-guru-link :guru="$jurnal->guru" /></td>
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 28) }}</td>
                             <td class="is-muted">{{ $jp }} JP</td>
                             <td>
@@ -112,4 +131,6 @@
             <x-pager :paginator="$jurnals" />
         </x-slot:foot>
     </x-card>
+
+    <x-detail-modal />
 @endsection

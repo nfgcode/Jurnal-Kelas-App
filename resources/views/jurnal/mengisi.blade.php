@@ -17,7 +17,7 @@
         <span class="btn-hifi btn-hifi--ghost">Draf tersimpan otomatis</span>
     </x-page-head>
 
-    <div class="grid-row" style="grid-template-columns: minmax(0, 739fr) minmax(0, 366fr)">
+    <div class="grid-row grid-row--editor">
         <x-card title="Form Jurnal Kelas">
             <x-slot:actions>
                 <span class="card-hifi__meta">* wajib diisi</span>
@@ -27,7 +27,7 @@
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
-                <div class="form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+                <div class="form-grid form-grid--3">
                     <x-field label="Tanggal" name="tanggal" required>
                         <input class="input-hifi" type="date" name="tanggal"
                                value="{{ old('tanggal', $jurnal?->tanggal?->toDateString() ?? today()->toDateString()) }}" required>
@@ -42,7 +42,7 @@
                     </x-field>
                 </div>
 
-                <div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+                <div class="form-grid form-grid--2">
                     <x-field label="Jadwal (Mata Pelajaran · Jam)" name="jadwal_id" required>
                         <select class="select-hifi" name="jadwal_id" required
                                 onchange="window.location = '{{ route('jurnal.create') }}?jadwal_id=' + this.value">
@@ -77,7 +77,7 @@
                      work was left behind — that is the teacher's own account. --}}
                 <x-field label="Kehadiran Guru" name="kehadiran_guru" required
                          hint="Tandai kehadiran guru yang mengajar jam ini.">
-                    <div class="form-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+                    <div class="form-grid form-grid--4">
                         @foreach (['hadir' => 'Hadir', 'sakit' => 'Sakit', 'izin' => 'Izin', 'alpa' => 'Alpa'] as $nilai => $label)
                             <label class="radio-card">
                                 <input type="radio" name="kehadiran_guru" value="{{ $nilai }}" @checked($pilihan === $nilai)>
@@ -101,7 +101,7 @@
                         </span>
                     </div>
 
-                    <div class="form-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+                    <div class="form-grid form-grid--4">
                         @foreach ([
                             'Hadir' => ['hadir', 'var(--green-200)'],
                             'Sakit' => ['sakit', 'var(--s-300)'],

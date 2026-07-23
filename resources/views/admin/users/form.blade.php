@@ -4,7 +4,7 @@
 --}}
 @php $user ??= null; @endphp
 
-<div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+<div class="form-grid form-grid--2">
     <x-field label="Nama Lengkap" name="name" required>
         <input class="input-hifi" type="text" name="name" id="name"
                value="{{ old('name', $user?->name) }}" placeholder="mis. Budi Santoso" required>

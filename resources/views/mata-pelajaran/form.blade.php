@@ -1,6 +1,6 @@
 @php $mataPelajaran ??= null; @endphp
 
-<div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+<div class="form-grid form-grid--2">
     <x-field label="Nama Mata Pelajaran" name="nama" required>
         <input class="input-hifi" type="text" name="nama" id="nama"
                value="{{ old('nama', $mataPelajaran?->nama) }}" placeholder="mis. Matematika" required>
