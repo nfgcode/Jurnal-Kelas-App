@@ -116,6 +116,23 @@ class User extends Authenticatable
     }
 
     /**
+     * Classes where this teacher is the homeroom teacher (wali kelas).
+     */
+    public function kelasWali(): HasMany
+    {
+        return $this->hasMany(Kelas::class, 'wali_kelas_id');
+    }
+
+    /**
+     * Whether this teacher is the homeroom teacher of at least one class — the
+     * gate for the "Mode Wali Kelas" toggle and its homeroom dashboard.
+     */
+    public function isWaliKelas(): bool
+    {
+        return $this->role === 'guru' && $this->kelasWali()->exists();
+    }
+
+    /**
      * Get the jadwal (schedules) where this user teaches.
      */
     public function jadwals(): HasMany

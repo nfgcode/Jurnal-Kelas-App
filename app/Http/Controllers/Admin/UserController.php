@@ -21,6 +21,8 @@ class UserController extends Controller
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'status' => ['nullable', Rule::in(['aktif', 'nonaktif', 'pending'])],
             'q' => ['nullable', 'string', 'max:255'],
+            'sort' => ['nullable', 'in:nama,nip_nis,peran,kelas,status,aktif'],
+            'dir' => ['nullable', 'in:asc,desc'],
         ]);
 
         $users = User::query()
@@ -38,8 +40,12 @@ class UserController extends Controller
                         ->orWhere('nis', 'like', "%{$q}%");
                 });
             })
-            ->orderByRaw('last_active_at IS NULL, last_active_at DESC')
-            ->orderBy('name')
+            ->when(
+                $filters['sort'] ?? null,
+                fn ($query, $sort) => $this->terapkanUrutan($query, $sort, ($filters['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc'),
+                // Default: most-recently-active first, then by name.
+                fn ($query) => $query->orderByRaw('last_active_at IS NULL, last_active_at DESC')->orderBy('name')
+            )
             ->paginate(18)
             ->withQueryString();
 
@@ -166,6 +172,24 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Pengguna berhasil dihapus.');
+    }
+
+    /**
+     * Apply a whitelisted column sort. NIP/NIS collapse to one column via
+     * COALESCE; class sorts by the student's class name through a subquery so no
+     * join is needed. $dir is already constrained to asc|desc by the caller.
+     */
+    private function terapkanUrutan($query, string $sort, string $dir)
+    {
+        return match ($sort) {
+            'nama' => $query->orderBy('name', $dir),
+            'nip_nis' => $query->orderByRaw('COALESCE(nip, nis) ' . ($dir === 'desc' ? 'desc' : 'asc')),
+            'peran' => $query->orderBy('role', $dir),
+            'kelas' => $query->orderBy(Kelas::select('nama_kelas')->whereColumn('kelas.id', 'users.kelas_id'), $dir),
+            'status' => $query->orderBy('status', $dir),
+            'aktif' => $query->orderBy('last_active_at', $dir),
+            default => $query,
+        };
     }
 
     /**

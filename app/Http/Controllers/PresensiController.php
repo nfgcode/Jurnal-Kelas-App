@@ -44,7 +44,9 @@ class PresensiController extends Controller
             ->selectRaw('mata_pelajaran.id as mapel_id, mata_pelajaran.nama as mapel, guru.name as guru, presensi.status, COUNT(*) as total')
             ->where('presensi.siswa_id', $user->id)
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->where('mata_pelajaran.id', $id))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where('mata_pelajaran.nama', 'like', "%{$cari}%"))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
+                ->where('mata_pelajaran.nama', 'like', "%{$cari}%")
+                ->orWhere('guru.name', 'like', "%{$cari}%")))
             ->groupBy('mata_pelajaran.id', 'mata_pelajaran.nama', 'guru.name', 'presensi.status')
             ->get()
             ->groupBy('mapel')
@@ -84,7 +86,11 @@ class PresensiController extends Controller
             ])
             ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where('materi', 'like', "%{$cari}%"))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
+                ->where('materi', 'like', "%{$cari}%")
+                ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$cari}%"))
+                ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$cari}%"))
+                ->orWhereHas('jadwal.mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$cari}%"))))
             ->latest('tanggal')
             ->latest('id')
             ->paginate(18)

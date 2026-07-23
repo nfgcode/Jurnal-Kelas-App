@@ -95,7 +95,17 @@
             <h1 class="topbar__title">@yield('title', 'Dashboard')</h1>
         </div>
 
-        <div class="dropdown">
+        <div class="topbar__right d-flex align-items-center gap-2">
+            @if ($user?->isWaliKelas())
+                @php $inWaliMode = request()->routeIs('wali-kelas.dashboard'); @endphp
+                <a class="user-chip" href="{{ $inWaliMode ? route('dashboard') : route('wali-kelas.dashboard') }}"
+                   title="Beralih tampilan guru / wali kelas">
+                    <i class="bi {{ $inWaliMode ? 'bi-mortarboard-fill' : 'bi-mortarboard' }}"></i>
+                    <span class="d-none d-sm-inline">{{ $inWaliMode ? 'Mode Guru' : 'Mode Wali Kelas' }}</span>
+                </a>
+            @endif
+
+            <div class="dropdown">
             <button class="user-chip dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <span class="avatar">{{ $user?->inisial() }}</span>
                 <span class="d-none d-md-inline">{{ $user?->name }}</span>
@@ -117,6 +127,7 @@
                     </form>
                 </li>
             </ul>
+            </div>
         </div>
     </header>
 

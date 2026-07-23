@@ -25,7 +25,10 @@ class MataPelajaranController extends Controller
             ->withCount('jadwals')
             ->with(['jadwals.guru', 'jadwals.kelas'])
             ->when($filters['kelompok'] ?? null, fn ($query, $kelompok) => $query->where('kelompok', $kelompok))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where('nama', 'like', "%{$q}%"))
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(fn ($inner) => $inner
+                ->where('nama', 'like', "%{$q}%")
+                ->orWhere('kode', 'like', "%{$q}%")
+                ->orWhere('deskripsi', 'like', "%{$q}%")))
             ->orderByDesc('jp_per_minggu')
             ->orderBy('nama')
             ->paginate(18)
