@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
+use App\Models\MataPelajaran;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -19,6 +20,7 @@ class UserController extends Controller
         $filters = $request->validate([
             'role' => ['nullable', Rule::in(['admin', 'guru', 'siswa'])],
             'kelas_id' => ['nullable', 'exists:kelas,id'],
+            'mata_pelajaran_id' => ['nullable', 'exists:mata_pelajaran,id'],
             'status' => ['nullable', Rule::in(['aktif', 'nonaktif', 'pending'])],
             'q' => ['nullable', 'string', 'max:255'],
             'sort' => ['nullable', 'in:nama,nip_nis,peran,kelas,status,aktif'],
@@ -32,12 +34,20 @@ class UserController extends Controller
             ->when($filters['role'] ?? null, fn ($query, $role) => $query->where('role', $role))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->where('kelas_id', $id))
+            // Match teachers of the subject (they teach it) AND students whose
+            // class studies it (their kelas has a jadwal for it).
+            ->when($filters['mata_pelajaran_id'] ?? null, fn ($query, $id) => $query->where(fn ($w) => $w
+                ->whereHas('jadwals', fn ($j) => $j->where('mata_pelajaran_id', $id))
+                ->orWhereHas('kelas.jadwals', fn ($j) => $j->where('mata_pelajaran_id', $id))))
             ->when($filters['q'] ?? null, function ($query, $q) {
                 $query->where(function ($inner) use ($q) {
                     $inner->where('name', 'like', "%{$q}%")
                         ->orWhere('email', 'like', "%{$q}%")
                         ->orWhere('nip', 'like', "%{$q}%")
-                        ->orWhere('nis', 'like', "%{$q}%");
+                        ->orWhere('nis', 'like', "%{$q}%")
+                        // A student's own class, or a class a teacher is timetabled in.
+                        ->orWhereHas('kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
+                        ->orWhereHas('jadwals.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"));
                 });
             })
             ->when(
@@ -67,6 +77,7 @@ class UserController extends Controller
                 'kelas' => Kelas::count(),
             ],
             'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'mapelList' => MataPelajaran::orderBy('nama')->get(),
             'filters' => $filters,
         ]);
     }

@@ -28,6 +28,10 @@
     </div>
 
     <form class="filter-bar" method="GET">
+        @if (($filters['sort'] ?? null))
+            <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
+            <input type="hidden" name="dir" value="{{ $filters['dir'] ?? 'asc' }}">
+        @endif
         <label class="filter-bar__search">
             <i class="bi bi-search"></i>
             <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
@@ -45,6 +49,13 @@
             <option value="">Semua Kelas</option>
             @foreach ($kelasList as $kelas)
                 <option value="{{ $kelas->id }}" @selected(($filters['kelas_id'] ?? null) == $kelas->id)>{{ $kelas->nama_kelas }}</option>
+            @endforeach
+        </select>
+
+        <select class="select-hifi" name="mata_pelajaran_id" style="width: 170px" onchange="this.form.submit()">
+            <option value="">Semua Mapel</option>
+            @foreach ($mapelList as $mapel)
+                <option value="{{ $mapel->id }}" @selected(($filters['mata_pelajaran_id'] ?? null) == $mapel->id)>{{ $mapel->nama }}</option>
             @endforeach
         </select>
 

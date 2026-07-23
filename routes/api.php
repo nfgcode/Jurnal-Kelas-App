@@ -26,7 +26,11 @@ use Illuminate\Support\Facades\Route;
 // Public: exchange credentials for a bearer token.
 Route::post('login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
+// The `api.` name prefix keeps these route names (e.g. api.kelas.index) from
+// colliding with the web resource routes of the same name (kelas.index) — a
+// collision would otherwise make route('kelas.index') in the web UI resolve to
+// the /api URL. API routes are addressed by URL, not by name, so the prefix is free.
+Route::middleware('auth:sanctum')->name('api.')->group(function () {
     // Session
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
