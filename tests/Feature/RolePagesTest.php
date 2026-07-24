@@ -35,8 +35,11 @@ class RolePagesTest extends TestCase
 
         $this->jadwal = Jadwal::with('kelas')->firstOrFail();
         $this->guru = $this->jadwal->guru;
+        // The ketua kelas: journal filling for a siswa is a ketua-only ability,
+        // so the role screens/posts below must act as one.
         $this->siswa = User::where('role', 'siswa')
             ->where('kelas_id', $this->jadwal->kelas_id)
+            ->where('is_ketua_kelas', true)
             ->firstOrFail();
     }
 

@@ -124,13 +124,25 @@ class DashboardController extends Controller
         $presensiSaya = Ringkasan::presensi(Presensi::where('siswa_id', $user->id));
         $totalPresensi = array_sum($presensiSaya) ?: 1;
 
-        $jurnalKelas = Jurnal::with(['jadwal.mataPelajaran', 'guru'])
-            ->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelasId))
+        // One aggregate pass instead of hydrating every journal of the class:
+        // "Terisi" = materi filled and not filed late — the same definition
+        // statusPengisian() renders, expressed in SQL.
+        $agregatJurnal = Jurnal::untukKelas($kelasId)
+            ->selectRaw(
+                "COUNT(*) as total, SUM(CASE WHEN materi IS NOT NULL AND materi <> '' "
+                . 'AND NOT (' . Jurnal::ekspresiTerlambat() . ') THEN 1 ELSE 0 END) as tepat'
+            )
+            ->first();
+
+        $totalJurnal = (int) $agregatJurnal->total;
+        $tepatWaktu = (int) $agregatJurnal->tepat;
+
+        $riwayatJurnal = Jurnal::with(['jadwal.mataPelajaran', 'guru'])
+            ->untukKelas($kelasId)
             ->latest('tanggal')
             ->latest('id')
+            ->take(5)
             ->get();
-
-        $tepatWaktu = $jurnalKelas->filter(fn ($j) => $j->statusPengisian()['label'] === 'Terisi')->count();
 
         // Attendance broken down per subject, busiest subjects first.
         $kehadiranPerMapel = Presensi::query()
@@ -163,10 +175,10 @@ class DashboardController extends Controller
             'jurnalStatus' => [
                 'kelengkapan' => $kelas ? Ringkasan::kelengkapanKelas($kelas->id) : 0,
                 'tepatWaktu' => $tepatWaktu,
-                'terlambat' => $jurnalKelas->count() - $tepatWaktu,
-                'total' => $jurnalKelas->count(),
+                'terlambat' => $totalJurnal - $tepatWaktu,
+                'total' => $totalJurnal,
             ],
-            'riwayatJurnal' => $jurnalKelas->take(5),
+            'riwayatJurnal' => $riwayatJurnal,
             'heatmap' => $this->heatmapKehadiran($user),
         ]);
     }

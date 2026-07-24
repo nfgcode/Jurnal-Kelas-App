@@ -37,9 +37,12 @@ class MataPelajaranController extends Controller
 
         // One teacher name and the distinct class count per subject, aggregated
         // in a single query rather than hydrating every jadwal + guru + kelas.
+        // For a guru the summary covers only their own timetable, matching the
+        // scoped list — not other teachers' assignments.
         $ringkasan = Jadwal::query()
             ->join('users', 'jadwal.guru_id', '=', 'users.id')
             ->whereIn('jadwal.mata_pelajaran_id', $mataPelajaran->pluck('id'))
+            ->when($user->isGuru(), fn ($q) => $q->where('jadwal.guru_id', $user->id))
             ->selectRaw('jadwal.mata_pelajaran_id, COUNT(DISTINCT jadwal.kelas_id) as kelas_count, MIN(users.name) as guru_nama')
             ->groupBy('jadwal.mata_pelajaran_id')
             ->get()

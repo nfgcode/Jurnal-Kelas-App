@@ -52,6 +52,15 @@ class JurnalController extends Controller
         $jurnals = $query->paginate(18)->withQueryString();
         $milikSaya = $user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query();
 
+        // Total and this-month count in one scan (SUM(BETWEEN) is 0/1 per row
+        // on both MySQL and SQLite) instead of two separate COUNTs.
+        $agregat = (clone $milikSaya)
+            ->selectRaw('COUNT(*) as total, SUM(tanggal BETWEEN ? AND ?) as bulan_ini', [
+                now()->startOfMonth()->toDateString(),
+                now()->endOfMonth()->toDateString(),
+            ])
+            ->first();
+
         return view('jurnal.histori', [
             'jurnals' => $jurnals,
             // A guru filters only among the classes/subjects they teach; admin all.
@@ -63,8 +72,8 @@ class JurnalController extends Controller
                 ->orderBy('nama')->get(),
             'filters' => $filters,
             'statistik' => [
-                'total' => (clone $milikSaya)->count(),
-                'bulanIni' => (clone $milikSaya)->whereMonth('tanggal', now()->month)->count(),
+                'total' => (int) $agregat->total,
+                'bulanIni' => (int) $agregat->bulan_ini,
                 'kelas' => $user->isGuru()
                     ? Jadwal::where('guru_id', $user->id)->distinct()->count('kelas_id')
                     : Kelas::count(),
@@ -132,6 +141,8 @@ class JurnalController extends Controller
      */
     public function create(Request $request)
     {
+        Gate::authorize('create', Jurnal::class);
+
         $user = $request->user();
         $jadwal = $this->jadwalTerpilih($request, $user);
 
@@ -143,13 +154,16 @@ class JurnalController extends Controller
      */
     public function store(Request $request)
     {
+        Gate::authorize('create', Jurnal::class);
+
         $user = $request->user();
         $validated = $request->validate($this->rules($user));
 
+        $jadwal = Jadwal::findOrFail($validated['jadwal_id']);
+        $this->pastikanJadwalMilik($user, $jadwal);
+
         $data = $this->normalize($validated, $user);
-        $data['guru_id'] = $user->isGuru()
-            ? $user->id
-            : Jadwal::find($validated['jadwal_id'])?->guru_id;
+        $data['guru_id'] = $user->isGuru() ? $user->id : $jadwal->guru_id;
         $data['diisi_oleh_id'] = $user->id;
 
         $jurnal = Jurnal::create($data);
@@ -195,6 +209,10 @@ class JurnalController extends Controller
         $user = $request->user();
         $validated = $request->validate($this->rules($user));
 
+        // jadwal_id is editable, so re-check the caller may write against it —
+        // otherwise an update could move the journal onto another class/teacher.
+        $this->pastikanJadwalMilik($user, Jadwal::findOrFail($validated['jadwal_id']));
+
         $jurnal->update($this->normalize($validated, $user));
 
         return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil diperbarui.');
@@ -210,6 +228,21 @@ class JurnalController extends Controller
         $jurnal->delete();
 
         return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil dihapus.');
+    }
+
+    /**
+     * The schedule a journal is written against must belong to the author: a
+     * guru writes on their own timetable slot, a ketua kelas on their own
+     * class's. An admin may write anywhere. Without this, a crafted jadwal_id
+     * forges a journal into another class attributed to its teacher.
+     */
+    private function pastikanJadwalMilik(User $user, Jadwal $jadwal): void
+    {
+        abort_if($user->isGuru() && $jadwal->guru_id !== $user->id, 403,
+            'Jadwal tersebut bukan jadwal mengajar Anda.');
+
+        abort_if($user->isSiswa() && $jadwal->kelas_id !== $user->kelas_id, 403,
+            'Jadwal tersebut bukan milik kelas Anda.');
     }
 
     /**

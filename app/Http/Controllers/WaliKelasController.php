@@ -196,7 +196,11 @@ class WaliKelasController extends Controller
             'rekap' => $this->presensiKelas($kelas),
             'mapelList' => $this->mapelKelas($kelas),
             'filters' => $filters,
-            'totalPertemuan' => $this->jurnalKelas($kelas)->count(),
+            // With no filter active the paginator's own total is the same
+            // number — no need for a second COUNT over the class.
+            'totalPertemuan' => ($filters['mata_pelajaran_id'] ?? null) || ($filters['q'] ?? null)
+                ? $this->jurnalKelas($kelas)->count()
+                : $pertemuan->total(),
         ]);
     }
 
@@ -230,14 +234,19 @@ class WaliKelasController extends Controller
     }
 
     /**
-     * Attendance totals across every meeting of this class.
+     * Attendance totals across every meeting of this class. Explicit joins so
+     * the optimizer drives from the class's few dozen jadwal rows instead of
+     * scanning all ~110k presensi rows through a nested EXISTS.
      *
      * @return array<string, int>
      */
     private function presensiKelas(Kelas $kelas): array
     {
         return Ringkasan::presensi(
-            Presensi::whereHas('jurnal.jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
+            Presensi::query()
+                ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
+                ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+                ->where('jadwal.kelas_id', $kelas->id)
         );
     }
 

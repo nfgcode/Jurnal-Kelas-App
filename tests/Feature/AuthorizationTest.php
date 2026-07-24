@@ -126,6 +126,85 @@ class AuthorizationTest extends TestCase
         $this->actingAs($lain)->get("/presensi/create/{$jurnal->id}")->assertForbidden();
     }
 
+    public function test_a_regular_siswa_cannot_author_a_journal(): void
+    {
+        $biasa = User::where('role', 'siswa')
+            ->where('kelas_id', $this->jadwal->kelas_id)
+            ->where('is_ketua_kelas', false)
+            ->firstOrFail();
+
+        $this->actingAs($biasa)->get('/jurnal/create')->assertForbidden();
+
+        $this->actingAs($biasa)
+            ->post('/jurnal', [
+                'jadwal_id' => $this->jadwal->id,
+                'tanggal' => now()->toDateString(),
+                'materi' => 'Palsu',
+                'kehadiran_guru' => 'hadir',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('jurnal', ['materi' => 'Palsu']);
+    }
+
+    public function test_a_ketua_cannot_write_against_another_classs_schedule(): void
+    {
+        $ketua = User::where('role', 'siswa')
+            ->where('kelas_id', $this->jadwal->kelas_id)
+            ->where('is_ketua_kelas', true)
+            ->firstOrFail();
+
+        $jadwalLain = Jadwal::where('kelas_id', '!=', $ketua->kelas_id)->firstOrFail();
+
+        $this->actingAs($ketua)
+            ->post('/jurnal', [
+                'jadwal_id' => $jadwalLain->id,
+                'tanggal' => now()->toDateString(),
+                'materi' => 'Palsu lintas kelas',
+                'kehadiran_guru' => 'hadir',
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('jurnal', ['materi' => 'Palsu lintas kelas']);
+    }
+
+    public function test_the_ketua_flow_reaches_the_roster_after_saving(): void
+    {
+        $ketua = User::where('role', 'siswa')
+            ->where('kelas_id', $this->jadwal->kelas_id)
+            ->where('is_ketua_kelas', true)
+            ->firstOrFail();
+
+        $simpan = $this->actingAs($ketua)->post('/jurnal', [
+            'jadwal_id' => $this->jadwal->id,
+            'tanggal' => now()->toDateString(),
+            'materi' => 'Materi dari ketua',
+            'kehadiran_guru' => 'ada_tugas',
+        ]);
+
+        $jurnal = Jurnal::latest('id')->firstOrFail();
+
+        // The save must hand off to the roster screen, and the ketua must be
+        // allowed to open it — this exact chain 403'd when presensi gained its
+        // update gate before the policy knew about the ketua.
+        $simpan->assertRedirect(route('presensi.create', $jurnal->id));
+        $this->actingAs($ketua)->get("/presensi/create/{$jurnal->id}")->assertOk();
+    }
+
+    public function test_a_guru_cannot_write_against_another_gurus_schedule(): void
+    {
+        $jadwalLain = Jadwal::where('guru_id', '!=', $this->guru->id)->firstOrFail();
+
+        $this->actingAs($this->guru)
+            ->post('/jurnal', [
+                'jadwal_id' => $jadwalLain->id,
+                'tanggal' => now()->toDateString(),
+                'materi' => 'Palsu lintas guru',
+                'kehadiran_guru' => 'hadir',
+            ])
+            ->assertForbidden();
+    }
+
     public function test_only_admin_can_export_the_reports(): void
     {
         $this->actingAs($this->admin)

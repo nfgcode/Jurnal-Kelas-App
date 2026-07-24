@@ -364,6 +364,9 @@ body {
     justify-content: space-between;
     gap: 12px;
     padding: 11px 14px;
+    // A wide actions slot (a five-item legend) drops below the title instead
+    // of pushing past the card edge on narrow screens.
+    flex-wrap: wrap;
 }
 
 .card-hifi__title {
@@ -551,7 +554,8 @@ a.name-cell:hover { text-decoration: underline; }
 .legend {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 6px 12px;
+    flex-wrap: wrap;
     font-size: 9.5px;
     color: var(--n-700);
 }
@@ -657,6 +661,10 @@ a.name-cell:hover { text-decoration: underline; }
     text-align: right;
     padding-right: 8px;
     white-space: nowrap;
+    // A long subject name must clip inside its fixed label column rather than
+    // paint over the first heat cells.
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .heat__cell {
@@ -694,6 +702,10 @@ a.name-cell:hover { text-decoration: underline; }
 
 .barchart__col {
     flex: 1;
+    // Without this a wide tick label ("14/7") sets the column's implicit
+    // min-width, and fourteen of them push the chart out of its card on
+    // narrow screens.
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -710,7 +722,14 @@ a.name-cell:hover { text-decoration: underline; }
 }
 
 .barchart__bar--last { background: var(--p-500); }
-.barchart__tick { font-size: 9px; color: var(--n-600); }
+
+.barchart__tick {
+    font-size: 9px;
+    color: var(--n-600);
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
 
 .barchart-frame {
     display: flex;
@@ -1341,6 +1360,10 @@ textarea.input-hifi {
     // Slightly smaller tiles so two fit comfortably at ~320px.
     .kpi__value { font-size: 19px; }
     .card-hifi__body { padding: 10px 12px 12px; }
+
+    // Fourteen bar labels can't all fit at ~300px — show every other one.
+    .barchart { gap: 3px; }
+    .barchart__col:nth-child(even) .barchart__tick { visibility: hidden; }
 
     // The mobile sidebar shouldn't quite reach the right edge.
     .sidebar { width: min(var(--sidebar-w), 82vw); }

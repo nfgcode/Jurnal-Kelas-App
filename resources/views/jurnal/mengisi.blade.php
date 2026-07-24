@@ -128,6 +128,7 @@
                             <span class="field__label">Pertemuan Terakhir di {{ $kelas?->nama_kelas }}</span>
                             <span class="field__hint">kehadiran guru</span>
                         </div>
+                        <div class="tbl-wrap">
                         <table class="tbl">
                             <tbody>
                                 @foreach ($pertemuanTerakhir as $lalu)
@@ -144,6 +145,7 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 @endif
 

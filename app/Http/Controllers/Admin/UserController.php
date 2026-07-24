@@ -44,8 +44,11 @@ class UserController extends Controller
             ->when(
                 $filters['sort'] ?? null,
                 fn ($query, $sort) => $this->terapkanUrutan($query, $sort, ($filters['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc'),
-                // Default: most-recently-active first, then by name.
-                fn ($query) => $query->orderByRaw('last_active_at IS NULL, last_active_at DESC')->orderBy('name')
+                // Default: most-recently-active first, then by name. Plain DESC
+                // already sorts NULLs last on both MySQL and SQLite, and unlike
+                // the old `last_active_at IS NULL` expression it lets the
+                // users_last_active_at_index provide the order.
+                fn ($query) => $query->orderByDesc('last_active_at')->orderBy('name')
             )
             ->paginate(18)
             ->withQueryString();

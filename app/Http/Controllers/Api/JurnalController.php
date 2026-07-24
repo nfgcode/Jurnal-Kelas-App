@@ -76,11 +76,15 @@ class JurnalController extends Controller
 
         $data = $request->validated();
         $user = $request->user();
+        $jadwal = Jadwal::findOrFail($data['jadwal_id']);
 
-        // A guru writes their own; an admin writes on behalf of the slot's teacher.
-        $data['guru_id'] = $user->isGuru()
-            ? $user->id
-            : Jadwal::find($data['jadwal_id'])?->guru_id;
+        // Same ownership rule as the web form: a guru writes on their own slot,
+        // a ketua kelas on their own class's; only an admin writes anywhere.
+        abort_if($user->isGuru() && $jadwal->guru_id !== $user->id, 403);
+        abort_if($user->isSiswa() && $jadwal->kelas_id !== $user->kelas_id, 403);
+
+        // A guru writes their own; otherwise the slot's teacher owns the entry.
+        $data['guru_id'] = $user->isGuru() ? $user->id : $jadwal->guru_id;
         $data['diisi_oleh_id'] = $user->id;
         $data['kehadiran_guru_status'] ??= 'hadir';
 
