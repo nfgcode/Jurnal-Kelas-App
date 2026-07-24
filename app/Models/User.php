@@ -139,13 +139,17 @@ class User extends Authenticatable
         return $this->hasMany(Kelas::class, 'wali_kelas_id');
     }
 
+    /** Memo for {@see isWaliKelas()} so the layout doesn't re-query every render. */
+    private ?bool $isWaliKelas = null;
+
     /**
      * Whether this teacher is the homeroom teacher of at least one class — the
-     * gate for the "Mode Wali Kelas" toggle and its homeroom dashboard.
+     * gate for the "Mode Wali Kelas" toggle and its homeroom dashboard. Checked
+     * on every authenticated page render, so the result is memoized per request.
      */
     public function isWaliKelas(): bool
     {
-        return $this->role === 'guru' && $this->kelasWali()->exists();
+        return $this->isWaliKelas ??= $this->role === 'guru' && $this->kelasWali()->exists();
     }
 
     /**

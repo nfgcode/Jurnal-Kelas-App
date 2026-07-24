@@ -270,8 +270,12 @@ class DashboardController extends Controller
             ->get()
             ->groupBy('hari');
 
-        // Journals already written in the period, as a fast (jadwal, date) set.
+        // Journals already written in the period, as a fast (jadwal, date) set —
+        // bounded to just the timetable slots in view, so a filtered drill-down
+        // doesn't materialize the whole school's journals.
+        $jadwalIds = $jadwalPerHari->flatten()->pluck('id');
         $terisi = Jurnal::query()
+            ->whereIn('jadwal_id', $jadwalIds)
             ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->get(['jadwal_id', 'tanggal'])
             ->mapWithKeys(fn ($jurnal) => [$jurnal->jadwal_id . '|' . $jurnal->tanggal->toDateString() => true]);

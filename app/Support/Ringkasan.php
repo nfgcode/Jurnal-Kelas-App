@@ -348,6 +348,45 @@ class Ringkasan
     }
 
     /**
+     * Journal completeness for a single class, as a percentage — the same
+     * measure as {@see kelengkapan()} but scoped to one class so callers that
+     * only need one figure don't compute the whole school. Used by the student
+     * dashboard, the journal recap, and the wali-kelas screens.
+     */
+    public static function kelengkapanKelas(int $kelasId, ?Periode $periode = null): float
+    {
+        $tanggalList = $periode ? $periode->hariSekolah() : self::hariSekolah(self::HARI_DEFAULT);
+
+        if ($tanggalList === []) {
+            return 0.0;
+        }
+
+        $bobot = self::bobotHari($tanggalList);
+
+        $target = 0;
+        $terjadwal = Jadwal::query()
+            ->where('kelas_id', $kelasId)
+            ->selectRaw('hari, COUNT(*) as total')
+            ->groupBy('hari')
+            ->pluck('total', 'hari');
+
+        foreach ($terjadwal as $hari => $total) {
+            $target += (int) $total * ($bobot[$hari] ?? 0);
+        }
+
+        $aktual = Jurnal::query()
+            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+            ->where('jadwal.kelas_id', $kelasId)
+            ->whereBetween('jurnal.tanggal', [
+                $tanggalList[0]->toDateString(),
+                end($tanggalList)->toDateString(),
+            ])
+            ->count();
+
+        return self::persen($aktual, $target);
+    }
+
+    /**
      * Total meetings the timetable scheduled over the window — the honest
      * denominator behind "belum diisi", counted directly from the jadwal
      * rather than reconstructed from a rounded completeness percentage.

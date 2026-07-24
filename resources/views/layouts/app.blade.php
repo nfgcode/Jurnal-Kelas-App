@@ -20,59 +20,112 @@
 @php
     $user = Auth::user();
     $isAdmin = $user?->isAdmin() ?? false;
+    $isSiswa = $user?->isSiswa() ?? false;
+
+    // In "Mode Wali Kelas" the whole app narrows to one class, so the nav is
+    // replaced rather than extended. The active class rides along on every
+    // link, otherwise switching screens would reset it to the first class.
+    $waliMode = request()->routeIs('wali-kelas.*');
+    $waliQuery = request()->integer('kelas_id') ? ['kelas_id' => request()->integer('kelas_id')] : [];
+    $beranda = $waliMode ? route('wali-kelas.dashboard', $waliQuery) : ($isAdmin ? route('admin.dashboard') : route('dashboard'));
 @endphp
 
 <div class="sidebar-scrim" id="sidebarScrim"></div>
 
 <aside class="sidebar" id="sidebar">
-    <a class="sidebar__brand" href="{{ $isAdmin ? route('admin.dashboard') : route('dashboard') }}">
+    <a class="sidebar__brand" href="{{ $beranda }}">
         <span class="sidebar__mark"><i class="bi bi-journal-text"></i></span>
         <span class="sidebar__wordmark">Jurnal Kelas</span>
     </a>
 
     <nav class="sidebar__nav">
-        <a href="{{ $isAdmin ? route('admin.dashboard') : route('dashboard') }}"
-           class="sidebar__link {{ request()->routeIs('dashboard', 'admin.dashboard') ? 'is-active' : '' }}">
-            <i class="bi bi-speedometer2"></i><span>Dashboard</span>
-        </a>
-
-        <div class="sidebar__section">Data Master</div>
-
-        @if ($isAdmin)
-            <a href="{{ route('admin.users.index') }}"
-               class="sidebar__link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
-                <i class="bi bi-people"></i><span>Pengguna</span>
+        @if ($waliMode)
+            <a href="{{ route('wali-kelas.dashboard', $waliQuery) }}"
+               class="sidebar__link {{ request()->routeIs('wali-kelas.dashboard') ? 'is-active' : '' }}">
+                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
             </a>
-        @endif
 
-        <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
-            <i class="bi bi-building"></i><span>Kelas</span>
-        </a>
-        <a href="{{ route('mata-pelajaran.index') }}" class="sidebar__link {{ request()->routeIs('mata-pelajaran.*') ? 'is-active' : '' }}">
-            <i class="bi bi-book"></i><span>Mata Pelajaran</span>
-        </a>
-        <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
-            <i class="bi bi-calendar3"></i><span>Jadwal</span>
-        </a>
+            <div class="sidebar__section">Kelas Perwalian</div>
 
-        <div class="sidebar__section">Kegiatan</div>
-
-        <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.*') ? 'is-active' : '' }}">
-            <i class="bi bi-journal-text"></i><span>Jurnal</span>
-        </a>
-        <a href="{{ route('presensi.index') }}" class="sidebar__link {{ request()->routeIs('presensi.*') ? 'is-active' : '' }}">
-            <i class="bi bi-person-check"></i><span>Presensi</span>
-        </a>
-
-        @if ($isAdmin)
-            <div class="sidebar__section">Laporan</div>
-
-            <a href="{{ route('admin.laporan.jurnal') }}" class="sidebar__link {{ request()->routeIs('admin.laporan.jurnal') ? 'is-active' : '' }}">
-                <i class="bi bi-clipboard-data"></i><span>Rekap Jurnal</span>
+            <a href="{{ route('wali-kelas.siswa', $waliQuery) }}"
+               class="sidebar__link {{ request()->routeIs('wali-kelas.siswa') ? 'is-active' : '' }}">
+                <i class="bi bi-people"></i><span>Data Kelas</span>
             </a>
-            <a href="{{ route('admin.laporan.presensi') }}" class="sidebar__link {{ request()->routeIs('admin.laporan.presensi') ? 'is-active' : '' }}">
-                <i class="bi bi-bar-chart"></i><span>Rekap Presensi</span>
+            <a href="{{ route('wali-kelas.jadwal', $waliQuery) }}"
+               class="sidebar__link {{ request()->routeIs('wali-kelas.jadwal') ? 'is-active' : '' }}">
+                <i class="bi bi-calendar3"></i><span>Jadwal Kelas</span>
             </a>
+            <a href="{{ route('wali-kelas.jurnal', $waliQuery) }}"
+               class="sidebar__link {{ request()->routeIs('wali-kelas.jurnal') ? 'is-active' : '' }}">
+                <i class="bi bi-journal-text"></i><span>Jurnal Kelas</span>
+            </a>
+            <a href="{{ route('wali-kelas.presensi', $waliQuery) }}"
+               class="sidebar__link {{ request()->routeIs('wali-kelas.presensi') ? 'is-active' : '' }}">
+                <i class="bi bi-person-check"></i><span>Presensi Kelas</span>
+            </a>
+        @elseif ($isSiswa)
+            {{-- A student only ever works with their own class: its timetable,
+                 its journal and their attendance. Master data is not theirs. --}}
+            <a href="{{ route('dashboard') }}"
+               class="sidebar__link {{ request()->routeIs('dashboard') ? 'is-active' : '' }}">
+                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+            </a>
+
+            <div class="sidebar__section">Kegiatan</div>
+
+            <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
+                <i class="bi bi-calendar3"></i><span>Jadwal Kelas</span>
+            </a>
+            <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.*') ? 'is-active' : '' }}">
+                <i class="bi bi-journal-text"></i><span>Jurnal Kelas</span>
+            </a>
+            <a href="{{ route('presensi.index') }}" class="sidebar__link {{ request()->routeIs('presensi.*') ? 'is-active' : '' }}">
+                <i class="bi bi-person-check"></i><span>Presensi Saya</span>
+            </a>
+        @else
+            <a href="{{ $isAdmin ? route('admin.dashboard') : route('dashboard') }}"
+               class="sidebar__link {{ request()->routeIs('dashboard', 'admin.dashboard') ? 'is-active' : '' }}">
+                <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+            </a>
+
+            <div class="sidebar__section">Data Master</div>
+
+            @if ($isAdmin)
+                <a href="{{ route('admin.users.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
+                    <i class="bi bi-people"></i><span>Pengguna</span>
+                </a>
+            @endif
+
+            <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
+                <i class="bi bi-building"></i><span>{{ $isAdmin ? 'Kelas' : 'Kelas Saya' }}</span>
+            </a>
+            <a href="{{ route('mata-pelajaran.index') }}" class="sidebar__link {{ request()->routeIs('mata-pelajaran.*') ? 'is-active' : '' }}">
+                <i class="bi bi-book"></i><span>{{ $isAdmin ? 'Mata Pelajaran' : 'Mapel Saya' }}</span>
+            </a>
+            <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
+                <i class="bi bi-calendar3"></i><span>Jadwal</span>
+            </a>
+
+            <div class="sidebar__section">Kegiatan</div>
+
+            <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.*') ? 'is-active' : '' }}">
+                <i class="bi bi-journal-text"></i><span>Jurnal</span>
+            </a>
+            <a href="{{ route('presensi.index') }}" class="sidebar__link {{ request()->routeIs('presensi.*') ? 'is-active' : '' }}">
+                <i class="bi bi-person-check"></i><span>Presensi</span>
+            </a>
+
+            @if ($isAdmin)
+                <div class="sidebar__section">Laporan</div>
+
+                <a href="{{ route('admin.laporan.jurnal') }}" class="sidebar__link {{ request()->routeIs('admin.laporan.jurnal') ? 'is-active' : '' }}">
+                    <i class="bi bi-clipboard-data"></i><span>Rekap Jurnal</span>
+                </a>
+                <a href="{{ route('admin.laporan.presensi') }}" class="sidebar__link {{ request()->routeIs('admin.laporan.presensi') ? 'is-active' : '' }}">
+                    <i class="bi bi-bar-chart"></i><span>Rekap Presensi</span>
+                </a>
+            @endif
         @endif
     </nav>
 
@@ -97,11 +150,10 @@
 
         <div class="topbar__right d-flex align-items-center gap-2">
             @if ($user?->isWaliKelas())
-                @php $inWaliMode = request()->routeIs('wali-kelas.dashboard'); @endphp
-                <a class="user-chip" href="{{ $inWaliMode ? route('dashboard') : route('wali-kelas.dashboard') }}"
+                <a class="user-chip" href="{{ $waliMode ? route('dashboard') : route('wali-kelas.dashboard') }}"
                    title="Beralih tampilan guru / wali kelas">
-                    <i class="bi {{ $inWaliMode ? 'bi-mortarboard-fill' : 'bi-mortarboard' }}"></i>
-                    <span class="d-none d-sm-inline">{{ $inWaliMode ? 'Mode Guru' : 'Mode Wali Kelas' }}</span>
+                    <i class="bi {{ $waliMode ? 'bi-mortarboard-fill' : 'bi-mortarboard' }}"></i>
+                    <span class="d-none d-sm-inline">{{ $waliMode ? 'Mode Guru' : 'Mode Wali Kelas' }}</span>
                 </a>
             @endif
 

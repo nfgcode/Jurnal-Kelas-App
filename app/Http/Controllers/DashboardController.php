@@ -106,8 +106,12 @@ class DashboardController extends Controller
     {
         $kelas = $user->kelas;
 
+        // A student with no class sees their own (empty) view, never every
+        // class's schedule/journals. kelas_id 0 never matches a real row.
+        $kelasId = $kelas?->id ?? 0;
+
         $jadwalHariIni = Jadwal::with(['mataPelajaran', 'guru'])
-            ->when($kelas, fn ($query) => $query->where('kelas_id', $kelas->id))
+            ->where('kelas_id', $kelasId)
             ->where('hari', Ringkasan::hariIni())
             ->orderBy('jam_ke_mulai')
             ->get();
@@ -121,7 +125,7 @@ class DashboardController extends Controller
         $totalPresensi = array_sum($presensiSaya) ?: 1;
 
         $jurnalKelas = Jurnal::with(['jadwal.mataPelajaran', 'guru'])
-            ->when($kelas, fn ($query) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id)))
+            ->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelasId))
             ->latest('tanggal')
             ->latest('id')
             ->get();
@@ -157,7 +161,7 @@ class DashboardController extends Controller
                 'alpa' => $presensiSaya['alpa'],
             ],
             'jurnalStatus' => [
-                'kelengkapan' => $kelas ? (Ringkasan::kelengkapan('kelas_id')[$kelas->id] ?? 0) : 0,
+                'kelengkapan' => $kelas ? Ringkasan::kelengkapanKelas($kelas->id) : 0,
                 'tepatWaktu' => $tepatWaktu,
                 'terlambat' => $jurnalKelas->count() - $tepatWaktu,
                 'total' => $jurnalKelas->count(),

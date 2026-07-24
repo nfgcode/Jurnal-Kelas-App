@@ -55,12 +55,14 @@
                    placeholder="Cari mapel, guru atau ruang...">
         </label>
 
-        <select class="select-hifi" name="guru_id" style="width: 170px" onchange="this.form.submit()">
-            <option value="">Semua Guru</option>
-            @foreach ($guruList as $guru)
-                <option value="{{ $guru->id }}" @selected(($filters['guru_id'] ?? null) == $guru->id)>{{ $guru->name }}</option>
-            @endforeach
-        </select>
+        @if ($guruList->isNotEmpty())
+            <select class="select-hifi" name="guru_id" style="width: 170px" onchange="this.form.submit()">
+                <option value="">Semua Guru</option>
+                @foreach ($guruList as $guru)
+                    <option value="{{ $guru->id }}" @selected(($filters['guru_id'] ?? null) == $guru->id)>{{ $guru->name }}</option>
+                @endforeach
+            </select>
+        @endif
 
         <select class="select-hifi" name="hari" style="width: 150px" onchange="this.form.submit()">
             <option value="">Semua Hari</option>

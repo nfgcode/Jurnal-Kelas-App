@@ -8,6 +8,7 @@ use App\Models\MataPelajaran;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class MataPelajaranController extends Controller
 {
@@ -22,9 +23,11 @@ class MataPelajaranController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $user = $request->user();
+
         $mataPelajaran = MataPelajaran::query()
-            ->withCount('jadwals')
-            ->with(['jadwals.guru', 'jadwals.kelas'])
+            // A guru only sees subjects they are timetabled to teach; admin all.
+            ->when($user->isGuru(), fn ($query) => $query->whereHas('jadwals', fn ($j) => $j->where('guru_id', $user->id)))
             ->when($filters['kelompok'] ?? null, fn ($query, $kelompok) => $query->where('kelompok', $kelompok))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
             ->orderByDesc('jp_per_minggu')
@@ -32,11 +35,22 @@ class MataPelajaranController extends Controller
             ->paginate(18)
             ->withQueryString();
 
+        // One teacher name and the distinct class count per subject, aggregated
+        // in a single query rather than hydrating every jadwal + guru + kelas.
+        $ringkasan = Jadwal::query()
+            ->join('users', 'jadwal.guru_id', '=', 'users.id')
+            ->whereIn('jadwal.mata_pelajaran_id', $mataPelajaran->pluck('id'))
+            ->selectRaw('jadwal.mata_pelajaran_id, COUNT(DISTINCT jadwal.kelas_id) as kelas_count, MIN(users.name) as guru_nama')
+            ->groupBy('jadwal.mata_pelajaran_id')
+            ->get()
+            ->keyBy('mata_pelajaran_id');
+
         // A subject with no scheduled meeting has nobody teaching it.
         $tanpaGuru = MataPelajaran::doesntHave('jadwals')->pluck('nama');
 
         return view('mata-pelajaran.index', [
             'mataPelajaran' => $mataPelajaran,
+            'ringkasan' => $ringkasan,
             'kelengkapan' => Ringkasan::kelengkapan('mata_pelajaran_id'),
             'filters' => $filters,
             'statistik' => [
@@ -76,6 +90,8 @@ class MataPelajaranController extends Controller
      */
     public function show(MataPelajaran $mataPelajaran)
     {
+        Gate::authorize('view', $mataPelajaran);
+
         $mataPelajaran->load('jadwals.kelas', 'jadwals.guru');
 
         return view('mata-pelajaran.show', compact('mataPelajaran'));

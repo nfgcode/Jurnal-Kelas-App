@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
@@ -10,6 +11,8 @@ use App\Models\User;
 use App\Support\Ringkasan;
 use App\Support\SimpanPresensi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class PresensiController extends Controller
 {
@@ -96,7 +99,10 @@ class PresensiController extends Controller
 
         return view('presensi.index', [
             'pertemuan' => $pertemuan,
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            // A guru filters only among the classes they teach; admin all.
+            'kelasList' => Kelas::query()
+                ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+                ->orderBy('nama_kelas')->get(),
             'filters' => $filters,
             'rekap' => Ringkasan::presensi(
                 Presensi::whereHas('jurnal', fn ($q) => $q->when($user->isGuru(), fn ($i) => $i->where('guru_id', $user->id)))
@@ -111,6 +117,10 @@ class PresensiController extends Controller
     public function create(int $jurnal_id)
     {
         $jurnal = Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])->findOrFail($jurnal_id);
+
+        // Marking a roster is a write on the journal — only its guru (or admin) may.
+        Gate::authorize('update', $jurnal);
+
         $siswaList = $jurnal->jadwal->kelas->siswa()->orderBy('name')->get();
 
         // Re-opening the form should show what was already recorded, since
@@ -130,17 +140,26 @@ class PresensiController extends Controller
      */
     public function store(Request $request)
     {
+        $jurnal = Jurnal::with('jadwal.kelas')->findOrFail($request->integer('jurnal_id'));
+
+        // Marking a roster is a write on the journal — only its guru (or admin) may.
+        Gate::authorize('update', $jurnal);
+
+        // Attendance may only be recorded for students actually in this class, so
+        // a crafted siswa_id (a teacher, or another class's student) is rejected.
+        $roster = $jurnal->jadwal->kelas->siswa()->pluck('id')->all();
+
         $validated = $request->validate([
             'jurnal_id' => 'required|exists:jurnal,id',
             'presensi' => 'required|array',
-            'presensi.*.siswa_id' => 'required|exists:users,id',
+            'presensi.*.siswa_id' => ['required', Rule::in($roster)],
             'presensi.*.status' => 'required|in:hadir,sakit,izin,alpa',
             'presensi.*.keterangan' => 'nullable|string',
         ]);
 
-        SimpanPresensi::simpan(Jurnal::findOrFail($validated['jurnal_id']), $validated['presensi']);
+        SimpanPresensi::simpan($jurnal, $validated['presensi']);
 
-        return redirect()->route('presensi.show', $validated['jurnal_id'])
+        return redirect()->route('presensi.show', $jurnal->id)
             ->with('success', 'Presensi berhasil disimpan.');
     }
 
@@ -155,6 +174,8 @@ class PresensiController extends Controller
             'guru',
             'presensis.siswa',
         ])->findOrFail($jurnal_id);
+
+        Gate::authorize('view', $jurnal);
 
         return view('presensi.show', [
             'jurnal' => $jurnal,

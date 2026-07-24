@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\KelasRequest;
+use App\Models\Jadwal;
 use App\Models\Kelas;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class KelasController extends Controller
 {
@@ -22,9 +24,14 @@ class KelasController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $user = $request->user();
+
         $kelas = Kelas::query()
             ->with('waliKelas')
             ->withCount(['siswa', 'jadwals'])
+            // A guru only sees classes they actually teach in; admin sees all.
+            ->when($user->isGuru(), fn ($query) => $query->whereIn('id',
+                Jadwal::where('guru_id', $user->id)->select('kelas_id')))
             ->when($filters['tingkat'] ?? null, fn ($query, $tingkat) => $query->where('tingkat', $tingkat))
             ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan', $jurusan))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
@@ -81,6 +88,8 @@ class KelasController extends Controller
      */
     public function show(Kelas $kela)
     {
+        Gate::authorize('view', $kela);
+
         $kela->load(['waliKelas', 'siswa', 'jadwals.mataPelajaran', 'jadwals.guru']);
 
         return view('kelas.show', ['kelas' => $kela]);

@@ -8,6 +8,7 @@ use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class JadwalController extends Controller
 {
@@ -24,12 +25,20 @@ class JadwalController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
+        $user = $request->user();
+
+        // The class picker is scoped to the role: a guru chooses among classes
+        // they teach, a student only ever sees their own, an admin all.
+        $kelasList = Kelas::query()
+            ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+            ->when($user->isSiswa(), fn ($q) => $q->whereKey($user->kelas_id))
+            ->orderBy('nama_kelas')
+            ->get();
 
         // A student only ever has one timetable; default everyone else to the
-        // first class so the matrix is never empty on arrival.
-        $kelasAktif = $request->user()->isSiswa() && $request->user()->kelas_id
-            ? $kelasList->firstWhere('id', $request->user()->kelas_id)
+        // first class in their scoped list so the matrix is never empty.
+        $kelasAktif = $user->isSiswa() && $user->kelas_id
+            ? $kelasList->firstWhere('id', $user->kelas_id)
             : $kelasList->firstWhere('id', $filters['kelas_id'] ?? null) ?? $kelasList->first();
 
         $jadwals = Jadwal::query()
@@ -54,10 +63,14 @@ class JadwalController extends Controller
             'matriks' => $matriks,
             'kelasList' => $kelasList,
             'kelasAktif' => $kelasAktif,
-            'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
+            // The teacher filter is an admin tool; a guru/siswa never picks
+            // "another teacher", so the dropdown isn't built for them.
+            'guruList' => $user->isAdmin()
+                ? User::where('role', 'guru')->orderBy('name')->get()
+                : collect(),
             'filters' => $filters,
             'statistik' => [
-                'totalJadwal' => Jadwal::count(),
+                'totalJadwal' => $user->isAdmin() ? Jadwal::count() : $jadwals->count(),
                 'jpKelas' => $jadwals->sum(fn ($j) => $j->jam_ke_selesai - $j->jam_ke_mulai + 1),
                 'guruTerlibat' => $jadwals->pluck('guru_id')->unique()->count(),
                 'mapelTerlibat' => $jadwals->pluck('mata_pelajaran_id')->unique()->count(),
@@ -119,6 +132,8 @@ class JadwalController extends Controller
      */
     public function show(Jadwal $jadwal)
     {
+        Gate::authorize('view', $jadwal);
+
         $jadwal->load(['kelas', 'mataPelajaran', 'guru', 'jurnals']);
 
         return view('jadwal.show', compact('jadwal'));

@@ -9,6 +9,7 @@ use App\Models\Presensi;
 use App\Support\SimpanPresensi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class PresensiController extends Controller
 {
@@ -50,16 +51,19 @@ class PresensiController extends Controller
      */
     public function store(Request $request)
     {
+        $jurnal = Jurnal::with('jadwal.kelas')->findOrFail($request->integer('jurnal_id'));
+        Gate::authorize('update', $jurnal);
+
+        // Attendance may only be recorded for students of this journal's class.
+        $roster = $jurnal->jadwal->kelas->siswa()->pluck('id')->all();
+
         $validated = $request->validate([
             'jurnal_id' => 'required|exists:jurnal,id',
             'presensi' => 'required|array|min:1',
-            'presensi.*.siswa_id' => 'required|exists:users,id',
+            'presensi.*.siswa_id' => ['required', Rule::in($roster)],
             'presensi.*.status' => 'required|in:hadir,sakit,izin,alpa',
             'presensi.*.keterangan' => 'nullable|string',
         ]);
-
-        $jurnal = Jurnal::findOrFail($validated['jurnal_id']);
-        Gate::authorize('update', $jurnal);
 
         SimpanPresensi::simpan($jurnal, $validated['presensi']);
 

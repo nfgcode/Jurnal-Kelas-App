@@ -14,8 +14,8 @@ use Tests\TestCase;
  * histori for a guru and riwayat for a siswa, /presensi renders the meeting
  * list or the student's own recap, and /dashboard forks three ways. The rest
  * of the suite only ever acts as an admin, so none of those branches were
- * being rendered. This covers them, plus the two journal vocabularies that
- * fold onto the same kehadiran_guru columns.
+ * being rendered. This covers them, plus the shared journal vocabulary that
+ * folds onto the kehadiran_guru columns.
  */
 class RolePagesTest extends TestCase
 {
@@ -122,17 +122,18 @@ class RolePagesTest extends TestCase
     }
 
     /**
-     * A siswa reports the reason instead, and the journal still belongs to the
-     * guru on the timetable rather than to the student who typed it.
+     * A siswa reports the same three outcomes, may add a note about the absence,
+     * and the journal still belongs to the guru on the timetable rather than to
+     * the student who typed it.
      */
-    public function test_siswa_reports_the_guru_absence_reason(): void
+    public function test_siswa_reports_the_guru_attendance(): void
     {
         $this->actingAs($this->siswa)
             ->post('/jurnal', [
                 'jadwal_id' => $this->jadwal->id,
                 'tanggal' => now()->toDateString(),
                 'materi' => 'Belajar mandiri',
-                'kehadiran_guru' => 'sakit',
+                'kehadiran_guru' => 'ada_tugas',
                 'kehadiran_guru_keterangan' => 'Diwakili guru piket',
             ])
             ->assertSessionHasNoErrors();
@@ -140,18 +141,18 @@ class RolePagesTest extends TestCase
         $jurnal = Jurnal::latest('id')->firstOrFail();
 
         $this->assertSame('tidak_hadir', $jurnal->kehadiran_guru_status);
-        $this->assertSame('sakit', $jurnal->kehadiran_guru_alasan);
-        $this->assertNull($jurnal->kehadiran_guru_ada_tugas);
+        $this->assertTrue((bool) $jurnal->kehadiran_guru_ada_tugas);
+        $this->assertNull($jurnal->kehadiran_guru_alasan);
         $this->assertSame('Diwakili guru piket', $jurnal->kehadiran_guru_keterangan);
         $this->assertSame($this->jadwal->guru_id, $jurnal->guru_id);
         $this->assertSame($this->siswa->id, $jurnal->diisi_oleh_id);
     }
 
     /**
-     * The two vocabularies are not interchangeable: neither role may submit
-     * the other's option set.
+     * Both roles now share one vocabulary — hadir / ada_tugas / tanpa_tugas.
+     * The retired reason options are rejected for either of them.
      */
-    public function test_each_role_is_held_to_its_own_vocabulary(): void
+    public function test_both_roles_share_one_attendance_vocabulary(): void
     {
         $payload = [
             'jadwal_id' => $this->jadwal->id,
@@ -159,12 +160,18 @@ class RolePagesTest extends TestCase
             'materi' => 'Materi apa saja',
         ];
 
-        $this->actingAs($this->guru)
-            ->post('/jurnal', $payload + ['kehadiran_guru' => 'sakit'])
-            ->assertSessionHasErrors('kehadiran_guru');
+        foreach ([$this->guru, $this->siswa] as $pengguna) {
+            // The vocabulary both roles now share.
+            $this->actingAs($pengguna)
+                ->post('/jurnal', $payload + ['kehadiran_guru' => 'tanpa_tugas'])
+                ->assertSessionHasNoErrors();
 
-        $this->actingAs($this->siswa)
-            ->post('/jurnal', $payload + ['kehadiran_guru' => 'ada_tugas'])
-            ->assertSessionHasErrors('kehadiran_guru');
+            // The reason vocabulary the ketua kelas used to submit is gone.
+            foreach (['sakit', 'izin', 'alpa'] as $usang) {
+                $this->actingAs($pengguna)
+                    ->post('/jurnal', $payload + ['kehadiran_guru' => $usang])
+                    ->assertSessionHasErrors('kehadiran_guru');
+            }
+        }
     }
 }

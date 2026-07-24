@@ -10,6 +10,7 @@ use App\Models\Presensi;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class JurnalController extends Controller
@@ -53,8 +54,13 @@ class JurnalController extends Controller
 
         return view('jurnal.histori', [
             'jurnals' => $jurnals,
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
-            'mapelList' => MataPelajaran::orderBy('nama')->get(),
+            // A guru filters only among the classes/subjects they teach; admin all.
+            'kelasList' => Kelas::query()
+                ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+                ->orderBy('nama_kelas')->get(),
+            'mapelList' => MataPelajaran::query()
+                ->when($user->isGuru(), fn ($q) => $q->whereHas('jadwals', fn ($j) => $j->where('guru_id', $user->id)))
+                ->orderBy('nama')->get(),
             'filters' => $filters,
             'statistik' => [
                 'total' => (clone $milikSaya)->count(),
@@ -75,8 +81,23 @@ class JurnalController extends Controller
     {
         $kelas = $user->kelas;
 
+        // A student with no class sees nothing — never every class's journals.
+        // (Deleting a rombel NULLs its students' kelas_id.)
+        if (! $kelas) {
+            $jurnals = $query->whereRaw('1 = 0')->paginate(18)->withQueryString();
+
+            return view('jurnal.riwayat', [
+                'jurnals' => $jurnals,
+                'presensiSaya' => collect(),
+                'kelas' => null,
+                'mapelList' => MataPelajaran::orderBy('nama')->get(),
+                'filters' => $filters,
+                'statistik' => ['total' => 0, 'tugas' => 0, 'kelengkapan' => 0],
+            ]);
+        }
+
         $jurnals = $query
-            ->when($kelas, fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id)))
+            ->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id))
             ->paginate(18)
             ->withQueryString();
 
@@ -86,19 +107,21 @@ class JurnalController extends Controller
             ->get()
             ->keyBy('jurnal_id');
 
-        $jurnalKelas = Jurnal::when($kelas, fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id)));
+        // Total and how many carried a task, in one grouped pass over the class.
+        $agregat = Jurnal::whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id))
+            ->selectRaw('COUNT(*) as total, COUNT(tugas) as tugas')
+            ->first();
 
         return view('jurnal.riwayat', [
             'jurnals' => $jurnals,
             'presensiSaya' => $presensiSaya,
             'kelas' => $kelas,
             'mapelList' => MataPelajaran::orderBy('nama')->get(),
-            'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
             'filters' => $filters,
             'statistik' => [
-                'total' => (clone $jurnalKelas)->count(),
-                'tugas' => (clone $jurnalKelas)->whereNotNull('tugas')->count(),
-                'kelengkapan' => $kelas ? (Ringkasan::kelengkapan('kelas_id')[$kelas->id] ?? 0) : 0,
+                'total' => (int) $agregat->total,
+                'tugas' => (int) $agregat->tugas,
+                'kelengkapan' => Ringkasan::kelengkapanKelas($kelas->id),
             ],
         ]);
     }
@@ -140,6 +163,8 @@ class JurnalController extends Controller
      */
     public function show(Jurnal $jurnal)
     {
+        Gate::authorize('view', $jurnal);
+
         $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh', 'presensis.siswa']);
 
         return view('jurnal.show', compact('jurnal'));
@@ -150,6 +175,8 @@ class JurnalController extends Controller
      */
     public function edit(Request $request, Jurnal $jurnal)
     {
+        Gate::authorize('update', $jurnal);
+
         $user = $request->user();
 
         return view(
@@ -163,6 +190,8 @@ class JurnalController extends Controller
      */
     public function update(Request $request, Jurnal $jurnal)
     {
+        Gate::authorize('update', $jurnal);
+
         $user = $request->user();
         $validated = $request->validate($this->rules($user));
 
@@ -176,6 +205,8 @@ class JurnalController extends Controller
      */
     public function destroy(Jurnal $jurnal)
     {
+        Gate::authorize('delete', $jurnal);
+
         $jurnal->delete();
 
         return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil dihapus.');
@@ -218,11 +249,16 @@ class JurnalController extends Controller
             : ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpa' => 0];
 
         // The teacher's own attendance record, or the class's view of their
-        // teachers' — whichever the form's author is reporting on.
+        // teachers' — whichever the form's author is reporting on. Scoped to the
+        // current month, matching the card's "Bulan Ini" label.
+        $bulanIni = fn ($query) => $query
+            ->whereMonth('tanggal', now()->month)
+            ->whereYear('tanggal', now()->year);
+
         $rekapKehadiran = $user->isGuru()
-            ? Ringkasan::kehadiranGuru(Jurnal::where('guru_id', $user->id))
+            ? Ringkasan::kehadiranGuru($bulanIni(Jurnal::where('guru_id', $user->id)))
             : Ringkasan::kehadiranGuru(
-                Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $user->kelas_id))
+                $bulanIni(Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $user->kelas_id)))
             );
 
         return [
@@ -237,7 +273,6 @@ class JurnalController extends Controller
                 ->when($user->isGuru(), fn ($query) => $query->where('guru_id', $user->id))
                 ->when($user->isSiswa() && $user->kelas_id, fn ($query) => $query->where('kelas_id', $user->kelas_id))
                 ->get(),
-            'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
             'pertemuanTerakhir' => $kelas
                 ? Jurnal::with(['jadwal.mataPelajaran', 'guru'])
                     ->whereHas('jadwal', fn ($query) => $query->where('kelas_id', $kelas->id))
@@ -251,8 +286,9 @@ class JurnalController extends Controller
     }
 
     /**
-     * Validation rules. The teacher reports whether work was left behind; the
-     * student reports the reason they observed.
+     * Validation rules. Both roles report the same three outcomes — present, or
+     * absent with or without work left behind. Only the student adds a free-text
+     * note about the absence, since they are describing someone else's.
      */
     private function rules(User $user): array
     {
@@ -261,42 +297,34 @@ class JurnalController extends Controller
             'tanggal' => ['required', 'date'],
             'materi' => ['required', 'string'],
             'tugas' => ['nullable', 'string'],
-            'catatan' => ['nullable', 'string'],
-        ];
-
-        if ($user->isSiswa()) {
-            return $aturan + [
-                'kehadiran_guru' => ['required', Rule::in(['hadir', 'sakit', 'izin', 'alpa'])],
-                'kehadiran_guru_keterangan' => ['nullable', 'string'],
-            ];
-        }
-
-        return $aturan + [
             'kehadiran_guru' => ['required', Rule::in(['hadir', 'ada_tugas', 'tanpa_tugas'])],
         ];
+
+        return $user->isSiswa()
+            ? $aturan + ['kehadiran_guru_keterangan' => ['nullable', 'string']]
+            : $aturan;
     }
 
     /**
-     * Fold either role's vocabulary onto the stored columns.
+     * Fold the chosen outcome onto the stored columns.
+     *
+     * The reason vocabulary (sakit/izin/alpa) the ketua kelas used to report is
+     * retired — both roles now record whether work was left behind. Rows written
+     * before this keep their `kehadiran_guru_alasan`, which
+     * {@see Jurnal::kehadiranGuruChip()} still renders.
      */
     private function normalize(array $validated, User $user): array
     {
         $pilihan = $validated['kehadiran_guru'];
         unset($validated['kehadiran_guru']);
 
-        if ($user->isSiswa()) {
-            return $validated + [
-                'kehadiran_guru_status' => $pilihan === 'hadir' ? 'hadir' : 'tidak_hadir',
-                'kehadiran_guru_alasan' => $pilihan === 'hadir' ? null : $pilihan,
-                'kehadiran_guru_ada_tugas' => null,
-            ];
-        }
-
-        return $validated + [
+        $data = $validated + [
             'kehadiran_guru_status' => $pilihan === 'hadir' ? 'hadir' : 'tidak_hadir',
             'kehadiran_guru_alasan' => null,
             'kehadiran_guru_ada_tugas' => $pilihan === 'hadir' ? null : $pilihan === 'ada_tugas',
-            'kehadiran_guru_keterangan' => null,
         ];
+
+        // The guru's own form carries no note field, so it never keeps a stale one.
+        return $user->isSiswa() ? $data : $data + ['kehadiran_guru_keterangan' => null];
     }
 }

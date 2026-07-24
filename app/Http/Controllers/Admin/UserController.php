@@ -50,21 +50,32 @@ class UserController extends Controller
             ->paginate(18)
             ->withQueryString();
 
+        // One grouped pass over users covers every headline count below, instead
+        // of ~7 separate COUNT queries. Summed in PHP so it stays driver-portable.
+        $rekap = User::selectRaw('role, status, COUNT(*) as total')
+            ->groupBy('role', 'status')
+            ->get();
+
+        $perRoleStatus = fn (string $role, ?string $status = null) => (int) $rekap
+            ->where('role', $role)
+            ->when($status !== null, fn ($c) => $c->where('status', $status))
+            ->sum('total');
+
         $jumlahPerRole = [
-            'admin' => User::where('role', 'admin')->count(),
-            'guru' => User::where('role', 'guru')->count(),
-            'siswa' => User::where('role', 'siswa')->count(),
+            'admin' => $perRoleStatus('admin'),
+            'guru' => $perRoleStatus('guru'),
+            'siswa' => $perRoleStatus('siswa'),
         ];
 
         return view('admin.users.index', [
             'users' => $users,
             'jumlahPerRole' => $jumlahPerRole,
             'statistik' => [
-                'total' => array_sum($jumlahPerRole),
-                'guruAktif' => User::where('role', 'guru')->where('status', 'aktif')->count(),
-                'guruPending' => User::where('role', 'guru')->where('status', 'pending')->count(),
-                'siswaAktif' => User::where('role', 'siswa')->where('status', 'aktif')->count(),
-                'nonaktif' => User::where('status', 'nonaktif')->count(),
+                'total' => (int) $rekap->sum('total'),
+                'guruAktif' => $perRoleStatus('guru', 'aktif'),
+                'guruPending' => $perRoleStatus('guru', 'pending'),
+                'siswaAktif' => $perRoleStatus('siswa', 'aktif'),
+                'nonaktif' => (int) $rekap->where('status', 'nonaktif')->sum('total'),
                 'kelas' => Kelas::count(),
             ],
             'kelasList' => Kelas::orderBy('nama_kelas')->get(),

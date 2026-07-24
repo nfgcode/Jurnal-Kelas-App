@@ -9,7 +9,7 @@
         title="Rekap Presensi"
         :sub="number_format($total, 0, ',', '.') . ' kehadiran tercatat · rata-rata ' . round($rekap['hadir'] / $pembagi * 100) . '% hadir'">
         <x-periode-filter :periode="$periode" />
-        <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'excel']) }}">Ekspor Excel</a>
+        <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'csv']) }}">Ekspor CSV</a>
     </x-page-head>
 
     {{-- Each status tile drills into the students behind it, honouring the

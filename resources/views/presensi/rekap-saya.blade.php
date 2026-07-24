@@ -12,7 +12,7 @@
         title="Rekap Kehadiran Saya"
         :sub="collect([$user->name, $user->kelas?->nama_kelas, number_format(array_sum($rekap), 0, ',', '.') . ' pertemuan tercatat'])->filter()->join(' · ')">
         <span class="select-hifi" style="width: 170px">Semester Gasal</span>
-        <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'pdf']) }}">Ekspor PDF</a>
+        {{-- Exporting a recap is an admin job; a student only reads their own. --}}
     </x-page-head>
 
     <div class="grid-row grid-row--4">

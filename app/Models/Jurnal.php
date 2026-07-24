@@ -53,6 +53,15 @@ class Jurnal extends Model
     }
 
     /**
+     * Journals belonging to one class, whoever taught the lesson — the base the
+     * class dashboard, recap, and wali-kelas screens all draw from.
+     */
+    public function scopeUntukKelas($query, int $kelasId)
+    {
+        return $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelasId));
+    }
+
+    /**
      * The human search every journal list shares: what was taught (materi,
      * tugas, kegiatan) and whose lesson it was (teacher, class, subject).
      */

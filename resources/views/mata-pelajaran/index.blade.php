@@ -78,8 +78,7 @@
                     @forelse ($mataPelajaran as $mapel)
                         @php
                             $persen = $kelengkapan[$mapel->id] ?? 0;
-                            $pengampu = $mapel->jadwals->pluck('guru.name')->filter()->unique();
-                            $kelasDiajar = $mapel->jadwals->pluck('kelas.nama_kelas')->filter()->unique();
+                            $info = $ringkasan[$mapel->id] ?? null;
                         @endphp
                         <tr>
                             <td class="is-strong">
@@ -89,8 +88,8 @@
                             </td>
                             <td><x-chip :tone="$kelompokTone[$mapel->kelompok] ?? 'neutral'" :label="$mapel->kelompokLabel()" /></td>
                             <td class="is-muted">{{ $mapel->jp_per_minggu }} JP</td>
-                            <td>{{ $pengampu->isEmpty() ? 'Belum ditetapkan' : $pengampu->first() }}</td>
-                            <td class="is-muted">{{ $kelasDiajar->count() }} kelas</td>
+                            <td>{{ $info?->guru_nama ?? 'Belum ditetapkan' }}</td>
+                            <td class="is-muted">{{ $info->kelas_count ?? 0 }} kelas</td>
                             <td>
                                 <span class="meter-cell">
                                     <x-meter :percent="$persen" />
@@ -98,7 +97,7 @@
                                 </span>
                             </td>
                             <td class="is-num">
-                                @if ($pengampu->isEmpty())
+                                @if (! $info)
                                     <x-chip tone="yellow" label="Perlu Guru" />
                                 @else
                                     <x-chip tone="green" label="Aktif" />

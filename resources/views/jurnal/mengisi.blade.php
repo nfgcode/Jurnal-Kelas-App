@@ -7,7 +7,7 @@
         $ditandai = array_sum($presensi);
         $aksi = $jurnal ? route('jurnal.update', $jurnal) : route('jurnal.store');
         $pilihan = old('kehadiran_guru', $jurnal
-            ? ($jurnal->kehadiran_guru_status === 'hadir' ? 'hadir' : ($jurnal->kehadiran_guru_alasan ?? 'alpa'))
+            ? ($jurnal->kehadiran_guru_status === 'hadir' ? 'hadir' : ($jurnal->kehadiran_guru_ada_tugas ? 'ada_tugas' : 'tanpa_tugas'))
             : 'hadir');
     @endphp
 
@@ -73,12 +73,14 @@
                               placeholder="Kosongkan bila tidak ada tugas.">{{ old('tugas', $jurnal?->tugas) }}</textarea>
                 </x-field>
 
-                {{-- A student reports the reason a teacher was away, not whether
-                     work was left behind — that is the teacher's own account. --}}
                 <x-field label="Kehadiran Guru" name="kehadiran_guru" required
                          hint="Tandai kehadiran guru yang mengajar jam ini.">
-                    <div class="form-grid form-grid--4">
-                        @foreach (['hadir' => 'Hadir', 'sakit' => 'Sakit', 'izin' => 'Izin', 'alpa' => 'Alpa'] as $nilai => $label)
+                    <div class="form-grid form-grid--3">
+                        @foreach ([
+                            'hadir' => 'Hadir',
+                            'ada_tugas' => 'Tidak Hadir – Ada Tugas',
+                            'tanpa_tugas' => 'Tidak Hadir – Tidak Ada Tugas',
+                        ] as $nilai => $label)
                             <label class="radio-card">
                                 <input type="radio" name="kehadiran_guru" value="{{ $nilai }}" @checked($pilihan === $nilai)>
                                 <span class="radio-card__dot"></span>{{ $label }}
@@ -170,8 +172,8 @@
             <x-card title="Kehadiran Guru Bulan Ini" :meta="$kelas?->nama_kelas">
                 @foreach ([
                     ['Hadir', $rekapKehadiran['hadir'], 'var(--green-200)'],
-                    ['Ada Tugas', $rekapKehadiran['ada_tugas'], 'var(--yellow-200)'],
-                    ['Tanpa Tugas', $rekapKehadiran['tanpa_tugas'], 'var(--red-100)'],
+                    ['Tidak Hadir – Ada Tugas', $rekapKehadiran['ada_tugas'], 'var(--yellow-200)'],
+                    ['Tidak Hadir – Tanpa Tugas', $rekapKehadiran['tanpa_tugas'], 'var(--red-100)'],
                 ] as [$label, $nilai, $warna])
                     <div class="d-flex align-items-center justify-content-between mb-2" style="font-size: 11.5px">
                         <span class="legend__item"><span class="legend__dot" style="background: {{ $warna }}"></span>{{ $label }}</span>
