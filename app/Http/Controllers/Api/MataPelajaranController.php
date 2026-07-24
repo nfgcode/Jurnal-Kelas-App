@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\MataPelajaranRequest;
+use App\Http\Requests\MataPelajaranRequest;
 use App\Http\Resources\MataPelajaranResource;
 use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
@@ -20,9 +20,7 @@ class MataPelajaranController extends Controller
         $mapel = MataPelajaran::query()
             ->withCount('jadwals')
             ->when($filters['kelompok'] ?? null, fn ($q, $kelompok) => $q->where('kelompok', $kelompok))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
-                ->where('nama', 'like', "%{$cari}%")
-                ->orWhere('kode', 'like', "%{$cari}%")))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->orderBy('nama')
             ->paginate(20);
 

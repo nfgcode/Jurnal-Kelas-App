@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\MataPelajaranRequest;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\User;
@@ -25,10 +26,7 @@ class MataPelajaranController extends Controller
             ->withCount('jadwals')
             ->with(['jadwals.guru', 'jadwals.kelas'])
             ->when($filters['kelompok'] ?? null, fn ($query, $kelompok) => $query->where('kelompok', $kelompok))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(fn ($inner) => $inner
-                ->where('nama', 'like', "%{$q}%")
-                ->orWhere('kode', 'like', "%{$q}%")
-                ->orWhere('deskripsi', 'like', "%{$q}%")))
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
             ->orderByDesc('jp_per_minggu')
             ->orderBy('nama')
             ->paginate(18)
@@ -65,17 +63,9 @@ class MataPelajaranController extends Controller
     /**
      * Store a newly created mata pelajaran in storage.
      */
-    public function store(Request $request)
+    public function store(MataPelajaranRequest $request)
     {
-        $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'kode' => 'required|string|max:20|unique:mata_pelajaran,kode',
-            'kelompok' => 'required|in:wajib,peminatan,muatan_lokal,kejuruan',
-            'jp_per_minggu' => 'required|integer|min:1|max:12',
-            'deskripsi' => 'nullable|string',
-        ]);
-
-        MataPelajaran::create($validated);
+        MataPelajaran::create($request->validated());
 
         return redirect()->route('mata-pelajaran.index')
             ->with('success', 'Mata pelajaran berhasil ditambahkan.');
@@ -102,17 +92,9 @@ class MataPelajaranController extends Controller
     /**
      * Update the specified mata pelajaran in storage.
      */
-    public function update(Request $request, MataPelajaran $mataPelajaran)
+    public function update(MataPelajaranRequest $request, MataPelajaran $mataPelajaran)
     {
-        $validated = $request->validate([
-            'nama' => 'required|string|max:255',
-            'kode' => 'required|string|max:20|unique:mata_pelajaran,kode,' . $mataPelajaran->id,
-            'kelompok' => 'required|in:wajib,peminatan,muatan_lokal,kejuruan',
-            'jp_per_minggu' => 'required|integer|min:1|max:12',
-            'deskripsi' => 'nullable|string',
-        ]);
-
-        $mataPelajaran->update($validated);
+        $mataPelajaran->update($request->validated());
 
         return redirect()->route('mata-pelajaran.index')
             ->with('success', 'Mata pelajaran berhasil diperbarui.');

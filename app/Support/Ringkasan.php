@@ -8,6 +8,7 @@ use App\Models\Presensi;
 use Carbon\Carbon;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The handful of derived figures the dashboard and recap screens keep asking
@@ -133,6 +134,44 @@ class Ringkasan
             'izin' => (int) ($rows['izin'] ?? 0),
             'alpa' => (int) ($rows['alpa'] ?? 0),
         ];
+    }
+
+    /**
+     * A student's attendance percentage — the fn_persentase_kehadiran_siswa
+     * stored function on MySQL, the equivalent aggregate elsewhere.
+     */
+    public static function persentaseKehadiranSiswa(int $siswaId): float
+    {
+        if (DbDriver::mysql()) {
+            return (float) DB::selectOne('SELECT fn_persentase_kehadiran_siswa(?) AS p', [$siswaId])->p;
+        }
+
+        $r = Presensi::where('siswa_id', $siswaId)
+            ->selectRaw("COUNT(*) t, SUM(status = 'hadir') h")
+            ->first();
+
+        return $r->t ? round($r->h / $r->t * 100, 2) : 0.0;
+    }
+
+    /**
+     * A class's attendance percentage across every meeting — the
+     * fn_persentase_kehadiran_kelas stored function on MySQL, the equivalent
+     * aggregate elsewhere.
+     */
+    public static function persentaseKehadiranKelas(int $kelasId): float
+    {
+        if (DbDriver::mysql()) {
+            return (float) DB::selectOne('SELECT fn_persentase_kehadiran_kelas(?) AS p', [$kelasId])->p;
+        }
+
+        $r = Presensi::query()
+            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
+            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+            ->where('jadwal.kelas_id', $kelasId)
+            ->selectRaw("COUNT(*) t, SUM(presensi.status = 'hadir') h")
+            ->first();
+
+        return $r->t ? round($r->h / $r->t * 100, 2) : 0.0;
     }
 
     /**

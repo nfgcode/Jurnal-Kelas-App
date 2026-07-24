@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\KelasRequest;
 use App\Models\Kelas;
 use App\Models\User;
 use App\Support\Ringkasan;
@@ -26,10 +27,7 @@ class KelasController extends Controller
             ->withCount(['siswa', 'jadwals'])
             ->when($filters['tingkat'] ?? null, fn ($query, $tingkat) => $query->where('tingkat', $tingkat))
             ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan', $jurusan))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(
-                fn ($inner) => $inner->where('nama_kelas', 'like', "%{$q}%")
-                    ->orWhereHas('waliKelas', fn ($w) => $w->where('name', 'like', "%{$q}%"))
-            ))
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
             // CASE rather than MySQL's FIELD(): the test suite runs on SQLite.
             ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
             ->orderBy('jurusan')
@@ -70,19 +68,9 @@ class KelasController extends Controller
     /**
      * Store a newly created kelas in storage.
      */
-    public function store(Request $request)
+    public function store(KelasRequest $request)
     {
-        $validated = $request->validate([
-            'nama_kelas' => 'required|string|max:255',
-            'tingkat' => 'required|in:X,XI,XII',
-            'jurusan' => 'nullable|string|max:255',
-            'ruang' => 'nullable|string|max:50',
-            'kapasitas' => 'required|integer|min:1|max:60',
-            'tahun_ajaran' => 'required|string|max:9',
-            'wali_kelas_id' => 'nullable|exists:users,id',
-        ]);
-
-        Kelas::create($validated);
+        Kelas::create($request->validated());
 
         return redirect()->route('kelas.index')
             ->with('success', 'Kelas berhasil ditambahkan.');
@@ -111,19 +99,9 @@ class KelasController extends Controller
     /**
      * Update the specified kelas in storage.
      */
-    public function update(Request $request, Kelas $kela)
+    public function update(KelasRequest $request, Kelas $kela)
     {
-        $validated = $request->validate([
-            'nama_kelas' => 'required|string|max:255',
-            'tingkat' => 'required|in:X,XI,XII',
-            'jurusan' => 'nullable|string|max:255',
-            'ruang' => 'nullable|string|max:50',
-            'kapasitas' => 'required|integer|min:1|max:60',
-            'tahun_ajaran' => 'required|string|max:9',
-            'wali_kelas_id' => 'nullable|exists:users,id',
-        ]);
-
-        $kela->update($validated);
+        $kela->update($request->validated());
 
         return redirect()->route('kelas.index')
             ->with('success', 'Kelas berhasil diperbarui.');

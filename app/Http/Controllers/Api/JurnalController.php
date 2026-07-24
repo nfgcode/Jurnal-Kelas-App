@@ -9,7 +9,6 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\JurnalAudit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class JurnalController extends Controller
@@ -38,16 +37,7 @@ class JurnalController extends Controller
             ])
             ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
             ->when($user->isSiswa(), fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $user->kelas_id)))
-            ->when($filters['q'] ?? null, function ($query, $q) {
-                // Natural-language full-text search on MySQL; LIKE fallback (SQLite/tests).
-                if (DB::connection()->getDriverName() === 'mysql') {
-                    $query->whereRaw('MATCH(materi, kegiatan) AGAINST (? IN NATURAL LANGUAGE MODE)', [$q]);
-                } else {
-                    $query->where(fn ($inner) => $inner
-                        ->where('materi', 'like', "%{$q}%")
-                        ->orWhere('kegiatan', 'like', "%{$q}%"));
-                }
-            })
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cariTeks($q))
             ->orderBy($sort, $dir)
             ->orderBy('id', 'desc')
             ->paginate(15)

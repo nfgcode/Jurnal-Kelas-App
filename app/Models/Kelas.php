@@ -34,6 +34,16 @@ class Kelas extends Model
     ];
 
     /**
+     * Free-text search across the class list: class name or homeroom teacher.
+     */
+    public function scopeCari($query, string $q)
+    {
+        return $query->where(fn ($inner) => $inner
+            ->where('nama_kelas', 'like', "%{$q}%")
+            ->orWhereHas('waliKelas', fn ($w) => $w->where('name', 'like', "%{$q}%")));
+    }
+
+    /**
      * Get the wali kelas (homeroom teacher) for this class.
      */
     public function waliKelas(): BelongsTo

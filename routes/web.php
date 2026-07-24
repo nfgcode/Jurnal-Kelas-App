@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\JurnalController;
 use App\Http\Controllers\KelasController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\WaliKelasController;
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Public landing page (preview figures computed live from the DB)
-Route::get('/', [\App\Http\Controllers\LandingController::class, 'index'])->name('landing');
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 
 // Authentication routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');

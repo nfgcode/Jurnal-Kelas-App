@@ -31,6 +31,17 @@ class MataPelajaran extends Model
     ];
 
     /**
+     * Free-text search across the subject list: name, code, or description.
+     */
+    public function scopeCari($query, string $q)
+    {
+        return $query->where(fn ($inner) => $inner
+            ->where('nama', 'like', "%{$q}%")
+            ->orWhere('kode', 'like', "%{$q}%")
+            ->orWhere('deskripsi', 'like', "%{$q}%"));
+    }
+
+    /**
      * Human label for the curriculum group, as shown on the chip column.
      */
     public function kelompokLabel(): string

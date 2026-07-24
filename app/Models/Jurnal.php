@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DbDriver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,37 @@ class Jurnal extends Model
             'tanggal' => 'date',
             'kehadiran_guru_ada_tugas' => 'boolean',
         ];
+    }
+
+    /**
+     * The human search every journal list shares: what was taught (materi,
+     * tugas, kegiatan) and whose lesson it was (teacher, class, subject).
+     */
+    public function scopeCari($query, string $q)
+    {
+        return $query->where(fn ($inner) => $inner
+            ->where('materi', 'like', "%{$q}%")
+            ->orWhere('tugas', 'like', "%{$q}%")
+            ->orWhere('kegiatan', 'like', "%{$q}%")
+            ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$q}%"))
+            ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
+            ->orWhereHas('jadwal.mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$q}%")));
+    }
+
+    /**
+     * Natural-language full-text search over the journal body (the API's `q`),
+     * backed by the ft_jurnal FULLTEXT index on MySQL with a LIKE fallback for
+     * the SQLite test suite.
+     */
+    public function scopeCariTeks($query, string $q)
+    {
+        if (DbDriver::mysql()) {
+            return $query->whereRaw('MATCH(materi, kegiatan) AGAINST (? IN NATURAL LANGUAGE MODE)', [$q]);
+        }
+
+        return $query->where(fn ($inner) => $inner
+            ->where('materi', 'like', "%{$q}%")
+            ->orWhere('kegiatan', 'like', "%{$q}%"));
     }
 
     /**

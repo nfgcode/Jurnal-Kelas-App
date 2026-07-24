@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Requests\Api;
+namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Rules mirror the web KelasController; admin gate is enforced by the
- * `role:admin` route middleware, so authorize() defers to it.
+ * One set of class rules shared by the web KelasController and the API.
+ * Authorization is enforced by route middleware, so authorize() defers to it.
  */
 class KelasRequest extends FormRequest
 {

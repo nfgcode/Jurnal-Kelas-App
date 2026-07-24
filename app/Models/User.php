@@ -108,6 +108,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Free-text search across the people list: name, email, NIP/NIS, and class
+     * name — a student's own class or a class a teacher is timetabled in.
+     */
+    public function scopeCari($query, string $q)
+    {
+        return $query->where(function ($inner) use ($q) {
+            $inner->where('name', 'like', "%{$q}%")
+                ->orWhere('email', 'like', "%{$q}%")
+                ->orWhere('nip', 'like', "%{$q}%")
+                ->orWhere('nis', 'like', "%{$q}%")
+                ->orWhereHas('kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
+                ->orWhereHas('jadwals.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"));
+        });
+    }
+
+    /**
      * Get the kelas (class) that this student belongs to.
      */
     public function kelas(): BelongsTo

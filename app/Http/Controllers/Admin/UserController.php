@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UserRequest;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\User;
@@ -39,17 +40,7 @@ class UserController extends Controller
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($query, $id) => $query->where(fn ($w) => $w
                 ->whereHas('jadwals', fn ($j) => $j->where('mata_pelajaran_id', $id))
                 ->orWhereHas('kelas.jadwals', fn ($j) => $j->where('mata_pelajaran_id', $id))))
-            ->when($filters['q'] ?? null, function ($query, $q) {
-                $query->where(function ($inner) use ($q) {
-                    $inner->where('name', 'like', "%{$q}%")
-                        ->orWhere('email', 'like', "%{$q}%")
-                        ->orWhere('nip', 'like', "%{$q}%")
-                        ->orWhere('nis', 'like', "%{$q}%")
-                        // A student's own class, or a class a teacher is timetabled in.
-                        ->orWhereHas('kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
-                        ->orWhereHas('jadwals.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"));
-                });
-            })
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
             ->when(
                 $filters['sort'] ?? null,
                 fn ($query, $sort) => $this->terapkanUrutan($query, $sort, ($filters['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc'),
@@ -95,13 +86,12 @@ class UserController extends Controller
     /**
      * Store a newly created user in storage.
      */
-    public function store(Request $request)
+    public function store(UserRequest $request)
     {
-        $validated = $request->validate($this->rules());
+        $data = $request->normalizedData();
+        $data['password'] = Hash::make($data['password']);
 
-        $validated['password'] = Hash::make($validated['password']);
-
-        User::create($this->normalize($validated));
+        User::create($data);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Pengguna berhasil ditambahkan.');
@@ -146,25 +136,25 @@ class UserController extends Controller
     /**
      * Update the specified user in storage.
      */
-    public function update(Request $request, User $user)
+    public function update(UserRequest $request, User $user)
     {
-        $validated = $request->validate($this->rules($user));
+        $data = $request->normalizedData();
 
         // Only change the password when a new one was actually supplied.
-        if (filled($validated['password'] ?? null)) {
-            $validated['password'] = Hash::make($validated['password']);
+        if (filled($data['password'] ?? null)) {
+            $data['password'] = Hash::make($data['password']);
         } else {
-            unset($validated['password']);
+            unset($data['password']);
         }
 
         // Don't let an admin demote themselves and lose access mid-session.
-        if ($user->is($request->user()) && $validated['role'] !== 'admin') {
+        if ($user->is($request->user()) && $data['role'] !== 'admin') {
             return back()
                 ->withInput()
                 ->withErrors(['role' => 'Anda tidak dapat mengubah peran akun Anda sendiri.']);
         }
 
-        $user->update($this->normalize($validated));
+        $user->update($data);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Data pengguna berhasil diperbarui.');
@@ -203,46 +193,4 @@ class UserController extends Controller
         };
     }
 
-    /**
-     * Validation rules shared by store and update.
-     *
-     * On update the password becomes optional and the email uniqueness
-     * check ignores the record being edited.
-     */
-    private function rules(?User $user = null): array
-    {
-        return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user)],
-            'password' => [$user ? 'nullable' : 'required', 'string', 'min:8'],
-            'role' => ['required', Rule::in(['admin', 'guru', 'siswa'])],
-            'status' => ['required', Rule::in(['aktif', 'nonaktif', 'pending'])],
-            'is_ketua_kelas' => ['nullable', 'boolean'],
-            // nip and nis double as login identifiers, so they must be unique.
-            'nip' => ['nullable', 'required_if:role,guru', 'string', 'max:255', Rule::unique('users')->ignore($user)],
-            'nis' => ['nullable', 'required_if:role,siswa', 'string', 'max:255', Rule::unique('users')->ignore($user)],
-            'kelas_id' => ['nullable', 'required_if:role,siswa', 'exists:kelas,id'],
-        ];
-    }
-
-    /**
-     * Clear role-specific fields that don't apply to the chosen role,
-     * so a guru never keeps a stale nis and vice versa.
-     */
-    private function normalize(array $data): array
-    {
-        if ($data['role'] !== 'guru') {
-            $data['nip'] = null;
-        }
-
-        if ($data['role'] !== 'siswa') {
-            $data['nis'] = null;
-            $data['kelas_id'] = null;
-        }
-
-        // Only a student can chair a class, and only one per class does.
-        $data['is_ketua_kelas'] = $data['role'] === 'siswa' && ! empty($data['is_ketua_kelas']);
-
-        return $data;
-    }
 }

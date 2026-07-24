@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\JurnalResource;
 use App\Models\Jurnal;
+use App\Support\DbDriver;
 use App\Support\Periode;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
@@ -103,7 +104,7 @@ class LaporanController extends Controller
      */
     public function rekapKelas()
     {
-        if (DB::connection()->getDriverName() === 'mysql') {
+        if (DbDriver::mysql()) {
             $rows = DB::table('v_rekap_presensi_kelas')->orderBy('nama_kelas')->get();
         } else {
             $rows = DB::table('presensi as p')
@@ -137,10 +138,6 @@ class LaporanController extends Controller
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? Jurnal::ekspresiTerlambat() : 'NOT (' . Jurnal::ekspresiTerlambat() . ')'
             ))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(
-                fn ($inner) => $inner->where('materi', 'like', "%{$q}%")
-                    ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$q}%"))
-                    ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
-            ));
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
     }
 }

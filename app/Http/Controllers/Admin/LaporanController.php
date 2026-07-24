@@ -120,11 +120,7 @@ class LaporanController extends Controller
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? $this->ekspresiTerlambat() : 'NOT (' . $this->ekspresiTerlambat() . ')'
             ))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(
-                fn ($inner) => $inner->where('materi', 'like', "%{$q}%")
-                    ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$q}%"))
-                    ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
-            ));
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
     }
 
     /**

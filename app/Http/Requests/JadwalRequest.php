@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Api;
+namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Rules mirror the web JadwalController.
+ * One set of timetable rules shared by the web JadwalController and the API.
  */
 class JadwalRequest extends FormRequest
 {

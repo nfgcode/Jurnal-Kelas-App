@@ -36,13 +36,7 @@ class JurnalController extends Controller
             ])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
-                ->where('materi', 'like', "%{$cari}%")
-                ->orWhere('tugas', 'like', "%{$cari}%")
-                ->orWhere('kegiatan', 'like', "%{$cari}%")
-                ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$cari}%"))
-                ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$cari}%"))
-                ->orWhereHas('jadwal.mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$cari}%"))))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->latest('tanggal')
             ->latest('id');
 

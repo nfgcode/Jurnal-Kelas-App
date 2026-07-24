@@ -8,8 +8,8 @@ use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Models\User;
 use App\Support\Ringkasan;
+use App\Support\SimpanPresensi;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class PresensiController extends Controller
 {
@@ -86,11 +86,7 @@ class PresensiController extends Controller
             ])
             ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
-                ->where('materi', 'like', "%{$cari}%")
-                ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$cari}%"))
-                ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$cari}%"))
-                ->orWhereHas('jadwal.mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$cari}%"))))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->latest('tanggal')
             ->latest('id')
             ->paginate(18)
@@ -142,24 +138,7 @@ class PresensiController extends Controller
             'presensi.*.keterangan' => 'nullable|string',
         ]);
 
-        // Replace the whole set atomically so a re-submitted form is idempotent.
-        // Locking the journal row serialises two people marking the same roster
-        // at once; the unique index on (jurnal_id, siswa_id) is the final guard.
-        DB::transaction(function () use ($validated) {
-            Jurnal::whereKey($validated['jurnal_id'])->lockForUpdate()->first();
-
-            Presensi::where('jurnal_id', $validated['jurnal_id'])->delete();
-
-            $now = now();
-            Presensi::insert(array_map(fn ($data) => [
-                'jurnal_id' => $validated['jurnal_id'],
-                'siswa_id' => $data['siswa_id'],
-                'status' => $data['status'],
-                'keterangan' => $data['keterangan'] ?? null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ], $validated['presensi']));
-        });
+        SimpanPresensi::simpan(Jurnal::findOrFail($validated['jurnal_id']), $validated['presensi']);
 
         return redirect()->route('presensi.show', $validated['jurnal_id'])
             ->with('success', 'Presensi berhasil disimpan.');

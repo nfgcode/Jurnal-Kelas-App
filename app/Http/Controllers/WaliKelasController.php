@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\Presensi;
+use App\Support\DbDriver;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +76,7 @@ class WaliKelasController extends Controller
             return [];
         }
 
-        if (DB::connection()->getDriverName() === 'mysql') {
+        if (DbDriver::mysql()) {
             return DB::table('users')
                 ->whereIn('id', $siswaIds)
                 ->selectRaw('id, fn_persentase_kehadiran_siswa(id) AS p')

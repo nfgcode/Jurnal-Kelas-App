@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\JadwalRequest;
 use App\Models\Jadwal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
@@ -105,21 +106,9 @@ class JadwalController extends Controller
     /**
      * Store a newly created jadwal in storage.
      */
-    public function store(Request $request)
+    public function store(JadwalRequest $request)
     {
-        $validated = $request->validate([
-            'kelas_id' => 'required|exists:kelas,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
-            'guru_id' => 'required|exists:users,id',
-            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
-            'jam_ke_mulai' => 'required|integer|min:1|max:12',
-            'jam_ke_selesai' => 'required|integer|min:1|max:12|gte:jam_ke_mulai',
-            'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
-            'ruang' => 'nullable|string|max:50',
-        ]);
-
-        Jadwal::create($validated);
+        Jadwal::create($request->validated());
 
         return redirect()->route('jadwal.index')
             ->with('success', 'Jadwal berhasil ditambahkan.');
@@ -150,21 +139,9 @@ class JadwalController extends Controller
     /**
      * Update the specified jadwal in storage.
      */
-    public function update(Request $request, Jadwal $jadwal)
+    public function update(JadwalRequest $request, Jadwal $jadwal)
     {
-        $validated = $request->validate([
-            'kelas_id' => 'required|exists:kelas,id',
-            'mata_pelajaran_id' => 'required|exists:mata_pelajaran,id',
-            'guru_id' => 'required|exists:users,id',
-            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
-            'jam_ke_mulai' => 'required|integer|min:1|max:12',
-            'jam_ke_selesai' => 'required|integer|min:1|max:12|gte:jam_ke_mulai',
-            'jam_mulai' => 'required|date_format:H:i',
-            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
-            'ruang' => 'nullable|string|max:50',
-        ]);
-
-        $jadwal->update($validated);
+        $jadwal->update($request->validated());
 
         return redirect()->route('jadwal.index')
             ->with('success', 'Jadwal berhasil diperbarui.');

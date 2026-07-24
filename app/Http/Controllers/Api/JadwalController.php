@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\JadwalRequest;
+use App\Http\Requests\JadwalRequest;
 use App\Http\Resources\JadwalResource;
 use App\Models\Jadwal;
 use Illuminate\Http\Request;

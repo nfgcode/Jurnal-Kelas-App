@@ -1,0 +1,671 @@
+{
+  "info": {
+    "name": "Jurnal Kelas API",
+    "description": "Token-authenticated JSON API for the Jurnal Kelas app.\n\nHOW TO USE:\n1. Run an 'Auth > Login' request once. A test script saves the returned token into the {{token}} collection variable automatically.\n2. Every other request inherits Bearer {{token}} — just send them.\n3. Path ids use variables ({{kelas_id}}, {{jurnal_id}}, {{user_id}}, ...) you can change under the collection Variables tab.\n\nBase URL defaults to http://localhost:8888/api.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-login as admin if no token is set yet, so no request ever 401s.",
+          "// To browse as another role, run an Auth > Login request explicitly.",
+          "if (!pm.collectionVariables.get('token')) {",
+          "    pm.sendRequest({",
+          "        url: pm.variables.replaceIn('{{base_url}}/login'),",
+          "        method: 'POST',",
+          "        header: { 'Accept': 'application/json' },",
+          "        body: { mode: 'urlencoded', urlencoded: [",
+          "            { key: 'user', value: 'admin@jurnalkelas.app' },",
+          "            { key: 'password', value: 'password' },",
+          "            { key: 'role', value: 'admin' }",
+          "        ] }",
+          "    }, function (err, res) {",
+          "        if (!err && res.code === 200) { pm.collectionVariables.set('token', res.json().token); }",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8888/api" },
+    { "key": "token", "value": "" },
+    { "key": "kelas_id", "value": "1" },
+    { "key": "mata_pelajaran_id", "value": "1" },
+    { "key": "jadwal_id", "value": "1" },
+    { "key": "jurnal_id", "value": "1" },
+    { "key": "user_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('token', pm.response.json().token);",
+                  "    console.log('Token saved to {{token}}');",
+                  "} else {",
+                  "    console.log('Login failed:', pm.response.code, pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "user", "value": "admin@jurnalkelas.app" },
+                { "key": "password", "value": "password" },
+                { "key": "role", "value": "admin" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Login (guru)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "user", "value": "budi.santoso@jurnalkelas.app" },
+                { "key": "password", "value": "password" },
+                { "key": "role", "value": "guru" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Login (siswa)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "user", "value": "siswa20261001@jurnalkelas.app", "description": "NIS/NIP or email" },
+                { "key": "password", "value": "password" },
+                { "key": "role", "value": "siswa" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard & Statistik",
+      "item": [
+        {
+          "name": "Dashboard (role-aware)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/dashboard", "host": ["{{base_url}}"], "path": ["dashboard"] }
+          }
+        },
+        {
+          "name": "Statistik kehadiran (stored functions)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/statistik/kehadiran?siswa_id=&kelas_id=",
+              "host": ["{{base_url}}"],
+              "path": ["statistik", "kehadiran"],
+              "query": [
+                { "key": "siswa_id", "value": "", "disabled": true, "description": "admin/guru only; siswa always sees self" },
+                { "key": "kelas_id", "value": "", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Kelas",
+      "item": [
+        {
+          "name": "List kelas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/kelas?tingkat=&jurusan=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["kelas"],
+              "query": [
+                { "key": "tingkat", "value": "", "disabled": true, "description": "X | XI | XII" },
+                { "key": "jurusan", "value": "", "disabled": true },
+                { "key": "q", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show kelas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/kelas/{{kelas_id}}", "host": ["{{base_url}}"], "path": ["kelas", "{{kelas_id}}"] }
+          }
+        },
+        {
+          "name": "Create kelas (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "nama_kelas", "value": "XII RPL 3" },
+                { "key": "tingkat", "value": "XII" },
+                { "key": "jurusan", "value": "RPL" },
+                { "key": "ruang", "value": "R-210" },
+                { "key": "kapasitas", "value": "36" },
+                { "key": "tahun_ajaran", "value": "2026/2027" },
+                { "key": "wali_kelas_id", "value": "", "description": "optional; a guru user id" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/kelas", "host": ["{{base_url}}"], "path": ["kelas"] }
+          }
+        },
+        {
+          "name": "Update kelas (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "nama_kelas", "value": "XII RPL 3" },
+                { "key": "tingkat", "value": "XII" },
+                { "key": "jurusan", "value": "RPL" },
+                { "key": "ruang", "value": "R-211" },
+                { "key": "kapasitas", "value": "34" },
+                { "key": "tahun_ajaran", "value": "2026/2027" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/kelas/{{kelas_id}}", "host": ["{{base_url}}"], "path": ["kelas", "{{kelas_id}}"] }
+          }
+        },
+        {
+          "name": "Delete kelas (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/kelas/{{kelas_id}}", "host": ["{{base_url}}"], "path": ["kelas", "{{kelas_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mata Pelajaran",
+      "item": [
+        {
+          "name": "List mata pelajaran",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/mata-pelajaran?kelompok=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["mata-pelajaran"],
+              "query": [
+                { "key": "kelompok", "value": "", "disabled": true, "description": "wajib | peminatan | muatan_lokal | kejuruan" },
+                { "key": "q", "value": "", "disabled": true, "description": "name / kode / description" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show mata pelajaran",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/mata-pelajaran/{{mata_pelajaran_id}}", "host": ["{{base_url}}"], "path": ["mata-pelajaran", "{{mata_pelajaran_id}}"] }
+          }
+        },
+        {
+          "name": "Create mata pelajaran (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "nama", "value": "Basis Data" },
+                { "key": "kode", "value": "BASDAT" },
+                { "key": "kelompok", "value": "kejuruan" },
+                { "key": "jp_per_minggu", "value": "4" },
+                { "key": "deskripsi", "value": "Perancangan dan pengelolaan basis data" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/mata-pelajaran", "host": ["{{base_url}}"], "path": ["mata-pelajaran"] }
+          }
+        },
+        {
+          "name": "Update mata pelajaran (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "nama", "value": "Basis Data" },
+                { "key": "kode", "value": "BASDAT" },
+                { "key": "kelompok", "value": "kejuruan" },
+                { "key": "jp_per_minggu", "value": "6" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/mata-pelajaran/{{mata_pelajaran_id}}", "host": ["{{base_url}}"], "path": ["mata-pelajaran", "{{mata_pelajaran_id}}"] }
+          }
+        },
+        {
+          "name": "Delete mata pelajaran (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/mata-pelajaran/{{mata_pelajaran_id}}", "host": ["{{base_url}}"], "path": ["mata-pelajaran", "{{mata_pelajaran_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jadwal",
+      "item": [
+        {
+          "name": "List jadwal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/jadwal?kelas_id=&guru_id=&hari=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["jadwal"],
+              "query": [
+                { "key": "kelas_id", "value": "", "disabled": true },
+                { "key": "guru_id", "value": "", "disabled": true },
+                { "key": "hari", "value": "", "disabled": true, "description": "Senin..Sabtu" },
+                { "key": "q", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show jadwal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jadwal/{{jadwal_id}}", "host": ["{{base_url}}"], "path": ["jadwal", "{{jadwal_id}}"] }
+          }
+        },
+        {
+          "name": "Create jadwal (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "kelas_id", "value": "1" },
+                { "key": "mata_pelajaran_id", "value": "1" },
+                { "key": "guru_id", "value": "2" },
+                { "key": "hari", "value": "Senin" },
+                { "key": "jam_ke_mulai", "value": "1" },
+                { "key": "jam_ke_selesai", "value": "2" },
+                { "key": "jam_mulai", "value": "07:00" },
+                { "key": "jam_selesai", "value": "08:30" },
+                { "key": "ruang", "value": "R-101" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/jadwal", "host": ["{{base_url}}"], "path": ["jadwal"] }
+          }
+        },
+        {
+          "name": "Update jadwal (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "kelas_id", "value": "1" },
+                { "key": "mata_pelajaran_id", "value": "1" },
+                { "key": "guru_id", "value": "2" },
+                { "key": "hari", "value": "Selasa" },
+                { "key": "jam_ke_mulai", "value": "3" },
+                { "key": "jam_ke_selesai", "value": "4" },
+                { "key": "jam_mulai", "value": "09:00" },
+                { "key": "jam_selesai", "value": "10:30" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/jadwal/{{jadwal_id}}", "host": ["{{base_url}}"], "path": ["jadwal", "{{jadwal_id}}"] }
+          }
+        },
+        {
+          "name": "Delete jadwal (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jadwal/{{jadwal_id}}", "host": ["{{base_url}}"], "path": ["jadwal", "{{jadwal_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jurnal",
+      "item": [
+        {
+          "name": "List jurnal (search + sort)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/jurnal?q=&sort=tanggal&dir=desc",
+              "host": ["{{base_url}}"],
+              "path": ["jurnal"],
+              "query": [
+                { "key": "q", "value": "", "disabled": true, "description": "full-text: materi + kegiatan" },
+                { "key": "sort", "value": "tanggal", "disabled": true, "description": "tanggal | id | materi" },
+                { "key": "dir", "value": "desc", "disabled": true, "description": "asc | desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show jurnal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_id}}"] }
+          }
+        },
+        {
+          "name": "Jurnal audit history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_id}}/audit", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_id}}", "audit"] }
+          }
+        },
+        {
+          "name": "Create jurnal (guru/admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "jadwal_id", "value": "1" },
+                { "key": "tanggal", "value": "2026-07-23" },
+                { "key": "materi", "value": "Normalisasi basis data" },
+                { "key": "tugas", "value": "Kerjakan latihan bab 3" },
+                { "key": "kegiatan", "value": "Diskusi kelompok" },
+                { "key": "catatan", "value": "" },
+                { "key": "kehadiran_guru_status", "value": "hadir", "description": "hadir | tidak_hadir" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/jurnal", "host": ["{{base_url}}"], "path": ["jurnal"] }
+          }
+        },
+        {
+          "name": "Update jurnal (owner/admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "jadwal_id", "value": "1" },
+                { "key": "tanggal", "value": "2026-07-23" },
+                { "key": "materi", "value": "Normalisasi basis data (revisi)" },
+                { "key": "kehadiran_guru_status", "value": "hadir" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_id}}"] }
+          }
+        },
+        {
+          "name": "Delete jurnal (owner/admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Presensi",
+      "item": [
+        {
+          "name": "List presensi",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/presensi?jurnal_id=",
+              "host": ["{{base_url}}"],
+              "path": ["presensi"],
+              "query": [{ "key": "jurnal_id", "value": "", "disabled": true }]
+            }
+          }
+        },
+        {
+          "name": "Show roster for a jurnal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/presensi/{{jurnal_id}}", "host": ["{{base_url}}"], "path": ["presensi", "{{jurnal_id}}"] }
+          }
+        },
+        {
+          "name": "Save roster (stored procedure)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "jurnal_id", "value": "{{jurnal_id}}" },
+                { "key": "presensi[0][siswa_id]", "value": "14" },
+                { "key": "presensi[0][status]", "value": "hadir", "description": "hadir | sakit | izin | alpa" },
+                { "key": "presensi[1][siswa_id]", "value": "15" },
+                { "key": "presensi[1][status]", "value": "sakit" },
+                { "key": "presensi[1][keterangan]", "value": "surat dokter" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/presensi", "host": ["{{base_url}}"], "path": ["presensi"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users (admin)",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/users?role=&kelas_id=&status=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "role", "value": "", "disabled": true, "description": "admin | guru | siswa" },
+                { "key": "kelas_id", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true, "description": "aktif | pending | nonaktif" },
+                { "key": "q", "value": "", "disabled": true, "description": "name / email / NIP / NIS" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show user",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+          }
+        },
+        {
+          "name": "Create user (guru)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "name", "value": "Dewi Lestari" },
+                { "key": "email", "value": "dewi.lestari@jurnalkelas.app" },
+                { "key": "password", "value": "password" },
+                { "key": "role", "value": "guru" },
+                { "key": "status", "value": "aktif" },
+                { "key": "nip", "value": "199001012020" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "name", "value": "Dewi Lestari" },
+                { "key": "email", "value": "dewi.lestari@jurnalkelas.app" },
+                { "key": "role", "value": "guru" },
+                { "key": "status", "value": "aktif" },
+                { "key": "nip", "value": "199001012020" },
+                { "key": "password", "value": "", "description": "leave empty to keep current" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+          }
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Laporan (admin)",
+      "item": [
+        {
+          "name": "Laporan jurnal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/laporan/jurnal?kelas_id=&guru_id=&status=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["laporan", "jurnal"],
+              "query": [
+                { "key": "kelas_id", "value": "", "disabled": true },
+                { "key": "guru_id", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true, "description": "terisi | telat" },
+                { "key": "q", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Laporan presensi",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/laporan/presensi?kelas_id=&guru_id=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["laporan", "presensi"],
+              "query": [
+                { "key": "kelas_id", "value": "", "disabled": true },
+                { "key": "guru_id", "value": "", "disabled": true },
+                { "key": "q", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rekap presensi per kelas (view)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/laporan/rekap-kelas", "host": ["{{base_url}}"], "path": ["laporan", "rekap-kelas"] }
+          }
+        }
+      ]
+    }
+  ]
+}

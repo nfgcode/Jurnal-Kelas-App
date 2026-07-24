@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Http\Requests\Api;
+namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Rules mirror the web MataPelajaranController. The kode uniqueness check
- * ignores the record being edited on update (null on store).
+ * One set of subject rules shared by the web MataPelajaranController and the
+ * API. The kode uniqueness check ignores the record being edited on update
+ * (null on store).
  */
 class MataPelajaranRequest extends FormRequest
 {
@@ -21,7 +22,9 @@ class MataPelajaranRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('mataPelajaran')?->id;
+        // The bound model's route parameter is {mata_pelajaran} on the web
+        // resource and {mataPelajaran} on the API one.
+        $id = ($this->route('mataPelajaran') ?? $this->route('mata_pelajaran'))?->id;
 
         return [
             'nama' => 'required|string|max:255',

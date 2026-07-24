@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\KelasRequest;
+use App\Http\Requests\KelasRequest;
 use App\Http\Resources\KelasResource;
 use App\Models\Kelas;
 use Illuminate\Http\Request;
@@ -26,7 +26,7 @@ class KelasController extends Controller
             ->withCount(['siswa', 'jadwals'])
             ->when($filters['tingkat'] ?? null, fn ($q, $tingkat) => $q->where('tingkat', $tingkat))
             ->when($filters['jurusan'] ?? null, fn ($q, $jurusan) => $q->where('jurusan', $jurusan))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where('nama_kelas', 'like', "%{$cari}%"))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
             ->orderBy('jurusan')
             ->orderBy('nama_kelas')

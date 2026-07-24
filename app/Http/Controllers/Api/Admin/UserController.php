@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\UserRequest;
+use App\Http\Requests\UserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -26,11 +26,7 @@ class UserController extends Controller
             ->when($filters['role'] ?? null, fn ($q, $role) => $q->where('role', $role))
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->where('kelas_id', $id))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
-                ->where('name', 'like', "%{$cari}%")
-                ->orWhere('email', 'like', "%{$cari}%")
-                ->orWhere('nip', 'like', "%{$cari}%")
-                ->orWhere('nis', 'like', "%{$cari}%")))
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->orderBy('name')
             ->paginate(18);
 
@@ -44,7 +40,7 @@ class UserController extends Controller
 
     public function store(UserRequest $request)
     {
-        $data = $this->normalize($request->validated());
+        $data = $request->normalizedData();
         $data['password'] = Hash::make($data['password']);
 
         $user = User::create($data);
@@ -54,7 +50,7 @@ class UserController extends Controller
 
     public function update(UserRequest $request, User $user)
     {
-        $data = $this->normalize($request->validated());
+        $data = $request->normalizedData();
 
         // Only change the password when a new one was actually supplied.
         if (filled($data['password'] ?? null)) {
@@ -86,28 +82,5 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'Pengguna berhasil dihapus.']);
-    }
-
-    /**
-     * Clear role-specific fields that don't apply to the chosen role, so a guru
-     * never keeps a stale nis and vice versa. Mirrors the web controller.
-     *
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    private function normalize(array $data): array
-    {
-        if ($data['role'] !== 'guru') {
-            $data['nip'] = null;
-        }
-
-        if ($data['role'] !== 'siswa') {
-            $data['nis'] = null;
-            $data['kelas_id'] = null;
-        }
-
-        $data['is_ketua_kelas'] = $data['role'] === 'siswa' && ! empty($data['is_ketua_kelas']);
-
-        return $data;
     }
 }
