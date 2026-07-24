@@ -29,6 +29,8 @@
 </head>
 <body>
 
+@include('partials.page-loader')
+
 <div class="landing">
     <header class="landing__bar">
         <div class="sidebar__brand p-0">

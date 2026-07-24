@@ -125,4 +125,16 @@ class AuthorizationTest extends TestCase
 
         $this->actingAs($lain)->get("/presensi/create/{$jurnal->id}")->assertForbidden();
     }
+
+    public function test_only_admin_can_export_the_reports(): void
+    {
+        $this->actingAs($this->admin)
+            ->get('/admin/laporan/jurnal?ekspor=xlsx')
+            ->assertOk()
+            ->assertDownload()
+            ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+        $this->actingAs($this->guru)->get('/admin/laporan/presensi?ekspor=xlsx')->assertForbidden();
+        $this->actingAs($this->siswa)->get('/admin/laporan/jurnal?ekspor=xlsx')->assertForbidden();
+    }
 }

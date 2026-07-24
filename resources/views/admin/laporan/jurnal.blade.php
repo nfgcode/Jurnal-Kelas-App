@@ -7,7 +7,7 @@
         title="Rekap Jurnal Mengajar"
         :sub="number_format($statistik['terisi'], 0, ',', '.') . ' jurnal tercatat · ' . $statistik['kelengkapan'] . '% kelengkapan · ' . $periode->label()">
         <x-periode-filter :periode="$periode" />
-        <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'csv']) }}">Ekspor CSV</a>
+        <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'xlsx']) }}" data-no-loader>Ekspor Excel</a>
     </x-page-head>
 
     {{-- Each tile drills into the meetings behind it — e.g. "Belum Diisi" lists

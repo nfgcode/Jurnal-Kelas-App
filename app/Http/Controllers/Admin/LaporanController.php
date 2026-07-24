@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\User;
-use App\Support\CsvExport;
 use App\Support\Periode;
 use App\Support\Ringkasan;
+use App\Support\XlsxExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -34,8 +34,8 @@ class LaporanController extends Controller
             'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
         ]);
 
-        // Same filtered rows the table shows, streamed to a CSV file.
-        if ($request->query('ekspor') === 'csv') {
+        // Same filtered rows the table shows, as an Excel workbook.
+        if ($request->query('ekspor') === 'xlsx') {
             return $this->eksporJurnal($terisiCount($this->kueriJurnal($filters, $periode)), $periode);
         }
 
@@ -94,7 +94,7 @@ class LaporanController extends Controller
             'presensis as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
         ]);
 
-        if ($request->query('ekspor') === 'csv') {
+        if ($request->query('ekspor') === 'xlsx') {
             return $this->eksporPresensi($rekapCount($this->kueriJurnal($filters, $periode)), $periode);
         }
 
@@ -146,8 +146,8 @@ class LaporanController extends Controller
     }
 
     /**
-     * Stream the filtered journal report as CSV, one row per meeting. Rows are
-     * pulled with a lazy cursor so a whole-year export never buffers in memory.
+     * The filtered journal report as an .xlsx workbook, one row per meeting.
+     * Counts are ints so Excel treats them as numbers, not text.
      */
     private function eksporJurnal($query, Periode $periode)
     {
@@ -164,18 +164,18 @@ class LaporanController extends Controller
                     $j->guru?->name,
                     $j->materi,
                     $j->tugas,
-                    $j->total_siswa,
-                    $j->hadir_count,
+                    (int) $j->total_siswa,
+                    (int) $j->hadir_count,
                     $j->statusPengisian()['label'],
                 ];
             }
         };
 
-        return CsvExport::stream('rekap-jurnal-' . $this->slugPeriode($periode) . '.csv', $header, $rows());
+        return XlsxExport::download('rekap-jurnal-' . $this->slugPeriode($periode) . '.xlsx', $header, $rows());
     }
 
     /**
-     * Stream the filtered attendance recap as CSV, one row per meeting.
+     * The filtered attendance recap as an .xlsx workbook, one row per meeting.
      */
     private function eksporPresensi($query, Periode $periode)
     {
@@ -188,17 +188,17 @@ class LaporanController extends Controller
                     $j->jadwal?->kelas?->nama_kelas,
                     $j->jadwal?->mataPelajaran?->nama,
                     $j->guru?->name,
-                    $j->total_siswa,
-                    $j->hadir_count,
-                    $j->sakit_count,
-                    $j->izin_count,
-                    $j->alpa_count,
-                    $j->total_siswa ? round($j->hadir_count / $j->total_siswa * 100) : 0,
+                    (int) $j->total_siswa,
+                    (int) $j->hadir_count,
+                    (int) $j->sakit_count,
+                    (int) $j->izin_count,
+                    (int) $j->alpa_count,
+                    $j->total_siswa ? (int) round($j->hadir_count / $j->total_siswa * 100) : 0,
                 ];
             }
         };
 
-        return CsvExport::stream('rekap-presensi-' . $this->slugPeriode($periode) . '.csv', $header, $rows());
+        return XlsxExport::download('rekap-presensi-' . $this->slugPeriode($periode) . '.xlsx', $header, $rows());
     }
 
     /** A filename-safe stamp for the export's period. */

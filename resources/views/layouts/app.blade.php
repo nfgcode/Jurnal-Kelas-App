@@ -17,6 +17,8 @@
 </head>
 <body>
 
+@include('partials.page-loader')
+
 @php
     $user = Auth::user();
     $isAdmin = $user?->isAdmin() ?? false;

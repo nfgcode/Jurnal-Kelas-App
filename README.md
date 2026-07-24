@@ -32,7 +32,7 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 ### 📝 Manajemen Jurnal Kelas
 - Pencatatan materi, tugas, kegiatan, dan catatan per pertemuan
 - Sistem **dual-fill**: Guru mengisi sendiri, atau **Ketua Kelas** mengisi atas nama guru yang berhalangan
-- Tracking status kehadiran guru (Hadir / Sakit / Izin / Alpa)
+- Tracking status kehadiran guru dengan satu kosakata seragam untuk kedua peran: **Hadir / Tidak Hadir – Ada Tugas / Tidak Hadir – Tanpa Tugas**
 - Deteksi pengisian terlambat (>24 jam setelah tanggal pelajaran)
 - Full-text search pada materi, tugas, catatan, dan kegiatan
 - Audit trail otomatis via database trigger
@@ -54,6 +54,71 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 - Laporan presensi per kelas
 - Rekap kelas (via API)
 - Drill-down interaktif dari dashboard
+- **Ekspor Excel (.xlsx)** — file spreadsheet asli (OOXML) yang ditulis tanpa dependency tambahan (via `ZipArchive`), khusus admin
+
+### 🎓 Mode Wali Kelas
+- Toggle "Mode Wali Kelas" di topbar untuk guru yang menjadi wali kelas (mirip tombol tema)
+- Ruang kerja khusus terfokus pada kelas perwaliannya: **Data Kelas, Jadwal Kelas, Jurnal Kelas, Presensi Kelas**
+- Rekap kehadiran per siswa + sorot siswa dengan kehadiran terendah
+
+### 🔒 Keamanan & Otorisasi
+- Otorisasi web berlapis: **middleware peran** (`CheckRole`) di route + **Policy per-record** (`Kelas`, `MataPelajaran`, `Jadwal`, `Jurnal`, `Presensi`)
+- **Data scoping per peran**: guru hanya melihat kelas/mapel yang ia ampu; siswa hanya kelasnya sendiri
+- Presensi tervalidasi terhadap daftar siswa rombel (mencegah injeksi `siswa_id` asing)
+- Concurrency-safe: transaksi + `lockForUpdate` + unique constraint pada penyimpanan presensi
+
+### 📱 UX & Antarmuka
+- **Responsif mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width, target sentuh nyaman
+- **Loading screen** pada setiap load & navigasi halaman (memberi umpan balik selama round-trip server)
+- **Dropdown ber-pencarian** (progressive enhancement, tanpa dependency) untuk daftar panjang
+- Performa: indexing komposit, caching KPI landing, query agregat yang diringkas
+
+---
+
+## 🧰 Framework & Teknologi
+
+### Backend
+| Teknologi | Versi | Peran |
+|-----------|-------|-------|
+| [Laravel Framework](https://laravel.com) | 13.x | Framework aplikasi utama (PHP) |
+| [PHP](https://www.php.net) | 8.3 | Bahasa & runtime |
+| [Laravel Sanctum](https://laravel.com/docs/sanctum) | latest | Autentikasi API berbasis token |
+| [Laravel Tinker](https://github.com/laravel/tinker) | 3.x | REPL / console interaktif |
+| `ext-zip` (ZipArchive) | bawaan PHP | Penulisan file `.xlsx` (OOXML) tanpa library eksternal |
+
+### Frontend
+| Teknologi | Versi | Peran |
+|-----------|-------|-------|
+| [Blade](https://laravel.com/docs/blade) | — | Templating server-side |
+| [Bootstrap](https://getbootstrap.com) | 5.3 | Komponen UI & grid |
+| [@popperjs/core](https://popper.js.org) | 2.11 | Positioning untuk dropdown/tooltip Bootstrap |
+| [Sass (Dart Sass)](https://sass-lang.com) | 1.77 | Preprocessor CSS (`resources/sass/app.scss`) |
+| [Vite](https://vitejs.dev) | 8.x | Build tool & dev server (HMR) |
+| [laravel-vite-plugin](https://github.com/laravel/vite-plugin) | 3.x | Integrasi Vite ⇄ Laravel |
+| [Bootstrap Icons](https://icons.getbootstrap.com) | 1.11 | Ikon (via CDN) |
+| Vanilla JS | — | Drill-down AJAX, searchable-select, loading screen (tanpa framework JS) |
+
+### Database & Infrastruktur
+| Teknologi | Versi | Peran |
+|-----------|-------|-------|
+| [MySQL](https://www.mysql.com) | 8.0 | Database utama (+ view, function, procedure, trigger, FULLTEXT) |
+| [SQLite](https://www.sqlite.org) | — | Database test suite (in-memory) |
+| [Redis](https://redis.io) | 7 | Session, cache, & queue |
+| [Docker](https://www.docker.com) / Compose | — | Orkestrasi multi-container |
+| [Nginx](https://nginx.org) | Alpine | Web server / reverse proxy |
+| [Mailpit](https://github.com/axllent/mailpit) | — | Penangkap email untuk pengujian |
+| [Bun](https://bun.sh) | Alpine | Runtime & package manager untuk build frontend |
+| [phpMyAdmin](https://www.phpmyadmin.net) | 5 | Manajemen database (profile `dev`) |
+
+### Dev Tools & Testing
+| Teknologi | Peran |
+|-----------|-------|
+| [PHPUnit](https://phpunit.de) 12 | Test suite (Feature/Unit) |
+| [Laravel Pint](https://laravel.com/docs/pint) | Code style fixer (PSR-12) |
+| [Mockery](https://github.com/mockery/mockery) | Mocking untuk test |
+| [FakerPHP](https://fakerphp.github.io) | Data dummy untuk seeder/factory |
+| [Laravel Pail](https://github.com/laravel/pail) | Tail log real-time |
+| [Nunomaduro Collision](https://github.com/nunomaduro/collision) | Error reporting CLI yang rapi |
 
 ---
 
@@ -248,7 +313,7 @@ Semua endpoint API menggunakan prefix `/api` dan autentikasi via **Laravel Sanct
 ```bash
 # Login - dapatkan bearer token
 POST /api/login
-Body: { "login": "admin@jurnalkelas.app", "password": "password" }
+Body: { "user": "admin@jurnalkelas.app", "password": "password", "role": "admin" }
 
 # Logout
 POST /api/logout
@@ -323,35 +388,41 @@ Jurnal-Kelas-App/
 │   │   │   ├── MataPelajaranController.php
 │   │   │   └── PresensiController.php
 │   │   ├── Middleware/
-│   │   │   └── CheckRole.php     # Role-based access control
-│   │   ├── Requests/Api/         # Form request validation
+│   │   │   └── CheckRole.php     # Role-based access control (role:admin,guru,…)
+│   │   ├── Requests/             # Form requests dipakai bersama web + API
+│   │   │   └── Api/              # JurnalRequest khusus API
 │   │   └── Resources/            # API resource transformers
 │   ├── Models/                   # Eloquent models (7 models)
-│   ├── Policies/
-│   │   └── JurnalPolicy.php      # Authorization rules
+│   ├── Policies/                 # KelasPolicy, MataPelajaranPolicy,
+│   │                             #   JadwalPolicy, JurnalPolicy, PresensiPolicy
 │   └── Support/
+│       ├── DbDriver.php          # Deteksi driver (MySQL vs SQLite fallback)
 │       ├── LoginResolver.php     # NIP/NIS/Email login resolver
 │       ├── Periode.php           # Date range value object
-│       └── Ringkasan.php         # Statistics aggregator
+│       ├── Ringkasan.php         # Statistics aggregator
+│       ├── SimpanPresensi.php    # Satu jalur simpan presensi (procedure/transaksi)
+│       └── XlsxExport.php        # Penulis .xlsx (OOXML) via ZipArchive
 ├── database/
-│   ├── migrations/               # 20 migrations (tables, views, functions, triggers)
+│   ├── migrations/               # 21 migrations (tables, indexes, views, functions, triggers)
 │   └── seeders/
 │       └── DemoSeeder.php        # Realistic demo data
 ├── docker/
 │   ├── nginx/                    # Nginx configuration
 │   └── php/                      # PHP Dockerfile & config
 ├── resources/
-│   ├── sass/                     # SCSS (Bootstrap 5 + custom)
-│   ├── js/                       # JavaScript (Bootstrap + AJAX drill-downs)
+│   ├── sass/                     # SCSS (Bootstrap 5 + custom + breakpoint mobile)
+│   ├── js/                       # JS (Bootstrap, AJAX drill-down, searchable-select)
 │   └── views/                    # Blade templates
 │       ├── admin/                # Admin views
 │       ├── dashboard/            # Role-based dashboard views
+│       ├── wali-kelas/           # Mode Wali Kelas (dashboard, data, jadwal, jurnal, presensi)
 │       ├── jurnal/               # Jurnal CRUD views
 │       ├── presensi/             # Presensi views
 │       ├── kelas/                # Kelas views
 │       ├── mata-pelajaran/       # Mata pelajaran views
 │       ├── jadwal/               # Jadwal views
 │       ├── layouts/              # Main layout (sidebar, nav)
+│       ├── partials/             # page-loader (loading screen)
 │       └── components/           # Reusable Blade components
 ├── routes/
 │   ├── web.php                   # Web routes

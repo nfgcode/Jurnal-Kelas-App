@@ -14,6 +14,8 @@
 </head>
 <body>
 
+@include('partials.page-loader')
+
 @php
     // The tab drives the identifier label, so it must survive a failed attempt.
     $peran = old('role', 'guru');

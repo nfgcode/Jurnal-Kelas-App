@@ -1286,9 +1286,9 @@ textarea.input-hifi {
 }
 
 @media (max-width: 767.98px) {
-    .grid-row--6,
-    .grid-row--4,
-    .grid-row--3,
+    // Content panels stack. Stat/KPI rows deliberately stay two-up (set by the
+    // 991/1199 rules above) so a dashboard doesn't become an endless single
+    // column of oversized tiles on a phone.
     .grid-row--2 { grid-template-columns: minmax(0, 1fr); }
     .form-grid--2,
     .form-grid--3,
@@ -1306,4 +1306,42 @@ textarea.input-hifi {
     .btn-hifi,
     .select-hifi,
     .input-hifi { min-height: 42px; }
+}
+
+/* =========================================================================
+   Phones (Android/iOS, ~320–575px). The layout above already collapses to a
+   single content column and an off-canvas sidebar; this tightens spacing and
+   forces the filter controls full-width, since their inline pixel widths would
+   otherwise overflow a narrow screen. Inline widths (and the ones the
+   searchable-select JS copies onto its wrapper) are overridden with !important.
+   ========================================================================= */
+@media (max-width: 575.98px) {
+    .content { padding: 16px 13px 28px; }
+
+    .topbar { height: 62px; padding: 0 14px; }
+    .topbar__title {
+        font-size: 15px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    // Filter row: search takes the full width, each control drops onto its own
+    // full-width line rather than staying at a fixed 150–190px and overflowing.
+    .filter-bar { gap: 8px; }
+    .filter-bar__search { flex: 1 1 100%; max-width: none; }
+    .filter-bar .select-hifi,
+    .filter-bar .ss { width: 100% !important; flex: 1 1 100%; }
+    .filter-bar__note { margin-left: 0; width: 100%; }
+
+    // Selects used as page-header actions (role/period pickers) fill the row.
+    .page-head__actions .select-hifi,
+    .page-head__actions .ss { width: 100% !important; }
+
+    // Slightly smaller tiles so two fit comfortably at ~320px.
+    .kpi__value { font-size: 19px; }
+    .card-hifi__body { padding: 10px 12px 12px; }
+
+    // The mobile sidebar shouldn't quite reach the right edge.
+    .sidebar { width: min(var(--sidebar-w), 82vw); }
 }
