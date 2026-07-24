@@ -175,3 +175,110 @@ document.addEventListener('keydown', (event) => {
         trigger.click();
     }
 });
+
+// Searchable dropdowns. Progressive enhancement: a <select data-searchable>
+// keeps working as a plain select if this never runs, but when it does the
+// native control is replaced with a button + filterable panel. Selecting an
+// option writes back to the real <select> and dispatches its change event, so
+// the existing onchange="this.form.submit()" behaviour is preserved.
+(() => {
+    const STYLE_ID = 'select-search-style';
+    if (!document.getElementById(STYLE_ID)) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+            .ss{position:relative;display:inline-block}
+            .ss__panel{position:absolute;z-index:50;top:calc(100% + 4px);left:0;min-width:100%;
+                background:var(--surface,#fff);border:1px solid var(--n-200,#d8dee4);border-radius:10px;
+                box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;display:none}
+            .ss--open .ss__panel{display:block}
+            .ss__search{width:100%;margin-bottom:6px}
+            .ss__list{max-height:240px;overflow-y:auto;list-style:none;margin:0;padding:0}
+            .ss__opt{padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13px;white-space:nowrap}
+            .ss__opt:hover,.ss__opt.is-active{background:var(--n-100,#eef1f4)}
+            .ss__opt[hidden]{display:none}
+            .ss__empty{padding:8px 10px;color:var(--n-500,#8a94a0);font-size:12px}
+        `;
+        document.head.appendChild(style);
+    }
+
+    const enhance = (select) => {
+        if (select.dataset.ssReady) return;
+        select.dataset.ssReady = '1';
+
+        const options = Array.from(select.options);
+        const wrap = document.createElement('div');
+        wrap.className = 'ss';
+        wrap.style.width = select.style.width || '';
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = select.className + ' ss__button';
+        button.style.width = '100%';
+        button.style.textAlign = 'left';
+
+        const labelFor = (value) => options.find((o) => o.value === value)?.textContent.trim() || '';
+        const syncLabel = () => { button.textContent = labelFor(select.value) || options[0]?.textContent || ''; };
+        syncLabel();
+
+        const panel = document.createElement('div');
+        panel.className = 'ss__panel';
+
+        const search = document.createElement('input');
+        search.type = 'search';
+        search.className = 'input-hifi ss__search';
+        search.placeholder = 'Cari…';
+
+        const list = document.createElement('ul');
+        list.className = 'ss__list';
+        const empty = document.createElement('li');
+        empty.className = 'ss__empty';
+        empty.textContent = 'Tidak ditemukan';
+        empty.hidden = true;
+
+        options.forEach((opt) => {
+            const li = document.createElement('li');
+            li.className = 'ss__opt';
+            li.textContent = opt.textContent.trim() || '—';
+            li.dataset.value = opt.value;
+            li.addEventListener('click', () => {
+                select.value = opt.value;
+                syncLabel();
+                close();
+                // Fire change so any onchange (e.g. form submit) still runs.
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            list.appendChild(li);
+        });
+        list.appendChild(empty);
+
+        const filter = () => {
+            const q = search.value.toLowerCase().trim();
+            let shown = 0;
+            list.querySelectorAll('.ss__opt').forEach((li) => {
+                const match = li.textContent.toLowerCase().includes(q);
+                li.hidden = !match;
+                if (match) shown++;
+            });
+            empty.hidden = shown > 0;
+        };
+        search.addEventListener('input', filter);
+
+        const open = () => { wrap.classList.add('ss--open'); search.value = ''; filter(); search.focus(); };
+        const close = () => wrap.classList.remove('ss--open');
+        button.addEventListener('click', () => wrap.classList.contains('ss--open') ? close() : open());
+        document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) close(); });
+        search.addEventListener('keydown', (e) => { if (e.key === 'Escape') { close(); button.focus(); } });
+
+        select.hidden = true;
+        select.setAttribute('aria-hidden', 'true');
+        select.tabIndex = -1;
+        select.parentNode.insertBefore(wrap, select);
+        wrap.appendChild(button);
+        wrap.appendChild(panel);
+        panel.appendChild(search);
+        panel.appendChild(list);
+    };
+
+    document.querySelectorAll('select[data-searchable]').forEach(enhance);
+})();

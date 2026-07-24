@@ -45,14 +45,14 @@
             @endforeach
         </select>
 
-        <select class="select-hifi" name="kelas_id" style="width: 150px" onchange="this.form.submit()">
+        <select class="select-hifi" name="kelas_id" style="width: 150px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Kelas</option>
             @foreach ($kelasList as $kelas)
                 <option value="{{ $kelas->id }}" @selected(($filters['kelas_id'] ?? null) == $kelas->id)>{{ $kelas->nama_kelas }}</option>
             @endforeach
         </select>
 
-        <select class="select-hifi" name="mata_pelajaran_id" style="width: 170px" onchange="this.form.submit()">
+        <select class="select-hifi" name="mata_pelajaran_id" style="width: 170px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Mapel</option>
             @foreach ($mapelList as $mapel)
                 <option value="{{ $mapel->id }}" @selected(($filters['mata_pelajaran_id'] ?? null) == $mapel->id)>{{ $mapel->nama }}</option>

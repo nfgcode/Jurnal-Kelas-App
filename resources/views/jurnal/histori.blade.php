@@ -35,7 +35,7 @@
             @endforeach
         </select>
 
-        <select class="select-hifi" name="mata_pelajaran_id" style="width: 170px" onchange="this.form.submit()">
+        <select class="select-hifi" name="mata_pelajaran_id" style="width: 170px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Mapel</option>
             @foreach ($mapelList as $mapel)
                 <option value="{{ $mapel->id }}" @selected(($filters['mata_pelajaran_id'] ?? null) == $mapel->id)>{{ $mapel->nama }}</option>

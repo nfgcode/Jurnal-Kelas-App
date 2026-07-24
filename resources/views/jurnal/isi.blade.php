@@ -45,7 +45,7 @@
 
                 <div class="form-grid form-grid--2">
                     <x-field label="Jadwal (Kelas · Mata Pelajaran)" name="jadwal_id" required>
-                        <select class="select-hifi" name="jadwal_id" id="jadwalSelect" required
+                        <select class="select-hifi" name="jadwal_id" id="jadwalSelect" data-searchable required
                                 onchange="window.location = '{{ route('jurnal.create') }}?jadwal_id=' + this.value">
                             @foreach ($jadwalList as $pilihanJadwal)
                                 <option value="{{ $pilihanJadwal->id }}" @selected($jadwal?->id === $pilihanJadwal->id)>

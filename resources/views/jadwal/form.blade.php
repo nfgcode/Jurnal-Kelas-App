@@ -2,7 +2,7 @@
 
 <div class="form-grid form-grid--3">
     <x-field label="Kelas" name="kelas_id" required>
-        <select class="select-hifi" name="kelas_id" id="kelas_id" required>
+        <select class="select-hifi" name="kelas_id" id="kelas_id" data-searchable required>
             @foreach ($kelasList as $kelas)
                 <option value="{{ $kelas->id }}" @selected(old('kelas_id', $jadwal?->kelas_id) == $kelas->id)>{{ $kelas->nama_kelas }}</option>
             @endforeach
@@ -10,7 +10,7 @@
     </x-field>
 
     <x-field label="Mata Pelajaran" name="mata_pelajaran_id" required>
-        <select class="select-hifi" name="mata_pelajaran_id" id="mata_pelajaran_id" required>
+        <select class="select-hifi" name="mata_pelajaran_id" id="mata_pelajaran_id" data-searchable required>
             @foreach ($mataPelajaranList as $mapel)
                 <option value="{{ $mapel->id }}" @selected(old('mata_pelajaran_id', $jadwal?->mata_pelajaran_id) == $mapel->id)>{{ $mapel->nama }}</option>
             @endforeach
@@ -18,7 +18,7 @@
     </x-field>
 
     <x-field label="Guru Pengajar" name="guru_id" required>
-        <select class="select-hifi" name="guru_id" id="guru_id" required>
+        <select class="select-hifi" name="guru_id" id="guru_id" data-searchable required>
             @foreach ($gurus as $guru)
                 <option value="{{ $guru->id }}" @selected(old('guru_id', $jadwal?->guru_id) == $guru->id)>{{ $guru->name }}</option>
             @endforeach

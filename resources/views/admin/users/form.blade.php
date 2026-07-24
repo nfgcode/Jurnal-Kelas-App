@@ -55,7 +55,7 @@
 
     <div data-role-field="siswa">
         <x-field label="Kelas" name="kelas_id" required>
-            <select class="select-hifi" name="kelas_id" id="kelas_id">
+            <select class="select-hifi" name="kelas_id" id="kelas_id" data-searchable>
                 <option value="" disabled @selected(! old('kelas_id', $user?->kelas_id))>Pilih Kelas</option>
                 @foreach ($kelasList as $kelas)
                     <option value="{{ $kelas->id }}" @selected((int) old('kelas_id', $user?->kelas_id) === $kelas->id)>
