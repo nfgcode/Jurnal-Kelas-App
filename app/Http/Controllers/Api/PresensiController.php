@@ -37,7 +37,7 @@ class PresensiController extends Controller
      */
     public function show(Jurnal $jurnal)
     {
-        Gate::authorize('view', $jurnal);
+        Gate::authorize('viewRoster', $jurnal);
 
         return PresensiResource::collection(
             $jurnal->presensis()->with('siswa')->get()
@@ -52,7 +52,7 @@ class PresensiController extends Controller
     public function store(Request $request)
     {
         $jurnal = Jurnal::with('jadwal.kelas')->findOrFail($request->integer('jurnal_id'));
-        Gate::authorize('update', $jurnal);
+        Gate::authorize('markRoster', $jurnal);
 
         // Attendance may only be recorded for students of this journal's class.
         $roster = $jurnal->jadwal->kelas->siswa()->pluck('id')->all();
@@ -65,7 +65,7 @@ class PresensiController extends Controller
             'presensi.*.keterangan' => 'nullable|string',
         ]);
 
-        SimpanPresensi::simpan($jurnal, $validated['presensi']);
+        SimpanPresensi::simpan($jurnal, $validated['presensi'], $request->user());
 
         return PresensiResource::collection(
             $jurnal->presensis()->with('siswa')->get()

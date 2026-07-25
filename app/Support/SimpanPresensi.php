@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Models\Jurnal;
 use App\Models\Presensi;
+use App\Models\PresensiLog;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,9 +23,12 @@ class SimpanPresensi
      * roster at once. The unique index on (jurnal_id, siswa_id) is the final
      * guard against races either way.
      *
+     * When $editor is given, one presensi_log row records who saved this roster
+     * and how many students — the app-level audit read only by admin.
+     *
      * @param  array<int, array{siswa_id: int|string, status: string, keterangan?: ?string}>  $rows
      */
-    public static function simpan(Jurnal $jurnal, array $rows): void
+    public static function simpan(Jurnal $jurnal, array $rows, ?User $editor = null): void
     {
         if (DbDriver::mysql()) {
             DB::statement('CALL sp_simpan_presensi(?, ?)', [
@@ -34,24 +39,31 @@ class SimpanPresensi
                     'keterangan' => $data['keterangan'] ?? null,
                 ], $rows)),
             ]);
+        } else {
+            DB::transaction(function () use ($jurnal, $rows) {
+                Jurnal::whereKey($jurnal->id)->lockForUpdate()->first();
 
-            return;
+                Presensi::where('jurnal_id', $jurnal->id)->delete();
+
+                $now = now();
+                Presensi::insert(array_map(fn ($data) => [
+                    'jurnal_id' => $jurnal->id,
+                    'siswa_id' => $data['siswa_id'],
+                    'status' => $data['status'],
+                    'keterangan' => $data['keterangan'] ?? null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], $rows));
+            });
         }
 
-        DB::transaction(function () use ($jurnal, $rows) {
-            Jurnal::whereKey($jurnal->id)->lockForUpdate()->first();
-
-            Presensi::where('jurnal_id', $jurnal->id)->delete();
-
-            $now = now();
-            Presensi::insert(array_map(fn ($data) => [
+        if ($editor !== null) {
+            PresensiLog::create([
                 'jurnal_id' => $jurnal->id,
-                'siswa_id' => $data['siswa_id'],
-                'status' => $data['status'],
-                'keterangan' => $data['keterangan'] ?? null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ], $rows));
-        });
+                'diedit_oleh_id' => $editor->id,
+                'jumlah_siswa' => count($rows),
+                'created_at' => now(),
+            ]);
+        }
     }
 }

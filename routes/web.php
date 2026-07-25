@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\LaporanController;
+use App\Http\Controllers\Admin\PresensiLogController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
@@ -103,5 +104,8 @@ Route::middleware('auth')->group(function () {
         // Read-only reports
         Route::get('/laporan/jurnal', [LaporanController::class, 'jurnal'])->name('laporan.jurnal');
         Route::get('/laporan/presensi', [LaporanController::class, 'presensi'])->name('laporan.presensi');
+
+        // Audit trail of who edited attendance rosters — admin-only.
+        Route::get('/presensi-log', [PresensiLogController::class, 'index'])->name('presensi.log');
     });
 });

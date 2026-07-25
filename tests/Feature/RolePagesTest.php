@@ -80,7 +80,9 @@ class RolePagesTest extends TestCase
             '/dashboard' => 'Dashboard Siswa',
             '/jurnal' => 'Riwayat Jurnal Kelas',
             '/jurnal/create' => 'Mengisi Jurnal Kelas',
-            '/presensi' => 'Rekap Kehadiran Saya',
+            // A ketua kelas fills the class roster, so /presensi is the markable
+            // meeting list rather than the personal recap a regular siswa sees.
+            '/presensi' => 'Presensi per Pertemuan',
             "/jurnal/{$jurnal->id}" => 'Daftar Kehadiran Siswa',
         ];
 

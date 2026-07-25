@@ -127,6 +127,9 @@
                 <a href="{{ route('admin.laporan.presensi') }}" class="sidebar__link {{ request()->routeIs('admin.laporan.presensi') ? 'is-active' : '' }}">
                     <i class="bi bi-bar-chart"></i><span>Rekap Presensi</span>
                 </a>
+                <a href="{{ route('admin.presensi.log') }}" class="sidebar__link {{ request()->routeIs('admin.presensi.log') ? 'is-active' : '' }}">
+                    <i class="bi bi-clock-history"></i><span>Log Presensi</span>
+                </a>
             @endif
         @endif
     </nav>

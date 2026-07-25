@@ -124,6 +124,7 @@
                         <th class="is-num">I</th>
                         <th class="is-num">A</th>
                         <th>Persentase Kehadiran</th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -146,9 +147,14 @@
                                     <span class="is-strong">{{ $persen }}%</span>
                                 </span>
                             </td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.create', $jurnal->id) }}">
+                                    {{ $jurnal->total_siswa ? 'Ubah' : 'Tandai' }}
+                                </a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="empty-state">Belum ada pertemuan yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="11" class="empty-state">Belum ada pertemuan yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -118,12 +118,22 @@ class AuthorizationTest extends TestCase
         $this->assertDatabaseMissing('presensi', ['jurnal_id' => $jurnal->id, 'siswa_id' => $luar->id]);
     }
 
-    public function test_a_guru_cannot_mark_another_gurus_meeting(): void
+    public function test_a_guru_who_does_not_teach_the_class_cannot_mark_its_meeting(): void
     {
-        $lain = User::where('role', 'guru')->where('id', '!=', $this->jadwal->guru_id)->firstOrFail();
+        // Marking is class-scoped (JurnalPolicy::markRoster): a guru who teaches
+        // the class or is its wali may mark any of its meetings, but an outsider
+        // may not. A freshly created guru teaches nothing, so they are the
+        // reliable "outsider" no matter how the demo timetable is wired.
+        $luar = User::create([
+            'name' => 'Guru Tak Mengajar',
+            'email' => 'guru.tak.mengajar@test.app',
+            'password' => bcrypt('password'),
+            'role' => 'guru',
+            'nip' => '900900',
+        ]);
         $jurnal = Jurnal::where('guru_id', $this->jadwal->guru_id)->firstOrFail();
 
-        $this->actingAs($lain)->get("/presensi/create/{$jurnal->id}")->assertForbidden();
+        $this->actingAs($luar)->get("/presensi/create/{$jurnal->id}")->assertForbidden();
     }
 
     public function test_a_regular_siswa_cannot_author_a_journal(): void

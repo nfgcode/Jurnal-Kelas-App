@@ -5,7 +5,7 @@
 @section('content')
     @php
         $datar = array_fill(0, 12, 0);
-        $totalPresensi = array_sum($presensiSaya) ?: 1;
+        $totalPresensi = array_sum($kehadiran) ?: 1;
         $totalJurnal = $jurnalStatus['total'] ?: 1;
         $sapaan = Auth::user()->isKetuaKelas()
             ? 'Selamat Datang, Ketua Kelas ' . ($kelas?->nama_kelas ?? '') . '!'
@@ -17,6 +17,7 @@
         :sub="'Ringkasan kelas dan kehadiran Anda · Semester Gasal ' . now()->year . '/' . (now()->year + 1) . ' · ' . now()->translatedFormat('j F Y')">
         <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
         @if (Auth::user()->isKetuaKelas())
+            <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">Isi Presensi Kelas</a>
             <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>
         @endif
     </x-page-head>
@@ -25,7 +26,7 @@
         <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar" :caption="now()->translatedFormat('l')" />
         <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$datar" caption="hari ini" />
         <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar" caption="menunggu guru" />
-        <x-kpi label="Kehadiran Saya" :value="$kpi['kehadiranSaya'] . '%'" :spark="$datar" caption="semester berjalan" />
+        <x-kpi :label="$kehadiranLabel" :value="$kpi['kehadiran'] . '%'" :spark="$datar" caption="semester berjalan" />
         <x-kpi label="Hadir" :value="number_format($kpi['hadir'], 0, ',', '.')" :spark="$datar" caption="pertemuan" />
         <x-kpi label="Alpa" :value="$kpi['alpa']" :spark="$datar" caption="tanpa keterangan" />
     </div>
@@ -81,10 +82,10 @@
             </div>
         </x-card>
 
-        <x-card title="Kehadiran Saya" :meta="now()->translatedFormat('F Y')">
+        <x-card :title="$kehadiranLabel" :meta="now()->translatedFormat('F Y')">
             <p class="card-hifi__meta mb-2">{{ number_format($totalPresensi, 0, ',', '.') }} pertemuan tercatat</p>
             <x-breakdown
-                :items="['Hadir' => $presensiSaya['hadir'], 'Sakit' => $presensiSaya['sakit'], 'Izin' => $presensiSaya['izin'], 'Alpa' => $presensiSaya['alpa']]"
+                :items="['Hadir' => $kehadiran['hadir'], 'Sakit' => $kehadiran['sakit'], 'Izin' => $kehadiran['izin'], 'Alpa' => $kehadiran['alpa']]"
                 :tones="['Hadir' => 'hadir', 'Sakit' => 'sakit', 'Izin' => 'izin', 'Alpa' => 'alpa']" />
         </x-card>
 

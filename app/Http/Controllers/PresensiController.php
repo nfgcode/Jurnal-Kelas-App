@@ -24,9 +24,35 @@ class PresensiController extends Controller
     {
         $user = $request->user();
 
-        return $user->isSiswa()
-            ? $this->rekapSiswa($request, $user)
-            : $this->daftarPertemuan($request, $user);
+        // A regular student sees only their own record; a ketua kelas and every
+        // teacher/admin get a markable meeting list (scoped in daftarPertemuan).
+        if ($user->isSiswa() && ! $user->isKetuaKelas()) {
+            return $this->rekapSiswa($request, $user);
+        }
+
+        return $this->daftarPertemuan($request, $user);
+    }
+
+    /**
+     * The class ids whose rosters $user may mark, or null for "all" (admin).
+     * A ketua chairs one class; a guru reaches the classes they teach plus any
+     * they are wali of — matching JurnalPolicy::markRoster.
+     *
+     * @return array<int>|null
+     */
+    private function kelasTerjangkau(User $user): ?array
+    {
+        if ($user->isAdmin()) {
+            return null;
+        }
+
+        if ($user->isKetuaKelas()) {
+            return array_filter([$user->kelas_id]);
+        }
+
+        return Jadwal::where('guru_id', $user->id)->pluck('kelas_id')
+            ->merge(Kelas::where('wali_kelas_id', $user->id)->pluck('id'))
+            ->unique()->values()->all();
     }
 
     /**
@@ -78,6 +104,10 @@ class PresensiController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
+        // Classes whose rosters this user may mark — null means every class (admin).
+        $kelasIds = $this->kelasTerjangkau($user);
+        $batasiKelas = fn ($query) => $query->whereHas('jadwal', fn ($j) => $j->whereIn('kelas_id', $kelasIds));
+
         $pertemuan = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->withCount([
@@ -87,7 +117,7 @@ class PresensiController extends Controller
                 'presensis as izin_count' => fn ($q) => $q->where('status', 'izin'),
                 'presensis as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
             ])
-            ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
+            ->when($kelasIds !== null, $batasiKelas)
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->latest('tanggal')
@@ -95,19 +125,17 @@ class PresensiController extends Controller
             ->paginate(18)
             ->withQueryString();
 
-        $milik = Jurnal::when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id));
-
         return view('presensi.index', [
             'pertemuan' => $pertemuan,
-            // A guru filters only among the classes they teach; admin all.
+            // A guru/ketua filters only among classes they can mark; admin all.
             'kelasList' => Kelas::query()
-                ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+                ->when($kelasIds !== null, fn ($q) => $q->whereIn('id', $kelasIds))
                 ->orderBy('nama_kelas')->get(),
             'filters' => $filters,
             'rekap' => Ringkasan::presensi(
-                Presensi::whereHas('jurnal', fn ($q) => $q->when($user->isGuru(), fn ($i) => $i->where('guru_id', $user->id)))
+                Presensi::when($kelasIds !== null, fn ($q) => $q->whereHas('jurnal.jadwal', fn ($j) => $j->whereIn('kelas_id', $kelasIds)))
             ),
-            'totalPertemuan' => (clone $milik)->count(),
+            'totalPertemuan' => Jurnal::query()->when($kelasIds !== null, $batasiKelas)->count(),
         ]);
     }
 
@@ -118,8 +146,9 @@ class PresensiController extends Controller
     {
         $jurnal = Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])->findOrFail($jurnal_id);
 
-        // Marking a roster is a write on the journal — only its guru (or admin) may.
-        Gate::authorize('update', $jurnal);
+        // A meeting's roster may be marked by admin, its class's ketua, and any
+        // guru who teaches or is wali of that class — see JurnalPolicy::markRoster.
+        Gate::authorize('markRoster', $jurnal);
 
         $siswaList = $jurnal->jadwal->kelas->siswa()->orderBy('name')->get();
 
@@ -142,8 +171,9 @@ class PresensiController extends Controller
     {
         $jurnal = Jurnal::with('jadwal.kelas')->findOrFail($request->integer('jurnal_id'));
 
-        // Marking a roster is a write on the journal — only its guru (or admin) may.
-        Gate::authorize('update', $jurnal);
+        // A meeting's roster may be marked by admin, its class's ketua, and any
+        // guru who teaches or is wali of that class — see JurnalPolicy::markRoster.
+        Gate::authorize('markRoster', $jurnal);
 
         // Attendance may only be recorded for students actually in this class, so
         // a crafted siswa_id (a teacher, or another class's student) is rejected.
@@ -157,7 +187,7 @@ class PresensiController extends Controller
             'presensi.*.keterangan' => 'nullable|string',
         ]);
 
-        SimpanPresensi::simpan($jurnal, $validated['presensi']);
+        SimpanPresensi::simpan($jurnal, $validated['presensi'], $request->user());
 
         return redirect()->route('presensi.show', $jurnal->id)
             ->with('success', 'Presensi berhasil disimpan.');
@@ -175,7 +205,7 @@ class PresensiController extends Controller
             'presensis.siswa',
         ])->findOrFail($jurnal_id);
 
-        Gate::authorize('view', $jurnal);
+        Gate::authorize('viewRoster', $jurnal);
 
         return view('presensi.show', [
             'jurnal' => $jurnal,

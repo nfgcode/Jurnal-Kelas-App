@@ -121,8 +121,14 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('jadwal_id');
 
-        $presensiSaya = Ringkasan::presensi(Presensi::where('siswa_id', $user->id));
-        $totalPresensi = array_sum($presensiSaya) ?: 1;
+        // A ketua kelas represents the whole class, so their attendance summary
+        // is the class's, not just their own; a regular siswa sees their own.
+        $isKetua = $user->isKetuaKelas();
+        $kehadiran = $isKetua
+            ? Ringkasan::presensi(Presensi::whereHas('jurnal.jadwal', fn ($q) => $q->where('kelas_id', $kelasId)))
+            : Ringkasan::presensi(Presensi::where('siswa_id', $user->id));
+        $kehadiranLabel = $isKetua ? 'Kehadiran Kelas' : 'Kehadiran Saya';
+        $totalKehadiran = array_sum($kehadiran) ?: 1;
 
         // One aggregate pass instead of hydrating every journal of the class:
         // "Terisi" = materi filled and not filed late — the same definition
@@ -162,15 +168,17 @@ class DashboardController extends Controller
             'kelas' => $kelas,
             'jadwalHariIni' => $jadwalHariIni,
             'jurnalHariIni' => $jurnalHariIni,
-            'presensiSaya' => $presensiSaya,
+            'isKetua' => $isKetua,
+            'kehadiran' => $kehadiran,
+            'kehadiranLabel' => $kehadiranLabel,
             'kehadiranPerMapel' => $kehadiranPerMapel,
             'kpi' => [
                 'jadwalHariIni' => $jadwalHariIni->count(),
                 'jurnalTerisi' => $jurnalHariIni->count(),
                 'belumDiisi' => max(0, $jadwalHariIni->count() - $jurnalHariIni->count()),
-                'kehadiranSaya' => round($presensiSaya['hadir'] / $totalPresensi * 100),
-                'hadir' => $presensiSaya['hadir'],
-                'alpa' => $presensiSaya['alpa'],
+                'kehadiran' => round($kehadiran['hadir'] / $totalKehadiran * 100),
+                'hadir' => $kehadiran['hadir'],
+                'alpa' => $kehadiran['alpa'],
             ],
             'jurnalStatus' => [
                 'kelengkapan' => $kelas ? Ringkasan::kelengkapanKelas($kelas->id) : 0,

@@ -2,7 +2,9 @@
 
 namespace App\Policies;
 
+use App\Models\Jadwal;
 use App\Models\Jurnal;
+use App\Models\Kelas;
 use App\Models\User;
 
 /**
@@ -61,5 +63,45 @@ class JurnalPolicy
     {
         return $user->isAdmin()
             || ($user->isGuru() && $jurnal->guru_id === $user->id);
+    }
+
+    /**
+     * Who may mark/edit a meeting's attendance roster. Broader than editing the
+     * journal's own content (update): a guru may mark any meeting of a class
+     * they teach, a wali kelas any meeting of their homeroom class (whoever
+     * taught it), and a ketua kelas their own class — plus admin. Kept separate
+     * from update() so this reach never grants editing of the journal's materi.
+     */
+    public function markRoster(User $user, Jurnal $jurnal): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        $kelasId = $jurnal->jadwal?->kelas_id;
+
+        if ($kelasId === null) {
+            return false;
+        }
+
+        if ($user->isKetuaKelas()) {
+            return $user->kelas_id === $kelasId;
+        }
+
+        if ($user->isGuru()) {
+            return Jadwal::where('guru_id', $user->id)->where('kelas_id', $kelasId)->exists()
+                || Kelas::whereKey($kelasId)->where('wali_kelas_id', $user->id)->exists();
+        }
+
+        return false;
+    }
+
+    /**
+     * Who may view a roster: anyone who can mark it, plus a student reading
+     * their own class's meeting (covered by view()).
+     */
+    public function viewRoster(User $user, Jurnal $jurnal): bool
+    {
+        return $this->markRoster($user, $jurnal) || $this->view($user, $jurnal);
     }
 }
