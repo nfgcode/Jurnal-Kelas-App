@@ -766,6 +766,12 @@ a.name-cell:hover { text-decoration: underline; }
 // Full-width panels can afford to spell subject and class names out.
 .breakdown--wide .breakdown__label { width: 120px; }
 
+// A wide breakdown's bar fills the space between the label and value. The base
+// `.meter` is a fixed 60px non-flex track; here it must instead grow to fill and
+// shrink with the row, or the inline `width:100%` (which `flex:none` refuses to
+// shrink) pushes the value off the right edge at every viewport width.
+.breakdown--wide .meter { flex: 1; min-width: 0; }
+
 .breakdown__value { font-weight: 600; font-variant-numeric: tabular-nums; }
 .breakdown__pct { width: 28px; text-align: right; color: var(--n-600); font-size: 10px; flex: none; }
 
@@ -792,10 +798,22 @@ textarea.input-hifi {
     padding: 10px 12px;
     line-height: 1.5;
     display: block;
+    // %control-base is tuned for single-line fields (nowrap + horizontal
+    // scroll); a multi-line textarea must wrap its text and its placeholder
+    // instead of scrolling sideways.
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
 }
 
 .form-grid {
     display: grid;
+    // A single implicit `auto` column sizes to its widest child's max-content,
+    // so a horizontally-scrollable table inside the form (min-width 560 on
+    // phones) would stretch the whole form past the viewport. Pin the column to
+    // the container width, min 0, so wide children scroll inside their own frame
+    // instead. The `--2/3/4` modifiers override this with their own tracks.
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
 }
 
@@ -930,6 +948,11 @@ textarea.input-hifi {
 .seg { display: inline-flex; gap: 4px; }
 
 .seg__opt {
+    // Relative so the visually-hidden native input below is positioned against
+    // this 22px box. Without it the absolute input falls back to a far ancestor
+    // as its containing block, escapes the scrolling table's clip, and pokes
+    // ~23px past the right edge — one stray offender per student row.
+    position: relative;
     width: 22px;
     height: 22px;
     border-radius: 5px;
@@ -943,7 +966,7 @@ textarea.input-hifi {
     cursor: pointer;
     margin: 0;
 
-    input { position: absolute; opacity: 0; pointer-events: none; }
+    input { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
 }
 
 .seg__opt--h:has(input:checked) { background: var(--p-400); border-color: var(--p-400); color: #fff; }

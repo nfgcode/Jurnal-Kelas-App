@@ -36,6 +36,11 @@ class UserRequest extends FormRequest
             'nip' => ['nullable', 'required_if:role,guru', 'string', 'max:255', Rule::unique('users')->ignore($user)],
             'nis' => ['nullable', 'required_if:role,siswa', 'string', 'max:255', Rule::unique('users')->ignore($user)],
             'kelas_id' => ['nullable', 'required_if:role,siswa', 'exists:kelas,id'],
+            // Homeroom classes this guru is wali of. Not a user column — the
+            // controller syncs it onto kelas.wali_kelas_id, so normalizedData()
+            // drops it before the payload reaches the User model.
+            'kelas_wali' => ['nullable', 'array'],
+            'kelas_wali.*' => ['integer', 'exists:kelas,id'],
         ];
     }
 
@@ -49,6 +54,9 @@ class UserRequest extends FormRequest
     public function normalizedData(): array
     {
         $data = $this->validated();
+
+        // Perwalian lives on kelas.wali_kelas_id, not on the user row.
+        unset($data['kelas_wali']);
 
         if ($data['role'] !== 'guru') {
             $data['nip'] = null;

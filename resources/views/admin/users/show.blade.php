@@ -36,6 +36,22 @@
     </div>
 
     @if ($user->isGuru())
+        <x-card title="Kelas Perwalian">
+            <x-slot:actions><span class="card-hifi__meta">{{ $user->kelasWali->count() }} kelas</span></x-slot:actions>
+
+            @if ($user->kelasWali->isEmpty())
+                <p class="empty-state">Guru ini bukan wali kelas mana pun. Tetapkan lewat tombol <strong>Ubah</strong> (bagian Kelas Perwalian) atau dari menu Kelas.</p>
+            @else
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    @foreach ($user->kelasWali->sortBy('nama_kelas') as $kelas)
+                        <a class="chip chip--green" href="{{ route('kelas.show', $kelas) }}">{{ $kelas->nama_kelas }}</a>
+                    @endforeach
+                </div>
+            @endif
+        </x-card>
+    @endif
+
+    @if ($user->isGuru())
         <x-card title="Jadwal Mengajar" flush>
             <x-slot:actions><span class="card-hifi__meta">{{ $jadwals->count() }} slot</span></x-slot:actions>
 

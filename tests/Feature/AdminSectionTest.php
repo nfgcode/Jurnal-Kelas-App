@@ -250,4 +250,54 @@ class AdminSectionTest extends TestCase
             ->assertOk()
             ->assertSee('Rekap Presensi per Pertemuan');
     }
+
+    public function test_admin_can_assign_and_release_wali_from_the_user_form(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+
+        $payload = fn (array $extra = []): array => array_merge([
+            'name' => $guru->name,
+            'email' => $guru->email,
+            'password' => '',
+            'role' => 'guru',
+            'status' => 'aktif',
+            'nip' => $guru->nip,
+        ], $extra);
+
+        // Checking the class on the user form makes this guru its wali.
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$guru->id}", $payload(['kelas_wali' => [$kelas->id]]))
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertSame($guru->id, $kelas->refresh()->wali_kelas_id);
+
+        // Submitting with none selected releases the assignment.
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$guru->id}", $payload());
+
+        $this->assertNull($kelas->refresh()->wali_kelas_id);
+    }
+
+    public function test_changing_a_wali_guru_to_another_role_releases_the_class(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $kelas->update(['wali_kelas_id' => $guru->id]);
+
+        $this->actingAs($this->admin())
+            ->put("/admin/users/{$guru->id}", [
+                'name' => $guru->name,
+                'email' => $guru->email,
+                'password' => '',
+                'role' => 'siswa',
+                'status' => 'aktif',
+                'nis' => '20990001',
+                'kelas_id' => $kelas->id,
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $this->assertSame('siswa', $guru->refresh()->role);
+        $this->assertNull($kelas->refresh()->wali_kelas_id, 'a non-guru must not remain a class wali');
+    }
 }

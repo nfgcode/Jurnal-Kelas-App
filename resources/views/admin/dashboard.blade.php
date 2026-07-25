@@ -56,7 +56,9 @@
                 :tones="['Hadir' => 'hadir', 'Ada Tugas' => 'izin', 'Tanpa Tugas' => 'alpa']" />
 
             @if ($guruPerluPerhatian > 0)
-                <div class="flash mt-3" style="background: var(--yellow-100); color: #4a3b00">
+                <div class="flash mt-3 is-clickable" role="button" tabindex="0"
+                     data-detail-tipe="guru_perhatian"
+                     style="background: var(--yellow-100); color: #4a3b00">
                     <span class="legend__dot" style="background: var(--s-300)"></span>
                     {{ $guruPerluPerhatian }} guru perlu perhatian
                 </div>

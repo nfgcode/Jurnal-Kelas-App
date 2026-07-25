@@ -76,6 +76,28 @@
     </div>
 </div>
 
+{{-- Homeroom assignment for a guru. Full-width (outside the 2-col grid) so the
+     class checkboxes have room; the same kelas.wali_kelas_id the Kelas form edits. --}}
+<div data-role-field="guru" class="mt-3">
+    <x-field label="Kelas Perwalian" name="kelas_wali"
+             hint="Guru ini menjadi wali untuk kelas yang dicentang. Tersinkron dua arah dengan menu Kelas.">
+        @php
+            $waliTerpilih = old('kelas_wali', $kelasList->where('wali_kelas_id', $user?->id)->pluck('id')->all());
+            $waliTerpilih = array_map('strval', (array) $waliTerpilih);
+        @endphp
+        <div class="form-grid form-grid--3">
+            @foreach ($kelasList as $kelas)
+                @php $waliLain = $kelas->wali_kelas_id && $kelas->wali_kelas_id !== $user?->id ? $kelas->waliKelas?->name : null; @endphp
+                <label class="checkbox-row">
+                    <input type="checkbox" name="kelas_wali[]" value="{{ $kelas->id }}"
+                           @checked(in_array((string) $kelas->id, $waliTerpilih, true))>
+                    <span>{{ $kelas->nama_kelas }}@if ($waliLain)<span class="is-muted"> · wali: {{ $waliLain }}</span>@endif</span>
+                </label>
+            @endforeach
+        </div>
+    </x-field>
+</div>
+
 @push('scripts')
     <script>
         // Show only the fields relevant to the selected role.

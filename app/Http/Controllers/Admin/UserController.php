@@ -93,7 +93,7 @@ class UserController extends Controller
     public function create()
     {
         return view('admin.users.create', [
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'kelasList' => Kelas::with('waliKelas')->orderBy('nama_kelas')->get(),
         ]);
     }
 
@@ -105,7 +105,11 @@ class UserController extends Controller
         $data = $request->normalizedData();
         $data['password'] = Hash::make($data['password']);
 
-        User::create($data);
+        $user = User::create($data);
+
+        if ($user->role === 'guru') {
+            $this->syncPerwalian($user, $request->input('kelas_wali', []));
+        }
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Pengguna berhasil ditambahkan.');
@@ -121,6 +125,7 @@ class UserController extends Controller
         // Extra context depending on the role being viewed.
         if ($user->isGuru()) {
             $user->loadCount(['jadwals', 'jurnals']);
+            $user->load('kelasWali');
             $jadwals = $user->jadwals()->with(['kelas', 'mataPelajaran'])->get();
         } else {
             $jadwals = collect();
@@ -143,7 +148,7 @@ class UserController extends Controller
     {
         return view('admin.users.edit', [
             'user' => $user,
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'kelasList' => Kelas::with('waliKelas')->orderBy('nama_kelas')->get(),
         ]);
     }
 
@@ -170,6 +175,13 @@ class UserController extends Controller
 
         $user->update($data);
 
+        // Sync homeroom classes when the account is (still) a guru. When the
+        // role just changed away from guru, the User model's updated() event
+        // has already released them, so skipping here keeps them released.
+        if ($user->role === 'guru') {
+            $this->syncPerwalian($user, $request->input('kelas_wali', []));
+        }
+
         return redirect()->route('admin.users.index')
             ->with('success', 'Data pengguna berhasil diperbarui.');
     }
@@ -187,6 +199,24 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Pengguna berhasil dihapus.');
+    }
+
+    /**
+     * Make this guru the wali of exactly $kelasIds: assign the chosen classes
+     * and release any class it was wali of but no longer chosen. Both the user
+     * form and the Kelas form write the same kelas.wali_kelas_id, so they stay
+     * two views of one fact. An empty selection releases all of this guru's
+     * classes.
+     *
+     * @param  array<int|string>  $kelasIds
+     */
+    private function syncPerwalian(User $user, array $kelasIds): void
+    {
+        Kelas::whereIn('id', $kelasIds)->update(['wali_kelas_id' => $user->id]);
+
+        Kelas::where('wali_kelas_id', $user->id)
+            ->when($kelasIds, fn ($query) => $query->whereNotIn('id', $kelasIds))
+            ->update(['wali_kelas_id' => null]);
     }
 
     /**

@@ -25,7 +25,9 @@ const renderTabel = (baris) => {
                 <td class="is-muted">${escapeHtml(r.tanggal)}</td>
                 <td class="is-strong">${escapeHtml(r.kelas ?? '—')}</td>
                 <td>${escapeHtml(r.mapel ?? '—')}</td>
-                <td class="is-muted">${escapeHtml(r.guru ?? '—')}</td>
+                <td class="is-muted">${r.guruUrl
+                    ? `<a class="text-reset" href="${escapeHtml(r.guruUrl)}">${escapeHtml(r.guru ?? '—')}</a>`
+                    : escapeHtml(r.guru ?? '—')}</td>
                 <td>${escapeHtml(r.materi ?? '—')}</td>
                 <td>${chip(r.guruChip)}</td>
                 <td class="is-num">${escapeHtml(r.hadir)}/${escapeHtml(r.total)}</td>

@@ -60,6 +60,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Model events.
+     */
+    protected static function booted(): void
+    {
+        // A homeroom assignment (kelas.wali_kelas_id) is only meaningful for a
+        // guru. When an account stops being a guru, release any class it was
+        // wali of, so the class list never shows a non-guru as its wali.
+        // Deletion is already covered by the FK's nullOnDelete.
+        static::updated(function (User $user) {
+            if ($user->wasChanged('role') && $user->role !== 'guru') {
+                Kelas::where('wali_kelas_id', $user->id)->update(['wali_kelas_id' => null]);
+            }
+        });
+    }
+
+    /**
      * The student allowed to fill the class journal on the teacher's behalf.
      */
     public function isKetuaKelas(): bool

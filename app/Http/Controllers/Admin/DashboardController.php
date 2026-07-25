@@ -110,7 +110,7 @@ class DashboardController extends Controller
     public function detail(Request $request)
     {
         $data = $request->validate([
-            'tipe' => ['required', 'in:jurnal,guru,kelas,terisi,telat,presensi,belum,kelengkapan'],
+            'tipe' => ['required', 'in:jurnal,guru,kelas,terisi,telat,presensi,belum,kelengkapan,guru_perhatian'],
             'tanggal' => ['nullable', 'date'],
             'guru_id' => ['nullable', 'exists:users,id'],
             'kelas_id' => ['nullable', 'exists:kelas,id'],
@@ -182,6 +182,16 @@ class DashboardController extends Controller
                 $query->whereBetween('tanggal', $rentang)->whereRaw(Jurnal::ekspresiTerlambat());
                 $judul = 'Jurnal Terlambat Isi';
                 break;
+
+            case 'guru_perhatian':
+                // The meetings behind the "perlu perhatian" callout: teachers
+                // absent this period without leaving an assignment. Same
+                // predicate the dashboard counts, listed meeting-by-meeting.
+                $query->where('kehadiran_guru_status', 'tidak_hadir')
+                    ->where(fn ($q) => $q->whereNull('kehadiran_guru_ada_tugas')->orWhere('kehadiran_guru_ada_tugas', false))
+                    ->whereBetween('tanggal', $rentang);
+                $judul = 'Guru Perlu Perhatian';
+                break;
         }
 
         $baris = $query->take(50)->get()->map(fn ($jurnal) => [
@@ -189,6 +199,9 @@ class DashboardController extends Controller
             'kelas' => $jurnal->jadwal?->kelas?->nama_kelas,
             'mapel' => $jurnal->jadwal?->mataPelajaran?->nama,
             'guru' => $jurnal->guru?->name,
+            // Let the modal link a teacher through to their profile, mirroring
+            // x-guru-link elsewhere. Null keeps the cell plain text.
+            'guruUrl' => $jurnal->guru ? route('admin.users.show', $jurnal->guru) : null,
             'materi' => $jurnal->materi,
             'guruChip' => $jurnal->kehadiranGuruChip(),
             'statusChip' => $jurnal->statusPengisian(),
