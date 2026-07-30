@@ -61,6 +61,15 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 - Ruang kerja khusus terfokus pada kelas perwaliannya: **Data Kelas, Jadwal Kelas, Jurnal Kelas, Presensi Kelas**
 - Rekap kehadiran per siswa + sorot siswa dengan kehadiran terendah
 
+### 📷 Presensi via QR Code (per ruang kelas)
+- Tiap kelas punya **QR code unik** (token acak, bukan id berurutan) untuk ditempel di ruangnya
+- Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah) → login → halaman konfirmasi kelas → langsung isi **jurnal + presensi** kelas itu
+- **Khusus role guru** — siswa/admin yang membuka URL QR ditolak (403); belum login otomatis dialihkan ke login lalu kembali (`redirect()->intended()`)
+- Halaman **cetak QR** untuk admin (`/admin/kelas-qr`), siap potong & tempel, dengan QR SVG (via `endroid/qr-code`, offline)
+- Waktu pengisian jurnal tercatat otomatis (`created_at`) dan ditampilkan di detail jurnal ("Diisi Pada")
+
+> **Deploy sekolah:** agar QR bisa dibuka dari HP, set `APP_URL` ke alamat LAN server (mis. `http://192.168.1.10:8888`), **bukan** `localhost`.
+
 ### 🔒 Keamanan & Otorisasi
 - Otorisasi web berlapis: **middleware peran** (`CheckRole`) di route + **Policy per-record** (`Kelas`, `MataPelajaran`, `Jadwal`, `Jurnal`, `Presensi`)
 - **Data scoping per peran**: guru hanya melihat kelas/mapel yang ia ampu; siswa hanya kelasnya sendiri
@@ -300,6 +309,8 @@ make setup          # Jalankan initial setup
 composer setup      # Full setup: install, env, key, migrate, npm, build
 composer dev        # Jalankan server + queue + pail + vite secara bersamaan
 composer test       # Jalankan test suite (PHPUnit)
+composer lint       # Rapikan code style otomatis (Laravel Pint)
+composer quality    # Gate: cek code style (pint --test) + jalankan test suite
 ```
 
 ---
@@ -457,7 +468,7 @@ Variabel penting di `.env`:
 | Variable | Default | Keterangan |
 |----------|---------|------------|
 | `APP_NAME` | `Jurnal Kelas` | Nama aplikasi |
-| `APP_URL` | `http://localhost:8888` | URL aplikasi |
+| `APP_URL` | `http://localhost:8888` | URL aplikasi — **set ke alamat LAN sekolah** (mis. `http://192.168.1.10:8888`) di deploy nyata agar QR code kelas bisa dibuka dari HP guru |
 | `APP_LOCALE` | `id` | Bahasa Indonesia |
 | `DB_CONNECTION` | `mysql` | Driver database |
 | `DB_HOST` | `mysql` | Host DB (nama container Docker) |

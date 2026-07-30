@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Jurnal extends Model
 {
@@ -148,7 +149,7 @@ class Jurnal extends Model
      */
     public static function ekspresiTerlambat(): string
     {
-        return \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite'
+        return DB::connection()->getDriverName() === 'sqlite'
             ? "jurnal.created_at > datetime(jurnal.tanggal, '+2 day')"
             : 'jurnal.created_at > DATE_ADD(jurnal.tanggal, INTERVAL 2 DAY)';
     }

@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Jurnal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Jurnal
+ * @mixin Jurnal
  */
 class JurnalResource extends JsonResource
 {

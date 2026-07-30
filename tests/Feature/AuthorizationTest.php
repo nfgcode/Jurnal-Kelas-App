@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Kelas;
 use App\Models\Presensi;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;

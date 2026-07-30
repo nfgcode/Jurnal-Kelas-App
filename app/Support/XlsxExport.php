@@ -26,7 +26,7 @@ class XlsxExport
         $sheet = self::sheetXml($header, $rows);
 
         $tmp = tempnam(sys_get_temp_dir(), 'xlsx');
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         $zip->open($tmp, ZipArchive::OVERWRITE);
 
         $zip->addFromString('[Content_Types].xml', self::CONTENT_TYPES);
@@ -53,7 +53,7 @@ class XlsxExport
     private static function sheetXml(array $header, iterable $rows): string
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
 
         $r = 1;
         $xml .= self::row($r, $header, true);
@@ -63,7 +63,7 @@ class XlsxExport
             $xml .= self::row($r, $row, false);
         }
 
-        return $xml . '</sheetData></worksheet>';
+        return $xml.'</sheetData></worksheet>';
     }
 
     /**
@@ -75,21 +75,21 @@ class XlsxExport
     private static function row(int $r, array $cells, bool $bold): string
     {
         $style = $bold ? ' s="1"' : '';
-        $out = '<row r="' . $r . '">';
+        $out = '<row r="'.$r.'">';
 
         $c = 0;
         foreach ($cells as $value) {
-            $ref = self::colLetter($c++) . $r;
+            $ref = self::colLetter($c++).$r;
 
             if (is_int($value) || is_float($value)) {
-                $out .= '<c r="' . $ref . '"' . $style . '><v>' . $value . '</v></c>';
+                $out .= '<c r="'.$ref.'"'.$style.'><v>'.$value.'</v></c>';
             } else {
-                $out .= '<c r="' . $ref . '"' . $style . ' t="inlineStr"><is><t xml:space="preserve">'
-                    . self::esc((string) ($value ?? '')) . '</t></is></c>';
+                $out .= '<c r="'.$ref.'"'.$style.' t="inlineStr"><is><t xml:space="preserve">'
+                    .self::esc((string) ($value ?? '')).'</t></is></c>';
             }
         }
 
-        return $out . '</row>';
+        return $out.'</row>';
     }
 
     /** Zero-based column index to its spreadsheet letter (0→A, 26→AA). */
@@ -98,7 +98,7 @@ class XlsxExport
         $letter = '';
 
         for ($i = $index; $i >= 0; $i = intdiv($i, 26) - 1) {
-            $letter = chr($i % 26 + 65) . $letter;
+            $letter = chr($i % 26 + 65).$letter;
         }
 
         return $letter;
@@ -110,37 +110,37 @@ class XlsxExport
     }
 
     private const CONTENT_TYPES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-        . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-        . '<Default Extension="xml" ContentType="application/xml"/>'
-        . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-        . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-        . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-        . '</Types>';
+        .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        .'<Default Extension="xml" ContentType="application/xml"/>'
+        .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        .'</Types>';
 
     private const RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
-        . '</Relationships>';
+        .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+        .'</Relationships>';
 
     private const WORKBOOK = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        . '<sheets><sheet name="Laporan" sheetId="1" r:id="rId1"/></sheets></workbook>';
+        .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        .'<sheets><sheet name="Laporan" sheetId="1" r:id="rId1"/></sheets></workbook>';
 
     private const WORKBOOK_RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-        . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
-        . '</Relationships>';
+        .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+        .'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+        .'</Relationships>';
 
     // Two cell formats: 0 = default, 1 = bold (used by the header row).
     private const STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        . '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
-        . '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
-        . '<borders count="1"><border/></borders>'
-        . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-        . '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-        . '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
-        . '</styleSheet>';
+        .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        .'<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
+        .'<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+        .'<borders count="1"><border/></borders>'
+        .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        .'<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+        .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+        .'</styleSheet>';
 }

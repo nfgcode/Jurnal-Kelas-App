@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
+use App\Models\Kelas;
 use App\Models\Presensi;
 use Carbon\Carbon;
 use Illuminate\Contracts\Database\Query\Builder;
@@ -213,7 +214,7 @@ class Ringkasan
      * renders. The level is the share of that day's scheduled meetings that
      * actually have a journal.
      *
-     * @param  Collection<int, \App\Models\Kelas>  $kelasList
+     * @param  Collection<int, Kelas>  $kelasList
      * @return array<string, array<string, int>>
      */
     public static function heatmapJurnal(Collection $kelasList, ?Periode $periode = null): array
@@ -278,7 +279,7 @@ class Ringkasan
      * Attendance totals per class over the period, keyed by kelas id then by
      * status — the per-class comparison the recap chart draws.
      *
-     * @return array<int, \Illuminate\Support\Collection<string, int>>
+     * @return array<int, Collection<string, int>>
      */
     public static function presensiPerKelas(?Periode $periode = null): array
     {
@@ -306,7 +307,7 @@ class Ringkasan
      * timetable scheduled over the window — a class that met twenty times and
      * logged eighteen journals sits at 90%.
      *
-     * @return array<int, float>  keyed by the grouping column's value
+     * @return array<int, float> keyed by the grouping column's value
      */
     public static function kelengkapan(string $kolom = 'kelas_id', ?Periode $periode = null): array
     {

@@ -228,7 +228,7 @@ class UserController extends Controller
     {
         return match ($sort) {
             'nama' => $query->orderBy('name', $dir),
-            'nip_nis' => $query->orderByRaw('COALESCE(nip, nis) ' . ($dir === 'desc' ? 'desc' : 'asc')),
+            'nip_nis' => $query->orderByRaw('COALESCE(nip, nis) '.($dir === 'desc' ? 'desc' : 'asc')),
             'peran' => $query->orderBy('role', $dir),
             'kelas' => $query->orderBy(Kelas::select('nama_kelas')->whereColumn('kelas.id', 'users.kelas_id'), $dir),
             'status' => $query->orderBy('status', $dir),
@@ -236,5 +236,4 @@ class UserController extends Controller
             default => $query,
         };
     }
-
 }

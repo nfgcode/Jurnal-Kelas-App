@@ -13,7 +13,7 @@ class CheckRole
      *
      * Check if the authenticated user has one of the allowed roles.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      * @param  string  ...$roles  The allowed roles (e.g. 'admin', 'guru', 'siswa')
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response

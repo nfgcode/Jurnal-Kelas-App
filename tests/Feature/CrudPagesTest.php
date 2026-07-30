@@ -10,6 +10,7 @@ use App\Models\Presensi;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -75,7 +76,7 @@ class CrudPagesTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('pageProvider')]
+    #[DataProvider('pageProvider')]
     public function test_static_page_renders(string $url): void
     {
         $this->actingAs($this->admin)->get($url)->assertOk();

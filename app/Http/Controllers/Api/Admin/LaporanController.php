@@ -136,7 +136,7 @@ class LaporanController extends Controller
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
-                $status === 'telat' ? Jurnal::ekspresiTerlambat() : 'NOT (' . Jurnal::ekspresiTerlambat() . ')'
+                $status === 'telat' ? Jurnal::ekspresiTerlambat() : 'NOT ('.Jurnal::ekspresiTerlambat().')'
             ))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
     }

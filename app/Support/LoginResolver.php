@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Models\User;
 
 /**
@@ -12,8 +14,8 @@ use App\Models\User;
  * NULL nip/nis can never be matched, and an optional role narrows the lookup so
  * the same digits can never resolve to an account of another role.
  *
- * Shared by the web {@see \App\Http\Controllers\Auth\LoginController} and the
- * API {@see \App\Http\Controllers\Api\AuthController} so both behave identically.
+ * Shared by the web {@see LoginController} and the
+ * API {@see AuthController} so both behave identically.
  */
 class LoginResolver
 {

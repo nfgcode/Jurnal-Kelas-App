@@ -90,6 +90,16 @@
                         <span class="deflist__key">Diisi Oleh</span>
                         <span class="deflist__val">{{ $jurnal->diisiOleh?->name ?? $jurnal->guru?->name ?? '—' }}</span>
                     </div>
+                    <div class="deflist__row">
+                        <span class="deflist__key">Diisi Pada</span>
+                        <span class="deflist__val">{{ $jurnal->created_at?->translatedFormat('d/m/Y H:i') ?? '—' }}</span>
+                    </div>
+                    @if ($jurnal->updated_at && $jurnal->created_at && $jurnal->updated_at->gt($jurnal->created_at))
+                        <div class="deflist__row">
+                            <span class="deflist__key">Diubah</span>
+                            <span class="deflist__val">{{ $jurnal->updated_at->translatedFormat('d/m/Y H:i') }}</span>
+                        </div>
+                    @endif
                 </div>
             </x-card>
 

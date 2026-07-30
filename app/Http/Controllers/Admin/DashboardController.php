@@ -146,14 +146,14 @@ class DashboardController extends Controller
             case 'jurnal':
                 $tanggal = Carbon::parse($data['tanggal'] ?? $periode->selesaiString());
                 $query->whereDate('tanggal', $tanggal->toDateString());
-                $judul = 'Jurnal ' . $tanggal->translatedFormat('l, j F Y');
+                $judul = 'Jurnal '.$tanggal->translatedFormat('l, j F Y');
                 $meta = null;
                 break;
 
             case 'guru':
                 $guru = User::findOrFail($data['guru_id']);
                 $query->where('guru_id', $guru->id)->whereBetween('tanggal', $rentang);
-                $judul = 'Jurnal ' . $guru->name;
+                $judul = 'Jurnal '.$guru->name;
                 break;
 
             case 'kelas':
@@ -163,11 +163,11 @@ class DashboardController extends Controller
                 if (! empty($data['tanggal'])) {
                     $tanggal = Carbon::parse($data['tanggal']);
                     $query->whereDate('tanggal', $tanggal->toDateString());
-                    $judul = $kelas->nama_kelas . ' · ' . $tanggal->translatedFormat('j F Y');
+                    $judul = $kelas->nama_kelas.' · '.$tanggal->translatedFormat('j F Y');
                     $meta = null;
                 } else {
                     $query->whereBetween('tanggal', $rentang);
-                    $judul = 'Jurnal ' . $kelas->nama_kelas;
+                    $judul = 'Jurnal '.$kelas->nama_kelas;
                 }
                 break;
 
@@ -249,7 +249,7 @@ class DashboardController extends Controller
             ]);
 
         return response()->json([
-            'judul' => 'Presensi Siswa' . ($status ? ' · ' . ucfirst($status) : ''),
+            'judul' => 'Presensi Siswa'.($status ? ' · '.ucfirst($status) : ''),
             'meta' => $periode->label(),
             'tampilan' => 'presensi',
             'kosong' => $baris->isEmpty(),
@@ -291,7 +291,7 @@ class DashboardController extends Controller
             ->whereIn('jadwal_id', $jadwalIds)
             ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->get(['jadwal_id', 'tanggal'])
-            ->mapWithKeys(fn ($jurnal) => [$jurnal->jadwal_id . '|' . $jurnal->tanggal->toDateString() => true]);
+            ->mapWithKeys(fn ($jurnal) => [$jurnal->jadwal_id.'|'.$jurnal->tanggal->toDateString() => true]);
 
         $baris = [];
 
@@ -299,7 +299,7 @@ class DashboardController extends Controller
             $hari = Ringkasan::HARI[$tanggal->dayOfWeekIso - 1] ?? null;
 
             foreach ($jadwalPerHari[$hari] ?? [] as $jadwal) {
-                if (isset($terisi[$jadwal->id . '|' . $tanggal->toDateString()])) {
+                if (isset($terisi[$jadwal->id.'|'.$tanggal->toDateString()])) {
                     continue;
                 }
 

@@ -103,7 +103,7 @@ class DashboardPeriodeTest extends TestCase
         $this->actingAs($this->admin)
             ->getJson("/admin/dashboard/detail?tipe=guru&guru_id={$guru->id}&preset=30_hari")
             ->assertOk()
-            ->assertJsonFragment(['judul' => 'Jurnal ' . $guru->name]);
+            ->assertJsonFragment(['judul' => 'Jurnal '.$guru->name]);
     }
 
     public function test_dashboard_marks_up_the_drill_targets(): void

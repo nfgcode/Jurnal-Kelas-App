@@ -32,8 +32,7 @@ class Periode
         public readonly Carbon $mulai,
         public readonly Carbon $selesai,
         public readonly string $preset,
-    ) {
-    }
+    ) {}
 
     /**
      * Build the period from the request, defaulting to the current month.
@@ -44,7 +43,7 @@ class Periode
     public static function dari(Request $request): self
     {
         $data = $request->validate([
-            'preset' => ['nullable', 'string', 'in:' . implode(',', self::PRESETS)],
+            'preset' => ['nullable', 'string', 'in:'.implode(',', self::PRESETS)],
             'mulai' => ['nullable', 'date'],
             'selesai' => ['nullable', 'date'],
         ]);
@@ -171,8 +170,8 @@ class Periode
             'minggu_lalu' => 'Minggu Lalu',
             'bulan_lalu' => $this->mulai->translatedFormat('F Y'),
             '30_hari' => '30 Hari Terakhir',
-            'tahun_ini' => 'Tahun ' . $this->mulai->year,
-            'custom' => $this->mulai->translatedFormat('j M') . ' – ' . $this->selesai->translatedFormat('j M Y'),
+            'tahun_ini' => 'Tahun '.$this->mulai->year,
+            'custom' => $this->mulai->translatedFormat('j M').' – '.$this->selesai->translatedFormat('j M Y'),
             default => $this->mulai->translatedFormat('F Y'),
         };
     }

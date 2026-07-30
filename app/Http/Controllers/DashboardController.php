@@ -136,7 +136,7 @@ class DashboardController extends Controller
         $agregatJurnal = Jurnal::untukKelas($kelasId)
             ->selectRaw(
                 "COUNT(*) as total, SUM(CASE WHEN materi IS NOT NULL AND materi <> '' "
-                . 'AND NOT (' . Jurnal::ekspresiTerlambat() . ') THEN 1 ELSE 0 END) as tepat'
+                .'AND NOT ('.Jurnal::ekspresiTerlambat().') THEN 1 ELSE 0 END) as tepat'
             )
             ->first();
 

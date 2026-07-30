@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Jadwal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\Jadwal
+ * @mixin Jadwal
  */
 class JadwalResource extends JsonResource
 {

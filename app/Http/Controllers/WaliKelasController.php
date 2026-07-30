@@ -8,6 +8,7 @@ use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * "Mode Wali Kelas" — the same screens a guru works with, narrowed to the one
@@ -209,7 +210,7 @@ class WaliKelasController extends Controller
      * A teacher who chairs no class has no business here at all; asking for a
      * class they don't chair silently falls back to their first.
      *
-     * @return array{0: \Illuminate\Support\Collection<int, Kelas>, 1: Kelas}
+     * @return array{0: Collection<int, Kelas>, 1: Kelas}
      */
     private function konteks(Request $request): array
     {

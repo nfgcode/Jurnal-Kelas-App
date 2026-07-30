@@ -130,6 +130,12 @@
                 <a href="{{ route('admin.presensi.log') }}" class="sidebar__link {{ request()->routeIs('admin.presensi.log') ? 'is-active' : '' }}">
                     <i class="bi bi-clock-history"></i><span>Log Presensi</span>
                 </a>
+
+                <div class="sidebar__section">Perangkat</div>
+
+                <a href="{{ route('admin.kelas-qr.index') }}" class="sidebar__link {{ request()->routeIs('admin.kelas-qr.*') ? 'is-active' : '' }}">
+                    <i class="bi bi-qr-code"></i><span>Cetak QR Kelas</span>
+                </a>
             @endif
         @endif
     </nav>

@@ -131,7 +131,7 @@ class LaporanController extends Controller
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
-                $status === 'telat' ? $this->ekspresiTerlambat() : 'NOT (' . $this->ekspresiTerlambat() . ')'
+                $status === 'telat' ? $this->ekspresiTerlambat() : 'NOT ('.$this->ekspresiTerlambat().')'
             ))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
     }
@@ -171,7 +171,7 @@ class LaporanController extends Controller
             }
         };
 
-        return XlsxExport::download('rekap-jurnal-' . $this->slugPeriode($periode) . '.xlsx', $header, $rows());
+        return XlsxExport::download('rekap-jurnal-'.$this->slugPeriode($periode).'.xlsx', $header, $rows());
     }
 
     /**
@@ -198,12 +198,12 @@ class LaporanController extends Controller
             }
         };
 
-        return XlsxExport::download('rekap-presensi-' . $this->slugPeriode($periode) . '.xlsx', $header, $rows());
+        return XlsxExport::download('rekap-presensi-'.$this->slugPeriode($periode).'.xlsx', $header, $rows());
     }
 
     /** A filename-safe stamp for the export's period. */
     private function slugPeriode(Periode $periode): string
     {
-        return Str::slug($periode->mulaiString() . '-' . $periode->selesaiString());
+        return Str::slug($periode->mulaiString().'-'.$periode->selesaiString());
     }
 }

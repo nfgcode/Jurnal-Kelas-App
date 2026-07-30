@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
+use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin \App\Models\MataPelajaran
+ * @mixin MataPelajaran
  */
 class MataPelajaranResource extends JsonResource
 {

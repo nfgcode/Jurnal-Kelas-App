@@ -77,7 +77,7 @@ class DemoSeeder extends Seeder
         foreach ($nama as $i => $name) {
             $guru[] = User::create([
                 'name' => $name,
-                'email' => $this->slug($name) . '@jurnalkelas.app',
+                'email' => $this->slug($name).'@jurnalkelas.app',
                 'password' => Hash::make('password'),
                 'role' => 'guru',
                 'status' => $i === 11 ? 'pending' : 'aktif',
@@ -143,7 +143,7 @@ class DemoSeeder extends Seeder
                 'nama_kelas' => "{$tingkat} {$jurusan} {$urut}",
                 'tingkat' => $tingkat,
                 'jurusan' => $jurusan,
-                'ruang' => 'R-' . (101 + $i),
+                'ruang' => 'R-'.(101 + $i),
                 'kapasitas' => 36,
                 'tahun_ajaran' => '2026/2027',
                 'wali_kelas_id' => $guru[$i % count($guru)]->id,
@@ -155,7 +155,7 @@ class DemoSeeder extends Seeder
 
     /**
      * @param  array<int, Kelas>  $kelasList
-     * @return array<int, array<int, User>>  students keyed by kelas id
+     * @return array<int, array<int, User>> students keyed by kelas id
      */
     private function seedSiswa(array $kelasList): array
     {
@@ -176,8 +176,8 @@ class DemoSeeder extends Seeder
 
             for ($i = 0; $i < 30; $i++) {
                 $anggota[] = User::create([
-                    'name' => $depan[$i] . ' ' . $belakang[$i % count($belakang)],
-                    'email' => 'siswa' . $nis . '@jurnalkelas.app',
+                    'name' => $depan[$i].' '.$belakang[$i % count($belakang)],
+                    'email' => 'siswa'.$nis.'@jurnalkelas.app',
                     'password' => Hash::make('password'),
                     'role' => 'siswa',
                     // A handful of dormant and pending accounts keep the

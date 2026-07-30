@@ -8,6 +8,7 @@ use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 
 class JadwalController extends Controller
@@ -82,7 +83,7 @@ class JadwalController extends Controller
     /**
      * Count slots where the same period is claimed twice for this class.
      *
-     * @param  \Illuminate\Support\Collection<int, Jadwal>  $jadwals
+     * @param  Collection<int, Jadwal>  $jadwals
      */
     private function hitungBentrok($jadwals): int
     {
@@ -91,7 +92,7 @@ class JadwalController extends Controller
 
         foreach ($jadwals as $jadwal) {
             for ($jp = $jadwal->jam_ke_mulai; $jp <= $jadwal->jam_ke_selesai; $jp++) {
-                $kunci = $jadwal->hari . '-' . $jp;
+                $kunci = $jadwal->hari.'-'.$jp;
 
                 if (isset($terpakai[$kunci])) {
                     $bentrok++;
