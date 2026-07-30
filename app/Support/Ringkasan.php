@@ -329,14 +329,23 @@ class Ringkasan
             $target[$row->kunci] = ($target[$row->kunci] ?? 0) + $row->total * ($bobot[$row->hari] ?? 0);
         }
 
-        $aktual = Jurnal::query()
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->selectRaw("jadwal.{$kolom} as kunci, COUNT(*) as total")
-            ->whereBetween('jurnal.tanggal', [
-                $tanggalList[0]->toDateString(),
-                end($tanggalList)->toDateString(),
-            ])
-            ->groupBy("jadwal.{$kolom}")
+        // Count distinct meetings, not journal rows: one lesson may carry both a
+        // guru and a ketua journal, which would otherwise double the numerator
+        // and push completeness past 100%.
+        $aktual = DB::query()
+            ->fromSub(
+                Jurnal::query()
+                    ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+                    ->selectRaw("jadwal.{$kolom} as kunci, jurnal.jadwal_id, jurnal.tanggal")
+                    ->whereBetween('jurnal.tanggal', [
+                        $tanggalList[0]->toDateString(),
+                        end($tanggalList)->toDateString(),
+                    ])
+                    ->groupBy('kunci', 'jurnal.jadwal_id', 'jurnal.tanggal'),
+                'pertemuan'
+            )
+            ->selectRaw('kunci, COUNT(*) as total')
+            ->groupBy('kunci')
             ->pluck('total', 'kunci');
 
         $hasil = [];
@@ -375,14 +384,16 @@ class Ringkasan
             $target += (int) $total * ($bobot[$hari] ?? 0);
         }
 
-        $aktual = Jurnal::query()
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->where('jadwal.kelas_id', $kelasId)
-            ->whereBetween('jurnal.tanggal', [
-                $tanggalList[0]->toDateString(),
-                end($tanggalList)->toDateString(),
-            ])
-            ->count();
+        // Distinct meetings — see the note in kelengkapan().
+        $aktual = Jurnal::hitungPertemuan(
+            Jurnal::query()
+                ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+                ->where('jadwal.kelas_id', $kelasId)
+                ->whereBetween('jurnal.tanggal', [
+                    $tanggalList[0]->toDateString(),
+                    end($tanggalList)->toDateString(),
+                ])
+        );
 
         return self::persen($aktual, $target);
     }

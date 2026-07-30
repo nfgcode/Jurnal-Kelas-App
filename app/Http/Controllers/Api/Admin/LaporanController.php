@@ -44,7 +44,8 @@ class LaporanController extends Controller
         $kelengkapan = Ringkasan::kelengkapan('kelas_id', $periode);
         $rataKelengkapan = $kelengkapan ? round(array_sum($kelengkapan) / count($kelengkapan)) : 0;
         $terjadwal = Ringkasan::terjadwal($periode);
-        $terisi = Jurnal::whereBetween('tanggal', $rentang)->count();
+        // Distinct meetings: a lesson may carry a guru and a ketua journal.
+        $terisi = Jurnal::hitungPertemuan(Jurnal::whereBetween('tanggal', $rentang));
 
         return JurnalResource::collection($jurnals)->additional([
             'meta_laporan' => [
@@ -52,7 +53,9 @@ class LaporanController extends Controller
                 'statistik' => [
                     'terisi' => $terisi,
                     'belum' => max(0, $terjadwal - $terisi),
-                    'telat' => Jurnal::whereBetween('tanggal', $rentang)->whereRaw(Jurnal::ekspresiTerlambat())->count(),
+                    'telat' => Jurnal::hitungPertemuan(
+                        Jurnal::whereBetween('tanggal', $rentang)->whereRaw(Jurnal::ekspresiTerlambat())
+                    ),
                     'kelengkapan' => $rataKelengkapan,
                 ],
             ],
@@ -92,7 +95,7 @@ class LaporanController extends Controller
                 'periode' => ['mulai' => $periode->mulaiString(), 'selesai' => $periode->selesaiString()],
                 'rekap' => $rekap,
                 'total' => array_sum($rekap),
-                'total_pertemuan' => Jurnal::whereBetween('tanggal', $rentang)->count(),
+                'total_pertemuan' => Jurnal::hitungPertemuan(Jurnal::whereBetween('tanggal', $rentang)),
                 'kehadiran_per_kelas' => Ringkasan::presensiPerKelas($periode),
             ],
         ]);

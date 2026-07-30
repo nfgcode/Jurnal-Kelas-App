@@ -8,6 +8,7 @@ use App\Http\Resources\JurnalResource;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\JurnalAudit;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -83,12 +84,29 @@ class JurnalController extends Controller
         abort_if($user->isGuru() && $jadwal->guru_id !== $user->id, 403);
         abort_if($user->isSiswa() && $jadwal->kelas_id !== $user->kelas_id, 403);
 
+        $peran = Jurnal::peranPengisi($user);
+
+        // One journal per side per meeting (see the unique index). Reported as a
+        // 422 with the existing id so a client can navigate to it.
+        if ($lama = Jurnal::sudahAda($jadwal->id, $data['tanggal'], $peran)) {
+            return $this->responsGanda($lama, $peran);
+        }
+
         // A guru writes their own; otherwise the slot's teacher owns the entry.
         $data['guru_id'] = $user->isGuru() ? $user->id : $jadwal->guru_id;
         $data['diisi_oleh_id'] = $user->id;
+        $data['diisi_oleh_peran'] = $peran;
         $data['kehadiran_guru_status'] ??= 'hadir';
 
-        $jurnal = Jurnal::create($data);
+        try {
+            $jurnal = Jurnal::create($data);
+        } catch (QueryException $e) {
+            if (! Jurnal::pelanggaranGanda($e)) {
+                throw $e;
+            }
+
+            return $this->responsGanda(Jurnal::sudahAda($jadwal->id, $data['tanggal'], $peran), $peran);
+        }
 
         return (new JurnalResource($jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])))
             ->response()->setStatusCode(201);
@@ -98,9 +116,36 @@ class JurnalController extends Controller
     {
         Gate::authorize('update', $jurnal);
 
-        $jurnal->update($request->validated());
+        $data = $request->validated();
+
+        // Re-pointing a journal must not land on a meeting already covered from
+        // the same side.
+        $lama = Jurnal::sudahAda(
+            (int) $data['jadwal_id'],
+            $data['tanggal'],
+            $jurnal->diisi_oleh_peran ?? Jurnal::peranPengisi($request->user()),
+            $jurnal->id,
+        );
+
+        if ($lama) {
+            return $this->responsGanda($lama, $lama->diisi_oleh_peran);
+        }
+
+        $jurnal->update($data);
 
         return new JurnalResource($jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru']));
+    }
+
+    /** The 422 a duplicate journal gets, pointing at the row already on file. */
+    private function responsGanda(?Jurnal $lama, string $peran)
+    {
+        $sisi = $peran === 'siswa' ? 'perwakilan kelas' : 'guru pengajar';
+
+        return response()->json([
+            'message' => "Jurnal pertemuan ini sudah diisi dari sisi {$sisi}.",
+            'jurnal_id' => $lama?->id,
+            'errors' => ['jadwal_id' => ["Jurnal pertemuan ini sudah diisi dari sisi {$sisi}."]],
+        ], 422);
     }
 
     public function destroy(Jurnal $jurnal)

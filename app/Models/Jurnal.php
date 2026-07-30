@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Support\DbDriver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 class Jurnal extends Model
@@ -38,7 +40,84 @@ class Jurnal extends Model
         'kehadiran_guru_keterangan',
         'guru_id',
         'diisi_oleh_id',
+        'diisi_oleh_peran',
     ];
+
+    /**
+     * Which side of a meeting a journal was written from. A meeting may hold one
+     * journal per side — the guru's own, and the one a ketua kelas files on their
+     * behalf — enforced by the unique index (jadwal_id, tanggal, diisi_oleh_peran).
+     */
+    public static function peranPengisi(User $user): string
+    {
+        return $user->isSiswa() ? 'siswa' : 'guru';
+    }
+
+    /**
+     * How many distinct *meetings* a journal query covers.
+     *
+     * A meeting may hold two journals (the guru's and the ketua's) but was taught
+     * once, so counting rows would inflate every "jurnal terisi" figure and push
+     * completeness above 100%. Written as a grouped subquery because
+     * `COUNT(DISTINCT a, b)` is MySQL-only and the test database is SQLite.
+     *
+     * @param  Builder|\Illuminate\Database\Query\Builder  $query
+     */
+    public static function hitungPertemuan($query): int
+    {
+        $dasar = $query instanceof Builder
+            ? $query->clone()->getQuery()
+            : $query->clone();
+
+        return DB::query()->fromSub(
+            $dasar->select('jurnal.jadwal_id', 'jurnal.tanggal')->groupBy('jurnal.jadwal_id', 'jurnal.tanggal'),
+            'pertemuan'
+        )->count();
+    }
+
+    /**
+     * Another journal for the same meeting that already holds the attendance
+     * roster, if any.
+     *
+     * A meeting may carry two journals (the guru's and the ketua's), but the class
+     * was only taught once — so the roster belongs to exactly one of them.
+     * Allowing a second set would double every attendance figure derived from
+     * presensi rows.
+     */
+    public function pemegangPresensi(): ?self
+    {
+        return self::where('jadwal_id', $this->jadwal_id)
+            ->whereDate('tanggal', $this->tanggal)
+            ->whereKeyNot($this->getKey())
+            ->whereHas('presensis')
+            ->first();
+    }
+
+    /** Whether a failed write was the unique index rejecting a duplicate. */
+    public static function pelanggaranGanda(QueryException $e): bool
+    {
+        return $e->getCode() === '23000'
+            || str_contains($e->getMessage(), 'jurnal_pertemuan_peran_unique');
+    }
+
+    /**
+     * The journal already filed for this meeting from the given side, if any.
+     * Used to reject a double submit with a helpful message rather than letting
+     * the unique index surface as a 500.
+     */
+    public static function sudahAda(int $jadwalId, string $tanggal, string $peran, ?int $kecuali = null): ?self
+    {
+        return self::with('diisiOleh')
+            ->where('jadwal_id', $jadwalId)
+            // whereDate, not a plain where: MySQL stores `tanggal` as DATE, but on
+            // SQLite (the test database) Laravel writes "Y-m-d H:i:s", so a plain
+            // equality match silently finds nothing there. The index still seeks on
+            // the jadwal_id prefix, and this lookup runs once per journal save.
+            ->whereDate('tanggal', $tanggal)
+            ->where('diisi_oleh_peran', $peran)
+            ->when($kecuali, fn ($q) => $q->whereKeyNot($kecuali))
+            ->first();
+    }
 
     /**
      * The attributes that should be cast.

@@ -150,6 +150,14 @@ class PresensiController extends Controller
         // guru who teaches or is wali of that class — see JurnalPolicy::markRoster.
         Gate::authorize('markRoster', $jurnal);
 
+        // The lesson happened once, so its roster lives on one journal even when
+        // the meeting has both a guru and a ketua version. Send the user to
+        // whichever journal already holds it instead of starting a second set.
+        if ($pemegang = $jurnal->pemegangPresensi()) {
+            return redirect()->route('presensi.create', $pemegang->id)
+                ->with('success', 'Presensi pertemuan ini sudah tercatat pada jurnal lain; perubahan dilakukan di sini.');
+        }
+
         $siswaList = $jurnal->jadwal->kelas->siswa()->orderBy('name')->get();
 
         // Re-opening the form should show what was already recorded, since
@@ -174,6 +182,14 @@ class PresensiController extends Controller
         // A meeting's roster may be marked by admin, its class's ketua, and any
         // guru who teaches or is wali of that class — see JurnalPolicy::markRoster.
         Gate::authorize('markRoster', $jurnal);
+
+        // One roster per meeting, even when the meeting has two journals — see
+        // Jurnal::pemegangPresensi(). Marking a second set would double every
+        // attendance figure for this lesson.
+        if ($pemegang = $jurnal->pemegangPresensi()) {
+            return redirect()->route('presensi.create', $pemegang->id)
+                ->with('error', 'Presensi pertemuan ini sudah tercatat pada jurnal lain. Perbarui di sini agar tidak terhitung dua kali.');
+        }
 
         // Attendance may only be recorded for students actually in this class, so
         // a crafted siswa_id (a teacher, or another class's student) is rejected.

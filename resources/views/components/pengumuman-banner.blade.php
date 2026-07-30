@@ -14,10 +14,9 @@
     @endphp
 
     @foreach ($tayang as $item)
-        @php $tampil = $item->tampilan(); @endphp
-        <div class="banner banner--{{ $tampil['warna'] }}">
-            <i class="bi {{ $tampil['ikon'] }}"></i>
-            <span>{{ $item->pesan }}</span>
+        <div class="banner banner--{{ $item['warna'] }}">
+            <i class="bi {{ $item['ikon'] }}"></i>
+            <span>{{ $item['pesan'] }}</span>
         </div>
     @endforeach
 

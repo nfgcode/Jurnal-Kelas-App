@@ -53,7 +53,8 @@ class LaporanController extends Controller
         $kelengkapan = Ringkasan::kelengkapan('kelas_id', $periode);
         $rataKelengkapan = $kelengkapan ? round(array_sum($kelengkapan) / count($kelengkapan)) : 0;
         $terjadwal = Ringkasan::terjadwal($periode);
-        $terisi = Jurnal::whereBetween('tanggal', $rentang)->count();
+        // Distinct meetings: a lesson may carry a guru and a ketua journal.
+        $terisi = Jurnal::hitungPertemuan(Jurnal::whereBetween('tanggal', $rentang));
 
         return view('admin.laporan.jurnal', [
             'periode' => $periode,
@@ -65,7 +66,9 @@ class LaporanController extends Controller
             'statistik' => [
                 'terisi' => $terisi,
                 'belum' => max(0, $terjadwal - $terisi),
-                'telat' => Jurnal::whereBetween('tanggal', $rentang)->whereRaw($this->ekspresiTerlambat())->count(),
+                'telat' => Jurnal::hitungPertemuan(
+                    Jurnal::whereBetween('tanggal', $rentang)->whereRaw($this->ekspresiTerlambat())
+                ),
                 'kelengkapan' => $rataKelengkapan,
             ],
         ]);
@@ -116,7 +119,7 @@ class LaporanController extends Controller
             'filters' => $filters,
             'rekap' => $rekap,
             'total' => array_sum($rekap),
-            'totalPertemuan' => Jurnal::whereBetween('tanggal', $rentang)->count(),
+            'totalPertemuan' => Jurnal::hitungPertemuan(Jurnal::whereBetween('tanggal', $rentang)),
         ]);
     }
 

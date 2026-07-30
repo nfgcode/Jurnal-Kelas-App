@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Cache;
@@ -50,12 +49,19 @@ class Pengumuman extends Model
      * {@see lupakanTayang()} whenever an admin posts or switches one, so a notice
      * appears immediately rather than after the TTL.
      *
-     * @return Collection<int, self>
+     * Plain arrays, never Eloquent models: a serialized model round-tripped
+     * through Redis can come back as __PHP_Incomplete_Class, which the array
+     * cache driver used by the test suite would never reveal.
+     *
+     * @return array<int, array{pesan: string, ikon: string, warna: string}>
      */
-    public static function untukBanner(): Collection
+    public static function untukBanner(): array
     {
-        return Cache::remember(self::CACHE_KUNCI, 60,
-            fn () => self::sedangTayang()->latest('id')->get());
+        return Cache::remember(self::CACHE_KUNCI, 60, fn () => self::sedangTayang()
+            ->latest('id')
+            ->get()
+            ->map(fn (self $p) => ['pesan' => $p->pesan] + $p->tampilan())
+            ->all());
     }
 
     /** Drop the cached banner set after any change. */

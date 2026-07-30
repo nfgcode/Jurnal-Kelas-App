@@ -9,6 +9,8 @@ use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Models\User;
 use App\Support\Ringkasan;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -162,11 +164,32 @@ class JurnalController extends Controller
         $jadwal = Jadwal::findOrFail($validated['jadwal_id']);
         $this->pastikanJadwalMilik($user, $jadwal);
 
+        $peran = Jurnal::peranPengisi($user);
+
+        // One journal per side per meeting. Checked here for a helpful message,
+        // and caught below because two rapid submits can both pass this check.
+        if ($lama = Jurnal::sudahAda($jadwal->id, $validated['tanggal'], $peran)) {
+            return $this->tolakGanda($lama, $peran);
+        }
+
         $data = $this->normalize($validated, $user);
         $data['guru_id'] = $user->isGuru() ? $user->id : $jadwal->guru_id;
         $data['diisi_oleh_id'] = $user->id;
+        $data['diisi_oleh_peran'] = $peran;
 
-        $jurnal = Jurnal::create($data);
+        try {
+            $jurnal = Jurnal::create($data);
+        } catch (QueryException $e) {
+            // Lost the race against a concurrent submit — the unique index held.
+            if (! Jurnal::pelanggaranGanda($e)) {
+                throw $e;
+            }
+
+            return $this->tolakGanda(
+                Jurnal::sudahAda($jadwal->id, $validated['tanggal'], $peran),
+                $peran,
+            );
+        }
 
         return redirect()->route('presensi.create', $jurnal->id)
             ->with('success', 'Jurnal tersimpan. Lengkapi presensi siswa berikut ini.');
@@ -213,6 +236,20 @@ class JurnalController extends Controller
         // otherwise an update could move the journal onto another class/teacher.
         $this->pastikanJadwalMilik($user, Jadwal::findOrFail($validated['jadwal_id']));
 
+        // Moving a journal onto a meeting/date that already has one from this side
+        // would collide with the unique index; reject it the same way as a
+        // duplicate create. The row being edited is excluded from the check.
+        $lama = Jurnal::sudahAda(
+            (int) $validated['jadwal_id'],
+            $validated['tanggal'],
+            $jurnal->diisi_oleh_peran ?? Jurnal::peranPengisi($user),
+            $jurnal->id,
+        );
+
+        if ($lama) {
+            return $this->tolakGanda($lama, $lama->diisi_oleh_peran);
+        }
+
         $jurnal->update($this->normalize($validated, $user));
 
         return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil diperbarui.');
@@ -228,6 +265,23 @@ class JurnalController extends Controller
         $jurnal->delete();
 
         return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil dihapus.');
+    }
+
+    /**
+     * Send a double submit back to the form with a message that points at the
+     * journal already on file, rather than silently creating a second copy of the
+     * same lesson (which would also inflate journal completeness).
+     */
+    private function tolakGanda(?Jurnal $lama, string $peran): RedirectResponse
+    {
+        $siapa = $lama?->diisiOleh?->name;
+        $sisi = $peran === 'siswa' ? 'perwakilan kelas' : 'guru pengajar';
+
+        $pesan = "Jurnal pertemuan ini sudah diisi dari sisi {$sisi}"
+            .($siapa ? " oleh {$siapa}" : '')
+            .'. Silakan buka jurnal tersebut bila ingin memperbaruinya.';
+
+        return back()->withInput()->withErrors(['jadwal_id' => $pesan]);
     }
 
     /**

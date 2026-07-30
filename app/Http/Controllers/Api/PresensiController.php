@@ -54,6 +54,15 @@ class PresensiController extends Controller
         $jurnal = Jurnal::with('jadwal.kelas')->findOrFail($request->integer('jurnal_id'));
         Gate::authorize('markRoster', $jurnal);
 
+        // One roster per meeting even when it carries two journals — a second set
+        // would double every attendance figure for this lesson.
+        if ($pemegang = $jurnal->pemegangPresensi()) {
+            return response()->json([
+                'message' => 'Presensi pertemuan ini sudah tercatat pada jurnal lain.',
+                'jurnal_id' => $pemegang->id,
+            ], 422);
+        }
+
         // Attendance may only be recorded for students of this journal's class.
         $roster = $jurnal->jadwal->kelas->siswa()->pluck('id')->all();
 
