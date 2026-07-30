@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\Halaman;
-
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\PresensiLog;
 use App\Models\User;
+use App\Support\Halaman;
 use Illuminate\Http\Request;
 
 class PresensiLogController extends Controller

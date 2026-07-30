@@ -72,6 +72,7 @@
                         <th>Diajarkan Di</th>
                         <th>Kelengkapan Jurnal</th>
                         <th class="is-num">Status</th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -81,11 +82,7 @@
                             $info = $ringkasan[$mapel->id] ?? null;
                         @endphp
                         <tr>
-                            <td class="is-strong">
-                                <a class="text-reset text-decoration-none" href="{{ route('mata-pelajaran.show', $mapel) }}">
-                                    {{ $mapel->nama }}
-                                </a>
-                            </td>
+                            <td class="is-strong">{{ $mapel->nama }}</td>
                             <td><x-chip :tone="$kelompokTone[$mapel->kelompok] ?? 'neutral'" :label="$mapel->kelompokLabel()" /></td>
                             <td class="is-muted">{{ $mapel->jp_per_minggu }} JP</td>
                             <td>{{ $info?->guru_nama ?? 'Belum ditetapkan' }}</td>
@@ -103,9 +100,12 @@
                                     <x-chip tone="green" label="Aktif" />
                                 @endif
                             </td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('mata-pelajaran.show', $mapel) }}">Lihat</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="empty-state">Tidak ada mata pelajaran yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="8" class="empty-state">Tidak ada mata pelajaran yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

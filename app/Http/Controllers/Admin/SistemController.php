@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\Halaman;
-
 use App\Http\Controllers\Controller;
 use App\Models\LaporanError;
 use App\Models\Pengumuman;
+use App\Support\Halaman;
 use App\Support\PembacaLog;
 use App\Support\SistemStatus;
 use Illuminate\Http\Request;

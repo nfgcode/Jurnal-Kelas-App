@@ -28,23 +28,22 @@
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
-                    <tr><th>Tanggal</th><th>Materi</th><th>Tugas</th><th class="is-num">Status</th></tr>
+                    <tr><th>Tanggal</th><th>Materi</th><th>Tugas</th><th class="is-num">Status</th><th class="is-num">Aksi</th></tr>
                 </thead>
                 <tbody>
                     @forelse ($jadwal->jurnals->sortByDesc('tanggal') as $jurnal)
                         @php $status = $jurnal->statusPengisian(); @endphp
                         <tr>
                             <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
-                            <td>
-                                <a class="text-reset text-decoration-none" href="{{ route('jurnal.show', $jurnal) }}">
-                                    {{ Str::limit($jurnal->materi, 60) }}
-                                </a>
-                            </td>
+                            <td>{{ Str::limit($jurnal->materi, 60) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 40) : '—' }}</td>
                             <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="empty-state">Belum ada jurnal untuk slot jadwal ini.</td></tr>
+                        <tr><td colspan="5" class="empty-state">Belum ada jurnal untuk slot jadwal ini.</td></tr>
                     @endforelse
                 </tbody>
             </table>

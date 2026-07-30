@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\Halaman;
-
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\User;
+use App\Support\Halaman;
+use App\Support\Urutan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -26,8 +26,10 @@ class UserController extends Controller
             'mata_pelajaran_id' => ['nullable', 'exists:mata_pelajaran,id'],
             'status' => ['nullable', Rule::in(['aktif', 'nonaktif', 'pending'])],
             'q' => ['nullable', 'string', 'max:255'],
-            'sort' => ['nullable', 'in:nama,nip_nis,peran,kelas,status,aktif'],
-            'dir' => ['nullable', 'in:asc,desc'],
+            // sort/dir are deliberately not validated here: Urutan whitelists the
+            // column against this screen's map and narrows the direction, so an
+            // unknown one falls back to the default order instead of bouncing the
+            // reader with a validation error — the behaviour every other table has.
         ]);
 
         $users = User::query()
@@ -42,18 +44,16 @@ class UserController extends Controller
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($query, $id) => $query->where(fn ($w) => $w
                 ->whereHas('jadwals', fn ($j) => $j->where('mata_pelajaran_id', $id))
                 ->orWhereHas('kelas.jadwals', fn ($j) => $j->where('mata_pelajaran_id', $id))))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
-            ->when(
-                $filters['sort'] ?? null,
-                fn ($query, $sort) => $this->terapkanUrutan($query, $sort, ($filters['dir'] ?? 'asc') === 'desc' ? 'desc' : 'asc'),
-                // Default: most-recently-active first, then by name. Plain DESC
-                // already sorts NULLs last on both MySQL and SQLite, and unlike
-                // the old `last_active_at IS NULL` expression it lets the
-                // users_last_active_at_index provide the order.
-                fn ($query) => $query->orderByDesc('last_active_at')->orderBy('name')
-            )
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
+
+        // Default: most-recently-active first, then by name. Plain DESC already
+        // sorts NULLs last on both MySQL and SQLite, and unlike the old
+        // `last_active_at IS NULL` expression it lets users_last_active_at_index
+        // provide the order.
+        Urutan::terapkan($users, $request, self::petaUrutan(), fn ($query) => $query
+            ->orderByDesc('last_active_at')->orderBy('name'));
+
+        $users = $users->paginate(Halaman::perHalaman())->withQueryString();
 
         // One grouped pass over users covers every headline count below, instead
         // of ~7 separate COUNT queries. Summed in PHP so it stays driver-portable.
@@ -226,16 +226,24 @@ class UserController extends Controller
      * COALESCE; class sorts by the student's class name through a subquery so no
      * join is needed. $dir is already constrained to asc|desc by the caller.
      */
-    private function terapkanUrutan($query, string $sort, string $dir)
+    /**
+     * Sortable columns of the user table. The keys are the whitelist
+     * {@see Urutan} matches `?sort=` against; `dir` is already narrowed to
+     * asc|desc there, so it is safe inside orderByRaw.
+     *
+     * @return array<string, callable>
+     */
+    private static function petaUrutan(): array
     {
-        return match ($sort) {
-            'nama' => $query->orderBy('name', $dir),
-            'nip_nis' => $query->orderByRaw('COALESCE(nip, nis) '.($dir === 'desc' ? 'desc' : 'asc')),
-            'peran' => $query->orderBy('role', $dir),
-            'kelas' => $query->orderBy(Kelas::select('nama_kelas')->whereColumn('kelas.id', 'users.kelas_id'), $dir),
-            'status' => $query->orderBy('status', $dir),
-            'aktif' => $query->orderBy('last_active_at', $dir),
-            default => $query,
-        };
+        return [
+            'nama' => fn ($q, $dir) => $q->orderBy('name', $dir),
+            'nip_nis' => fn ($q, $dir) => $q->orderByRaw("COALESCE(nip, nis) {$dir}"),
+            'peran' => fn ($q, $dir) => $q->orderBy('role', $dir),
+            'kelas' => fn ($q, $dir) => $q->orderBy(
+                Kelas::select('nama_kelas')->whereColumn('kelas.id', 'users.kelas_id'), $dir
+            ),
+            'status' => fn ($q, $dir) => $q->orderBy('status', $dir),
+            'aktif' => fn ($q, $dir) => $q->orderBy('last_active_at', $dir),
+        ];
     }
 }

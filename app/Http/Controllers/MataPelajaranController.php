@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Halaman;
-
 use App\Http\Requests\MataPelajaranRequest;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Models\User;
+use App\Support\Halaman;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;

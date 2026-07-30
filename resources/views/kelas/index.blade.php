@@ -69,17 +69,14 @@
                         <th>Mata Pelajaran</th>
                         <th>Kelengkapan Jurnal</th>
                         <th class="is-num">Status</th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($kelas as $item)
                         @php $persen = $kelengkapan[$item->id] ?? 0; @endphp
                         <tr>
-                            <td class="is-strong">
-                                <a class="text-reset text-decoration-none" href="{{ route('kelas.show', $item) }}">
-                                    {{ $item->nama_kelas }}
-                                </a>
-                            </td>
+                            <td class="is-strong">{{ $item->nama_kelas }}</td>
                             <td>
                                 @if ($item->waliKelas)
                                     <x-guru-link :guru="$item->waliKelas" />
@@ -105,9 +102,12 @@
                                     <x-chip tone="red" label="Kritis" />
                                 @endif
                             </td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('kelas.show', $item) }}">Lihat</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="empty-state">Tidak ada kelas yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="8" class="empty-state">Tidak ada kelas yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

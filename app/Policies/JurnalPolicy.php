@@ -21,7 +21,18 @@ class JurnalPolicy
         }
 
         if ($user->isGuru()) {
-            return $jurnal->guru_id === $user->id;
+            if ($jurnal->guru_id === $user->id) {
+                return true;
+            }
+
+            // A wali kelas reads every meeting of their homeroom class, whoever
+            // taught it — the same reach markRoster() already grants, and these
+            // journals are already listed on the wali screens. Read-only:
+            // update()/delete() below stay with the teacher who wrote it.
+            $kelasId = $jurnal->jadwal?->kelas_id;
+
+            return $kelasId !== null
+                && Kelas::whereKey($kelasId)->where('wali_kelas_id', $user->id)->exists();
         }
 
         return $user->kelas_id !== null

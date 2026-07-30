@@ -15,7 +15,8 @@
     <x-page-head
         :title="$sapaan"
         :sub="'Ringkasan kelas dan kehadiran Anda · Semester Gasal ' . now()->year . '/' . (now()->year + 1) . ' · ' . now()->translatedFormat('j F Y')">
-        <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
+        {{-- A label, not a control — see dashboard/guru.blade.php. --}}
+        <x-chip tone="neutral" :label="now()->translatedFormat('F Y')" />
         @if (Auth::user()->isKetuaKelas())
             <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">Isi Presensi Kelas</a>
             <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>

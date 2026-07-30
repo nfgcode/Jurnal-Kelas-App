@@ -75,10 +75,29 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 - **Data scoping per peran**: guru hanya melihat kelas/mapel yang ia ampu; siswa hanya kelasnya sendiri
 - Presensi tervalidasi terhadap daftar siswa rombel (mencegah injeksi `siswa_id` asing)
 - Concurrency-safe: transaksi + `lockForUpdate` + unique constraint pada penyimpanan presensi
+- **ID jurnal/presensi diabstraksi** di URL web: route key berupa **ULID** (`jurnal.public_id`,
+  unik & `NOT NULL`), bukan id berurutan — anti-enumerasi dan tidak memancing orang mengutak-atik
+  angka di alamat. Otorisasi tetap lapisan utama; ID abstrak hanya pelengkap. REST API sengaja
+  tetap memakai id numerik agar kontraknya tidak berubah
+- **Whitelist untuk seluruh input URL**: `?per=` (25/50/75/100), `?sort=`/`?dir=` (peta kolom per
+  layar), dan `?preset=`/rentang periode. Nilai tak dikenal jatuh ke default, bukan error — dan
+  tidak ada nilai dari URL yang masuk ke SQL secara langsung
 
 ### 📱 UX & Antarmuka
-- **Responsif mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width, target sentuh nyaman
+- **Responsif mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width.
+  Tombol kehadiran H/S/I/A membesar jadi **38px** di ponsel — layar tersibuk guru, dan salah tekan
+  di sana berarti presensi salah
 - **Dropdown ber-pencarian** (progressive enhancement, tanpa dependency) untuk daftar panjang
+- **Filter periode** di histori jurnal, riwayat siswa, dan presensi: preset Hari Ini / Minggu Ini /
+  Minggu Lalu / Bulan Ini / Bulan Lalu / 30 Hari / Tahun Ini + rentang kustom. Kartu statistik ikut
+  periode agar angkanya konsisten dengan tabel, dan filter lain tetap terbawa saat periode diganti
+- **Sortir kolom** dengan panah ↑/↓ dan kolom aktif ter-highlight, pada tabel jurnal, presensi,
+  wali kelas, laporan admin, dan pengguna
+- **Jumlah baris tabel** dapat dipilih (25/50/75/100) plus **lompat ke halaman** tertentu
+- **Tombol "Lihat" di kolom Aksi** — cara membuka satu baris tidak lagi berupa tautan tak terlihat
+  di dalam teks nama kelas/mapel
+- **Dropdown jadwal mengikuti tanggal** yang dipilih (bukan seluruh jadwal), ditandai bila slot
+  sudah diisi, dan menampilkan pesan "hubungi admin" bila hari itu memang tidak ada jadwal
 - Performa: indexing komposit, caching KPI landing, query agregat yang diringkas
 
 ### 🚑 Error Handling Ramah-Peran
@@ -509,7 +528,7 @@ Variabel penting di `.env`:
 | Nama | GitHub | Bagian |
 |------|--------|--------|
 | **Nurfauzan Gymnastiar** | [@nfgcode](https://github.com/nfgcode) | UI/UX, Frontend, Responsive |
-| **Akmal Falah Maulana** | [@ShiroTenma](https://github.com/ShiroTenma) | Backend, Database, Responsive, Optimizing & Refactor, Fitur QR Code, Error Handling & Sistem/Healthcheck |
+| **Akmal Falah Maulana** | [@ShiroTenma](https://github.com/ShiroTenma) | Backend, Database, Responsive, Optimizing & Refactor, Fitur QR Code, Error Handling & Sistem/Healthcheck, Otorisasi & ID abstrak, Filter periode / sortir / paginasi |
 
 ---
 

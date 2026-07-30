@@ -7,7 +7,8 @@
 
     <x-page-head
         title="Presensi Kelas"
-        :sub="number_format($totalPertemuan, 0, ',', '.') . ' pertemuan · rata-rata ' . round($rekap['hadir'] / $total * 100) . '% hadir'">
+        :sub="number_format($totalPertemuan, 0, ',', '.') . ' pertemuan · rata-rata ' . round($rekap['hadir'] / $total * 100) . '% hadir · ' . $periode->label()">
+        <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
     </x-page-head>
 
@@ -55,12 +56,12 @@
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
+                        <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
                         <th>Jam Ke</th>
-                        <th>Kelas</th>
-                        <th>Mata Pelajaran</th>
-                        <th class="is-num">Total</th>
-                        <th class="is-num">H</th>
+                        <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
+                        <th class="is-num"><x-th-sort kolom="siswa" label="Total" /></th>
+                        <th class="is-num"><x-th-sort kolom="hadir" label="H" /></th>
                         <th class="is-num">S</th>
                         <th class="is-num">I</th>
                         <th class="is-num">A</th>
@@ -88,7 +89,8 @@
                                     <span class="is-strong">{{ $persen }}%</span>
                                 </span>
                             </td>
-                            <td class="is-num">
+                            <td class="is-num tbl__aksi">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Jurnal</a>
                                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.create', $jurnal) }}">
                                     {{ $jurnal->total_siswa ? 'Ubah' : 'Tandai' }}
                                 </a>

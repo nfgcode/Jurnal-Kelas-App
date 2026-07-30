@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\Ringkasan;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 class Jadwal extends Model
 {
@@ -34,6 +36,32 @@ class Jadwal extends Model
         'jam_selesai',
         'ruang',
     ];
+
+    /**
+     * The timetable rows a user may write a journal against: a guru their own
+     * lessons (a subject taught by several teachers therefore never leaks
+     * between them), a student their class's. Admin sees everything.
+     *
+     * One definition, because the journal form picks a default slot and builds
+     * the dropdown from it — two copies of this condition would let the two
+     * disagree about what a user is allowed to file against.
+     */
+    public function scopeUntukPengguna($query, User $user)
+    {
+        return $query
+            ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
+            ->when($user->isSiswa(), fn ($q) => $q->where('kelas_id', $user->kelas_id ?? 0));
+    }
+
+    /**
+     * Rows taught on the weekday of the given date. `hari` stores the Indonesian
+     * day name, so the date is mapped through the same list the rest of the app
+     * uses; a Sunday matches nothing, which is correct — there are no lessons.
+     */
+    public function scopePadaHariDari($query, Carbon $tanggal)
+    {
+        return $query->where('hari', Ringkasan::HARI[$tanggal->dayOfWeekIso - 1] ?? '—');
+    }
 
     /**
      * Lesson-period range as the screens render it, e.g. "1 - 2".

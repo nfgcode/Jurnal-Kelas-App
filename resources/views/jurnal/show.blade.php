@@ -14,6 +14,7 @@
         :title="$jurnal->jadwal?->mataPelajaran?->nama ?? 'Jurnal'"
         :sub="collect([$jurnal->jadwal?->kelas?->nama_kelas, 'JP ' . $jurnal->jadwal?->jpLabel(), $jurnal->tanggal->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <x-chip :tone="$status['tone']" :label="$status['label']" />
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.create', $jurnal) }}">Ubah Presensi</a>
         <a class="btn-hifi" href="{{ route('jurnal.edit', $jurnal) }}">Ubah Jurnal</a>
     </x-page-head>

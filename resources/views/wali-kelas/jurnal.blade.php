@@ -53,15 +53,16 @@
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
+                        <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
                         <th>Jam Ke</th>
-                        <th>Mata Pelajaran</th>
-                        <th>Guru</th>
+                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
+                        <th><x-th-sort kolom="guru" label="Guru" /></th>
                         <th>Materi</th>
                         <th>Tugas</th>
-                        <th>Kehadiran Siswa</th>
+                        <th><x-th-sort kolom="hadir" label="Kehadiran Siswa" /></th>
                         <th>Kehadiran Guru</th>
-                        <th class="is-num">Status</th>
+                        <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,9 +86,12 @@
                             </td>
                             <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
                             <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="empty-state">Belum ada jurnal yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="10" class="empty-state">Belum ada jurnal yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

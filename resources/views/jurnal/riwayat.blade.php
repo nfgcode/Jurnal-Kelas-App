@@ -5,15 +5,16 @@
 @section('content')
     <x-page-head
         title="Riwayat Jurnal Kelas"
-        :sub="collect([$kelas?->nama_kelas, number_format($statistik['total'], 0, ',', '.') . ' pertemuan', 'Semester Gasal ' . now()->year . '/' . (now()->year + 1)])->filter()->join(' · ')">
-        <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
+        :sub="collect([$kelas?->nama_kelas, number_format($statistik['total'], 0, ',', '.') . ' pertemuan', $periode->label()])->filter()->join(' · ')">
+        <x-periode-filter :periode="$periode" />
         @if (Auth::user()->isKetuaKelas())
             <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>
         @endif
     </x-page-head>
 
     <div class="grid-row grid-row--4">
-        <x-stat label="Total Pertemuan" :value="number_format($statistik['total'], 0, ',', '.')" caption="semester berjalan" />
+        <x-stat label="Total Pertemuan" :value="number_format($statistik['total'], 0, ',', '.')"
+                :caption="$periode->label()" />
         <x-stat label="Jurnal Terisi" :value="number_format($statistik['total'], 0, ',', '.')"
                 :caption="round($statistik['kelengkapan']) . '% kelengkapan'" />
         <x-stat label="Kelengkapan" :value="round($statistik['kelengkapan']) . '%'" caption="dari jadwal terjadwal" />
@@ -48,15 +49,16 @@
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
+                        <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
                         <th>Jam Ke</th>
-                        <th>Mata Pelajaran</th>
-                        <th>Guru</th>
+                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
+                        <th><x-th-sort kolom="guru" label="Guru" /></th>
                         <th>Kehadiran Guru</th>
                         <th>Materi</th>
                         <th>Tugas</th>
                         <th>Presensi Saya</th>
-                        <th class="is-num">Jurnal</th>
+                        <th class="is-num"><x-th-sort kolom="status" label="Jurnal" /></th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -76,20 +78,19 @@
                         <tr>
                             <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
                             <td class="is-muted">{{ $jurnal->jadwal?->jpLabel() }}</td>
-                            <td class="is-strong is-nowrap">
-                                <a class="text-reset text-decoration-none" href="{{ route('jurnal.show', $jurnal) }}">
-                                    {{ $jurnal->jadwal?->mataPelajaran?->nama }}
-                                </a>
-                            </td>
+                            <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
                             <td class="is-muted is-nowrap">{{ $jurnal->guru?->name }}</td>
                             <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 22) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 20) : '—' }}</td>
                             <td><x-chip :tone="$tonePresensi" :label="$saya ? ucfirst($saya->status) : '—'" /></td>
                             <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="empty-state">Belum ada jurnal kelas.</td></tr>
+                        <tr><td colspan="10" class="empty-state">Belum ada jurnal kelas.</td></tr>
                     @endforelse
                 </tbody>
             </table>

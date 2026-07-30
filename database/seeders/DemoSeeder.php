@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 /**
  * Builds a school large enough for the analytics screens to say something:
@@ -306,6 +307,10 @@ class DemoSeeder extends Seeder
                 $adaTugas = mt_rand(1, 100) <= 60;
 
                 $jurnalRows[] = [
+                    // Bulk insert skips model events, so the route key the model
+                    // would have generated has to be written here as well —
+                    // without it every link to the journal is unbuildable.
+                    'public_id' => (string) Str::ulid(),
                     'jadwal_id' => $jadwal->id,
                     'tanggal' => $tanggal->toDateString(),
                     'materi' => $materi[array_rand($materi)],

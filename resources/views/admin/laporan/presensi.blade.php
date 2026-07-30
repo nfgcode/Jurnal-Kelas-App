@@ -97,13 +97,13 @@
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
-                        <th>Kelas</th>
-                        <th>Mata Pelajaran</th>
-                        <th>Guru</th>
+                        <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
+                        <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
+                        <th><x-th-sort kolom="guru" label="Guru" /></th>
                         <th>Kehadiran Guru</th>
-                        <th class="is-num">Total</th>
-                        <th class="is-num">H</th>
+                        <th class="is-num"><x-th-sort kolom="siswa" label="Total" /></th>
+                        <th class="is-num"><x-th-sort kolom="hadir" label="H" /></th>
                         <th class="is-num">S</th>
                         <th class="is-num">I</th>
                         <th class="is-num">A</th>

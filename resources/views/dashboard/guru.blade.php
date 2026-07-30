@@ -12,7 +12,10 @@
     <x-page-head
         title="Selamat Datang, {{ Auth::user()->name }}!"
         :sub="'Ringkasan kegiatan mengajar Anda · Semester Gasal ' . now()->year . '/' . (now()->year + 1) . ' · ' . now()->translatedFormat('j F Y')">
-        <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
+        {{-- A label, not a control: this screen is "today plus standing totals",
+             so there is no period to choose. Styled as a chip so it never looks
+             like a dropdown that refuses to open. --}}
+        <x-chip tone="neutral" :label="now()->translatedFormat('F Y')" />
         <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
     </x-page-head>
 

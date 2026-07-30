@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Halaman;
-
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Models\User;
+use App\Support\Halaman;
+use App\Support\Periode;
 use App\Support\Ringkasan;
+use App\Support\Urutan;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
@@ -33,40 +35,46 @@ class JurnalController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $periode = Periode::dari($request);
+
         $query = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->withCount([
                 'presensis as total_siswa',
                 'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
             ])
+            ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
-            ->latest('tanggal')
-            ->latest('id');
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
         if ($user->isSiswa()) {
-            return $this->riwayatSiswa($user, $query, $filters);
+            return $this->riwayatSiswa($request, $user, $query, $filters, $periode);
         }
 
         if ($user->isGuru()) {
             $query->where('guru_id', $user->id);
         }
 
+        // Newest first unless the reader asked for another column.
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'hadir', 'status']));
+        Urutan::terapkan($query, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
+
         $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
         $milikSaya = $user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query();
 
-        // Total and this-month count in one scan (SUM(BETWEEN) is 0/1 per row
-        // on both MySQL and SQLite) instead of two separate COUNTs.
+        // All-time total and the selected period's count in one scan (SUM(BETWEEN)
+        // is 0/1 per row on both MySQL and SQLite) instead of two separate COUNTs.
         $agregat = (clone $milikSaya)
-            ->selectRaw('COUNT(*) as total, SUM(tanggal BETWEEN ? AND ?) as bulan_ini', [
-                now()->startOfMonth()->toDateString(),
-                now()->endOfMonth()->toDateString(),
+            ->selectRaw('COUNT(*) as total, SUM(tanggal BETWEEN ? AND ?) as periode', [
+                $periode->mulaiString(),
+                $periode->selesaiString(),
             ])
             ->first();
 
         return view('jurnal.histori', [
             'jurnals' => $jurnals,
+            'periode' => $periode,
             // A guru filters only among the classes/subjects they teach; admin all.
             'kelasList' => Kelas::query()
                 ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
@@ -77,11 +85,15 @@ class JurnalController extends Controller
             'filters' => $filters,
             'statistik' => [
                 'total' => (int) $agregat->total,
-                'bulanIni' => (int) $agregat->bulan_ini,
+                'periode' => (int) $agregat->periode,
                 'kelas' => $user->isGuru()
                     ? Jadwal::where('guru_id', $user->id)->distinct()->count('kelas_id')
                     : Kelas::count(),
-                'kehadiran' => Ringkasan::kehadiranGuru(clone $milikSaya),
+                // Scoped to the period so the cards describe the same rows as
+                // the table below them.
+                'kehadiran' => Ringkasan::kehadiranGuru(
+                    (clone $milikSaya)->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
+                ),
             ],
         ]);
     }
@@ -90,9 +102,12 @@ class JurnalController extends Controller
      * The same records seen from the student's side: whose lesson it was, and
      * whether the student themself was present.
      */
-    private function riwayatSiswa(User $user, $query, array $filters)
+    private function riwayatSiswa(Request $request, User $user, $query, array $filters, Periode $periode)
     {
         $kelas = $user->kelas;
+
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'mapel', 'guru', 'status']));
+        Urutan::terapkan($query, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         // A student with no class sees nothing — never every class's journals.
         // (Deleting a rombel NULLs its students' kelas_id.)
@@ -101,6 +116,7 @@ class JurnalController extends Controller
 
             return view('jurnal.riwayat', [
                 'jurnals' => $jurnals,
+                'periode' => $periode,
                 'presensiSaya' => collect(),
                 'kelas' => null,
                 'mapelList' => MataPelajaran::orderBy('nama')->get(),
@@ -120,13 +136,16 @@ class JurnalController extends Controller
             ->get()
             ->keyBy('jurnal_id');
 
-        // Total and how many carried a task, in one grouped pass over the class.
+        // Total and how many carried a task, in one grouped pass over the class —
+        // within the selected period, so the cards match the table.
         $agregat = Jurnal::whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id))
+            ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->selectRaw('COUNT(*) as total, COUNT(tugas) as tugas')
             ->first();
 
         return view('jurnal.riwayat', [
             'jurnals' => $jurnals,
+            'periode' => $periode,
             'presensiSaya' => $presensiSaya,
             'kelas' => $kelas,
             'mapelList' => MataPelajaran::orderBy('nama')->get(),
@@ -148,9 +167,11 @@ class JurnalController extends Controller
         Gate::authorize('create', Jurnal::class);
 
         $user = $request->user();
-        $jadwal = $this->jadwalTerpilih($request, $user);
+        $tanggal = $this->tanggalAcuan($request);
+        $jadwal = $this->jadwalTerpilih($request, $user, $tanggal);
 
-        return view($user->isSiswa() ? 'jurnal.mengisi' : 'jurnal.isi', $this->konteksForm($user, $jadwal));
+        return view($user->isSiswa() ? 'jurnal.mengisi' : 'jurnal.isi',
+            $this->konteksForm($user, $jadwal, $tanggal));
     }
 
     /**
@@ -218,9 +239,10 @@ class JurnalController extends Controller
 
         $user = $request->user();
 
+        // Editing stays on the journal's own date, so its slot is in the list.
         return view(
             $user->isSiswa() ? 'jurnal.mengisi' : 'jurnal.isi',
-            $this->konteksForm($user, $jurnal->jadwal, $jurnal)
+            $this->konteksForm($user, $jurnal->jadwal, $this->tanggalAcuan($request, $jurnal), $jurnal)
         );
     }
 
@@ -279,7 +301,19 @@ class JurnalController extends Controller
         $siapa = $lama?->diisiOleh?->name;
         $sisi = $peran === 'siswa' ? 'perwakilan kelas' : 'guru pengajar';
 
-        $pesan = "Jurnal pertemuan ini sudah diisi dari sisi {$sisi}"
+        // Name the meeting: with a day's worth of slots in the dropdown, "this
+        // meeting" alone leaves the writer guessing which one was refused.
+        $jadwal = $lama?->jadwal;
+        $slot = $jadwal
+            ? collect([
+                $jadwal->kelas?->nama_kelas,
+                $jadwal->mataPelajaran?->nama,
+                'JP '.$jadwal->jpLabel(),
+            ])->filter()->join(' · ')
+            : null;
+
+        $pesan = 'Jurnal '.($slot ? "{$slot} " : '')."pada {$lama?->tanggal?->translatedFormat('j F Y')}"
+            ." sudah diisi dari sisi {$sisi}"
             .($siapa ? " oleh {$siapa}" : '')
             .'. Silakan buka jurnal tersebut bila ingin memperbaruinya.';
 
@@ -302,36 +336,79 @@ class JurnalController extends Controller
     }
 
     /**
-     * Which meeting the form is about: an explicit choice, otherwise the next
-     * slot on today's timetable that has no journal yet.
+     * The date the form is about. A late journal is normal here — the app has a
+     * "Telat" status for exactly that — so any valid date is accepted and the
+     * timetable follows it rather than being pinned to today.
      */
-    private function jadwalTerpilih(Request $request, User $user): ?Jadwal
+    private function tanggalAcuan(Request $request, ?Jurnal $jurnal = null): Carbon
     {
-        $kandidat = Jadwal::with(['kelas', 'mataPelajaran', 'guru'])
-            ->when($user->isGuru(), fn ($query) => $query->where('guru_id', $user->id))
-            ->when($user->isSiswa() && $user->kelas_id, fn ($query) => $query->where('kelas_id', $user->kelas_id));
+        $request->validate(['tanggal' => ['nullable', 'date']]);
+
+        return match (true) {
+            (bool) $request->query('tanggal') => Carbon::parse($request->query('tanggal'))->startOfDay(),
+            $jurnal !== null => $jurnal->tanggal->copy()->startOfDay(),
+            default => today(),
+        };
+    }
+
+    /**
+     * Which meeting the form is about: an explicit choice, otherwise the first
+     * slot on that date's timetable that has no journal from this user's side.
+     */
+    private function jadwalTerpilih(Request $request, User $user, Carbon $tanggal): ?Jadwal
+    {
+        $kandidat = Jadwal::with(['kelas', 'mataPelajaran', 'guru'])->untukPengguna($user);
 
         if ($id = $request->integer('jadwal_id')) {
-            return (clone $kandidat)->find($id) ?? $kandidat->first();
+            // Falling back to the first slot of the day keeps a stale id — from a
+            // bookmarked link or a changed timetable — from emptying the form.
+            return (clone $kandidat)->find($id)
+                ?? (clone $kandidat)->padaHariDari($tanggal)->orderBy('jam_ke_mulai')->first();
         }
 
-        $hariIni = (clone $kandidat)->where('hari', Ringkasan::hariIni())->orderBy('jam_ke_mulai')->get();
-        $sudahAda = Jurnal::whereIn('jadwal_id', $hariIni->pluck('id'))
-            ->whereDate('tanggal', today())
-            ->pluck('jadwal_id');
+        $hariItu = (clone $kandidat)->padaHariDari($tanggal)->orderBy('jam_ke_mulai')->get();
+        $terisi = $this->jadwalTerisi($user, $hariItu->pluck('id')->all(), $tanggal);
 
-        return $hariIni->firstWhere(fn ($j) => ! $sudahAda->contains($j->id))
-            ?? $hariIni->first()
-            ?? $kandidat->first();
+        return $hariItu->firstWhere(fn ($j) => ! in_array($j->id, $terisi, true))
+            ?? $hariItu->first();
+    }
+
+    /**
+     * Which of those slots already carry a journal from this user's side on that
+     * date. One query for the whole dropdown rather than one per option.
+     *
+     * @param  array<int>  $jadwalIds
+     * @return array<int>
+     */
+    private function jadwalTerisi(User $user, array $jadwalIds, Carbon $tanggal): array
+    {
+        if ($jadwalIds === []) {
+            return [];
+        }
+
+        return Jurnal::whereIn('jadwal_id', $jadwalIds)
+            ->whereDate('tanggal', $tanggal->toDateString())
+            ->where('diisi_oleh_peran', Jurnal::peranPengisi($user))
+            ->pluck('jadwal_id')
+            ->all();
     }
 
     /**
      * Everything both journal forms render around the chosen meeting.
      */
-    private function konteksForm(User $user, ?Jadwal $jadwal, ?Jurnal $jurnal = null): array
+    private function konteksForm(User $user, ?Jadwal $jadwal, Carbon $tanggal, ?Jurnal $jurnal = null): array
     {
         $kelas = $jadwal?->kelas;
         $jumlahSiswa = $kelas ? $kelas->siswa()->count() : 0;
+
+        // Only the slots taught on that date's weekday, and only this user's —
+        // the whole timetable would be an unusable list, and would offer meetings
+        // they are not allowed to file against anyway.
+        $jadwalList = Jadwal::with(['kelas', 'mataPelajaran'])
+            ->untukPengguna($user)
+            ->padaHariDari($tanggal)
+            ->orderBy('jam_ke_mulai')
+            ->get();
 
         $presensi = $jurnal
             ? Ringkasan::presensi(Presensi::where('jurnal_id', $jurnal->id))
@@ -358,10 +435,11 @@ class JurnalController extends Controller
             'presensi' => $presensi,
             'rekapKehadiran' => $rekapKehadiran,
             'pertemuanKe' => $jadwal ? Jurnal::where('jadwal_id', $jadwal->id)->count() + 1 : 0,
-            'jadwalList' => Jadwal::with(['kelas', 'mataPelajaran'])
-                ->when($user->isGuru(), fn ($query) => $query->where('guru_id', $user->id))
-                ->when($user->isSiswa() && $user->kelas_id, fn ($query) => $query->where('kelas_id', $user->kelas_id))
-                ->get(),
+            'jadwalList' => $jadwalList,
+            'tanggalAktif' => $tanggal,
+            // Marked in the dropdown so a slot already filed from this side is
+            // obvious before saving, instead of being refused afterwards.
+            'jadwalTerisi' => $this->jadwalTerisi($user, $jadwalList->pluck('id')->all(), $tanggal),
             'pertemuanTerakhir' => $kelas
                 ? Jurnal::with(['jadwal.mataPelajaran', 'guru'])
                     ->whereHas('jadwal', fn ($query) => $query->where('kelas_id', $kelas->id))

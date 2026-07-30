@@ -15,6 +15,7 @@
     <x-page-head
         :title="$jurnal ? 'Ubah Jurnal Mengajar' : 'Isi Jurnal Mengajar'"
         :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, now()->translatedFormat('l, j F Y')])->filter()->join(' · ')">
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
         <span class="btn-hifi btn-hifi--ghost">Draf tersimpan otomatis</span>
     </x-page-head>
 
@@ -30,8 +31,14 @@
 
                 <div class="form-grid form-grid--3">
                     <x-field label="Tanggal" name="tanggal" required>
+                        {{-- Reloading on change is what makes the schedule list
+                             below match the chosen day. Editing keeps its own
+                             date, so only the create form reloads. --}}
                         <input class="input-hifi" type="date" name="tanggal"
-                               value="{{ old('tanggal', $jurnal?->tanggal?->toDateString() ?? today()->toDateString()) }}" required>
+                               value="{{ old('tanggal', $tanggalAktif->toDateString()) }}" required
+                               @unless ($jurnal)
+                                   onchange="window.location = '{{ route('jurnal.create') }}?tanggal=' + this.value"
+                               @endunless>
                     </x-field>
 
                     <x-field label="Jam Ke (Mulai)">
@@ -45,15 +52,19 @@
 
                 <div class="form-grid form-grid--2">
                     <x-field label="Jadwal (Kelas · Mata Pelajaran)" name="jadwal_id" required>
-                        <select class="select-hifi" name="jadwal_id" id="jadwalSelect" data-searchable required
-                                onchange="window.location = '{{ route('jurnal.create') }}?jadwal_id=' + this.value">
-                            @foreach ($jadwalList as $pilihanJadwal)
-                                <option value="{{ $pilihanJadwal->id }}" @selected($jadwal?->id === $pilihanJadwal->id)>
-                                    {{ $pilihanJadwal->kelas?->nama_kelas }} · {{ $pilihanJadwal->mataPelajaran?->nama }}
-                                    · {{ $pilihanJadwal->hari }} JP {{ $pilihanJadwal->jpLabel() }}
-                                </option>
-                            @endforeach
-                        </select>
+                        @if ($jadwalList->isEmpty())
+                            <x-jadwal-kosong :tanggal="$tanggalAktif" />
+                        @else
+                            <select class="select-hifi" name="jadwal_id" id="jadwalSelect" data-searchable required
+                                    onchange="window.location = '{{ route('jurnal.create') }}?tanggal={{ $tanggalAktif->toDateString() }}&jadwal_id=' + this.value">
+                                @foreach ($jadwalList as $pilihanJadwal)
+                                    <option value="{{ $pilihanJadwal->id }}" @selected($jadwal?->id === $pilihanJadwal->id)>
+                                        {{ $pilihanJadwal->kelas?->nama_kelas }} · {{ $pilihanJadwal->mataPelajaran?->nama }}
+                                        · JP {{ $pilihanJadwal->jpLabel() }}@if (in_array($pilihanJadwal->id, $jadwalTerisi, true)) — sudah diisi @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
                     </x-field>
 
                     <x-field label="Ruang">
@@ -159,7 +170,11 @@
 
                 <div class="d-flex justify-content-end gap-2">
                     <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">Batal</a>
-                    <button class="btn-hifi" type="submit">{{ $jurnal ? 'Simpan Perubahan' : 'Simpan Jurnal' }}</button>
+                    {{-- Nothing to file against on a day with no lesson; the save
+                         would only bounce off the required jadwal_id. --}}
+                    @unless ($jadwalList->isEmpty())
+                        <button class="btn-hifi" type="submit">{{ $jurnal ? 'Simpan Perubahan' : 'Simpan Jurnal' }}</button>
+                    @endunless
                 </div>
             </form>
         </x-card>

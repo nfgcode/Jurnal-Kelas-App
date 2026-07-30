@@ -57,11 +57,11 @@ class RolePagesTest extends TestCase
             '/dashboard' => 'Dashboard Guru',
             '/jurnal' => 'Histori Jurnal',
             '/jurnal/create' => 'Isi Jurnal Mengajar',
-            "/jurnal/{$jurnal->id}/edit" => 'Ubah Jurnal Mengajar',
+            "/jurnal/{$jurnal->public_id}/edit" => 'Ubah Jurnal Mengajar',
             '/presensi' => 'Presensi Kelas',
-            "/presensi/create/{$jurnal->id}" => 'Presensi Siswa',
-            "/presensi/{$jurnal->id}" => 'Presensi Pertemuan',
-            "/jurnal/{$jurnal->id}" => 'Daftar Kehadiran Siswa',
+            "/presensi/create/{$jurnal->public_id}" => 'Presensi Siswa',
+            "/presensi/{$jurnal->public_id}" => 'Presensi Pertemuan',
+            "/jurnal/{$jurnal->public_id}" => 'Daftar Kehadiran Siswa',
         ];
 
         foreach ($expectations as $url => $penanda) {
@@ -83,7 +83,7 @@ class RolePagesTest extends TestCase
             // A ketua kelas fills the class roster, so /presensi is the markable
             // meeting list rather than the personal recap a regular siswa sees.
             '/presensi' => 'Presensi per Pertemuan',
-            "/jurnal/{$jurnal->id}" => 'Daftar Kehadiran Siswa',
+            "/jurnal/{$jurnal->public_id}" => 'Daftar Kehadiran Siswa',
         ];
 
         foreach ($expectations as $url => $penanda) {

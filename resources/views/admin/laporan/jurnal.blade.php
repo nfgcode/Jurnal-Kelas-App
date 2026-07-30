@@ -82,15 +82,16 @@
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
-                        <th>Kelas</th>
-                        <th>Mata Pelajaran</th>
-                        <th>Guru</th>
+                        <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
+                        <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
+                        <th><x-th-sort kolom="guru" label="Guru" /></th>
                         <th>Materi</th>
                         <th>JP</th>
-                        <th>Kehadiran</th>
+                        <th><x-th-sort kolom="hadir" label="Kehadiran" /></th>
                         <th>Kehadiran Guru</th>
-                        <th class="is-num">Status</th>
+                        <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -108,16 +109,21 @@
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 28) }}</td>
                             <td class="is-muted">{{ $jp }} JP</td>
                             <td>
-                                <a class="meter-cell text-reset text-decoration-none" href="{{ route('presensi.show', $jurnal) }}">
+                                <span class="meter-cell">
                                     <x-meter :percent="$jurnal->total_siswa ? $jurnal->hadir_count / $jurnal->total_siswa * 100 : 0" />
                                     <span class="is-muted">{{ $jurnal->hadir_count }}/{{ $jurnal->total_siswa }}</span>
-                                </a>
+                                </span>
                             </td>
                             <td><x-chip :tone="$guruChip['tone']" :label="$guruChip['label']" /></td>
                             <td class="is-num"><x-chip :tone="$statusChip['tone']" :label="$statusChip['label']" /></td>
+                            <td class="is-num tbl__aksi">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
+                                {{-- The attendance link the meter bar used to hide. --}}
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.show', $jurnal) }}">Presensi</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="empty-state">Tidak ada jurnal yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="10" class="empty-state">Tidak ada jurnal yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -13,6 +13,7 @@
     <x-page-head
         title="Presensi Siswa"
         :sub="collect([$kelas?->nama_kelas, $jurnal->jadwal?->mataPelajaran?->nama, 'JP ' . $jurnal->jadwal?->jpLabel(), $jurnal->tanggal->translatedFormat('l, j F Y')])->filter()->join(' · ')">
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">← Daftar Presensi</a>
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.show', $jurnal) }}">Lihat Jurnal</a>
         <button class="btn-hifi" type="submit" form="formPresensi">Simpan Presensi</button>
     </x-page-head>

@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Halaman;
-
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Presensi;
+use App\Support\Halaman;
 use App\Support\Ringkasan;
+use App\Support\Urutan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -129,11 +129,12 @@ class WaliKelasController extends Controller
                 'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
             ])
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
-            ->latest('tanggal')
-            ->latest('id')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
+
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'mapel', 'guru', 'hadir', 'status']));
+        Urutan::terapkan($jurnals, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
+
+        $jurnals = $jurnals->paginate(Halaman::perHalaman())->withQueryString();
 
         // Total and this-month count folded into one scan; SUM(BETWEEN) yields
         // 0/1 per row on both MySQL and SQLite.
@@ -182,11 +183,12 @@ class WaliKelasController extends Controller
                 'presensis as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
             ])
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
-            ->latest('tanggal')
-            ->latest('id')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
+
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'mapel', 'guru', 'siswa', 'hadir']));
+        Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
+
+        $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
 
         $siswa = $kelas->siswa()->orderBy('name')->get();
 

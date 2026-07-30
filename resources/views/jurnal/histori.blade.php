@@ -7,15 +7,16 @@
 
     <x-page-head
         title="Histori Jurnal"
-        :sub="number_format($statistik['total'], 0, ',', '.') . ' jurnal · ' . $statistik['kelas'] . ' kelas · Semester Gasal ' . now()->year . '/' . (now()->year + 1)">
-        <span class="select-hifi" style="width: 170px">{{ now()->translatedFormat('F Y') }}</span>
+        :sub="number_format($statistik['periode'], 0, ',', '.') . ' jurnal · ' . $statistik['kelas'] . ' kelas · ' . $periode->label()">
+        <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
     </x-page-head>
 
     <div class="grid-row grid-row--4">
-        <x-stat label="Jurnal Saya" :value="number_format($statistik['total'], 0, ',', '.')" caption="semester berjalan" />
-        <x-stat label="Bulan Ini" :value="number_format($statistik['bulanIni'], 0, ',', '.')"
-                :caption="now()->translatedFormat('F Y')" />
+        <x-stat label="Jurnal Periode Ini" :value="number_format($statistik['periode'], 0, ',', '.')"
+                :caption="$periode->label()" />
+        <x-stat label="Total Keseluruhan" :value="number_format($statistik['total'], 0, ',', '.')"
+                caption="seluruh jurnal saya" />
         <x-stat label="Hadir Mengajar" :value="number_format($kehadiran['hadir'], 0, ',', '.')"
                 :caption="'dari ' . number_format($kehadiran['total'], 0, ',', '.') . ' pertemuan'" />
         <x-stat label="Tanpa Tugas" :value="$kehadiran['tanpa_tugas']" caption="perlu ditindaklanjuti" />
@@ -56,15 +57,16 @@
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Tanggal</th>
+                        <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
                         <th>Jam Ke</th>
-                        <th>Kelas</th>
-                        <th>Mata Pelajaran</th>
+                        <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
                         <th>Materi</th>
                         <th>Tugas</th>
-                        <th>Kehadiran</th>
+                        <th><x-th-sort kolom="hadir" label="Kehadiran" /></th>
                         <th>Kehadiran Saya</th>
-                        <th class="is-num">Status</th>
+                        <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
+                        <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -76,11 +78,7 @@
                         <tr>
                             <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
                             <td class="is-muted">{{ $jurnal->jadwal?->jpLabel() }}</td>
-                            <td class="is-strong is-nowrap">
-                                <a class="text-reset text-decoration-none" href="{{ route('jurnal.show', $jurnal) }}">
-                                    {{ $jurnal->jadwal?->kelas?->nama_kelas }}
-                                </a>
-                            </td>
+                            <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 24) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 22) : '—' }}</td>
@@ -92,9 +90,12 @@
                             </td>
                             <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
                             <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
+                            <td class="is-num">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="empty-state">Belum ada jurnal yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="10" class="empty-state">Belum ada jurnal yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

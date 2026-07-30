@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\Halaman;
-
 use App\Http\Controllers\Controller;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\User;
+use App\Support\Halaman;
 use App\Support\Periode;
 use App\Support\Ringkasan;
+use App\Support\Urutan;
 use App\Support\XlsxExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -41,11 +41,12 @@ class LaporanController extends Controller
             return $this->eksporJurnal($terisiCount($this->kueriJurnal($filters, $periode)), $periode);
         }
 
-        $jurnals = $terisiCount($this->kueriJurnal($filters, $periode))
-            ->latest('tanggal')
-            ->latest('jurnal.id')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+        $jurnals = $terisiCount($this->kueriJurnal($filters, $periode));
+
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'guru', 'hadir', 'status']));
+        Urutan::terapkan($jurnals, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('jurnal.id'));
+
+        $jurnals = $jurnals->paginate(Halaman::perHalaman())->withQueryString();
 
         // Completeness measures what was written against what was scheduled over
         // the same period, so "belum diisi" is a gap in the timetable rather than
@@ -103,11 +104,12 @@ class LaporanController extends Controller
             return $this->eksporPresensi($rekapCount($this->kueriJurnal($filters, $periode)), $periode);
         }
 
-        $pertemuan = $rekapCount($this->kueriJurnal($filters, $periode))
-            ->latest('tanggal')
-            ->latest('jurnal.id')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+        $pertemuan = $rekapCount($this->kueriJurnal($filters, $periode));
+
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'guru', 'siswa', 'hadir']));
+        Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('jurnal.id'));
+
+        $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
 
         $rekap = Ringkasan::presensi(null, $periode);
         $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();

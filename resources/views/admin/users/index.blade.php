@@ -28,9 +28,11 @@
     </div>
 
     <form class="filter-bar" method="GET">
-        @if (($filters['sort'] ?? null))
-            <input type="hidden" name="sort" value="{{ $filters['sort'] }}">
-            <input type="hidden" name="dir" value="{{ $filters['dir'] ?? 'asc' }}">
+        {{-- Filtering must not silently reset the column the reader sorted by.
+             Read straight from the URL, same source <x-th-sort> writes to. --}}
+        @if (request()->query('sort'))
+            <input type="hidden" name="sort" value="{{ request()->query('sort') }}">
+            <input type="hidden" name="dir" value="{{ request()->query('dir') === 'desc' ? 'desc' : 'asc' }}">
         @endif
         <label class="filter-bar__search">
             <i class="bi bi-search"></i>
@@ -71,37 +73,18 @@
         </span>
     </form>
 
-    @php
-        $curSort = $filters['sort'] ?? null;
-        $curDir = $filters['dir'] ?? 'asc';
-        // Preserve every active filter, flip direction on the active column, reset page.
-        $sortUrl = fn ($col) => request()->fullUrlWithQuery([
-            'sort' => $col,
-            'dir' => $curSort === $col && $curDir === 'asc' ? 'desc' : 'asc',
-            'page' => null,
-        ]);
-        $sortArrow = fn ($col) => $curSort === $col ? ($curDir === 'desc' ? ' ↓' : ' ↑') : '';
-        $sortLabel = $curSort
-            ? (['nama' => 'nama', 'nip_nis' => 'NIP/NIS', 'peran' => 'peran', 'kelas' => 'kelas', 'status' => 'status', 'aktif' => 'terakhir aktif'][$curSort] . ($curDir === 'desc' ? ' ↓' : ' ↑'))
-            : 'terakhir aktif';
-    @endphp
-
     <x-card title="Daftar Pengguna" flush>
-        <x-slot:actions>
-            <span class="card-hifi__meta">diurutkan: {{ $sortLabel }}</span>
-        </x-slot:actions>
-
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th><a class="tbl__sort text-reset text-decoration-none" href="{{ $sortUrl('nama') }}">Nama{{ $sortArrow('nama') }}</a></th>
-                        <th><a class="tbl__sort text-reset text-decoration-none" href="{{ $sortUrl('nip_nis') }}">NIP / NIS{{ $sortArrow('nip_nis') }}</a></th>
-                        <th><a class="tbl__sort text-reset text-decoration-none" href="{{ $sortUrl('peran') }}">Peran{{ $sortArrow('peran') }}</a></th>
+                        <th><x-th-sort kolom="nama" label="Nama" /></th>
+                        <th><x-th-sort kolom="nip_nis" label="NIP / NIS" /></th>
+                        <th><x-th-sort kolom="peran" label="Peran" /></th>
                         <th>Mata Pelajaran</th>
-                        <th><a class="tbl__sort text-reset text-decoration-none" href="{{ $sortUrl('kelas') }}">Kelas{{ $sortArrow('kelas') }}</a></th>
-                        <th><a class="tbl__sort text-reset text-decoration-none" href="{{ $sortUrl('aktif') }}">Terakhir Aktif{{ $sortArrow('aktif') }}</a></th>
-                        <th class="is-num"><a class="tbl__sort text-reset text-decoration-none" href="{{ $sortUrl('status') }}">Status{{ $sortArrow('status') }}</a></th>
+                        <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th><x-th-sort kolom="aktif" label="Terakhir Aktif" bawaan /></th>
+                        <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
                     </tr>
                 </thead>
                 <tbody>

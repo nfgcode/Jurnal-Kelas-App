@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\DbDriver;
+use App\Support\Urutan;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -131,7 +132,8 @@ class Jurnal extends Model
      */
     public static function sudahAda(int $jadwalId, string $tanggal, string $peran, ?int $kecuali = null): ?self
     {
-        return self::with('diisiOleh')
+        // The rejection message names the meeting, so its slot is loaded here.
+        return self::with(['diisiOleh', 'jadwal.kelas', 'jadwal.mataPelajaran'])
             ->where('jadwal_id', $jadwalId)
             // whereDate, not a plain where: MySQL stores `tanggal` as DATE, but on
             // SQLite (the test database) Laravel writes "Y-m-d H:i:s", so a plain
@@ -255,6 +257,44 @@ class Jurnal extends Model
         return DB::connection()->getDriverName() === 'sqlite'
             ? "jurnal.created_at > datetime(jurnal.tanggal, '+2 day')"
             : 'jurnal.created_at > DATE_ADD(jurnal.tanggal, INTERVAL 2 DAY)';
+    }
+
+    /**
+     * The sort map every table of journals draws from: UI column name => how to
+     * order by it. One definition so the journal history, the student's history,
+     * the attendance list, the wali screens and the admin report can never drift
+     * into ordering "kelas" three different ways.
+     *
+     * Ordering by a related name uses a correlated subquery rather than a join so
+     * the caller's own joins, filters and withCount aggregates are untouched.
+     * Screens take a subset with array_intersect_key; the key set is the
+     * whitelist {@see Urutan} checks the URL against.
+     *
+     * @return array<string, callable>
+     */
+    public static function petaUrutan(): array
+    {
+        $lewatJadwal = fn (string $tabel, string $kolom, string $fk) => Jadwal::select("{$tabel}.{$kolom}")
+            ->join($tabel, "jadwal.{$fk}", '=', "{$tabel}.id")
+            ->whereColumn('jadwal.id', 'jurnal.jadwal_id')
+            ->limit(1);
+
+        return [
+            // Table-qualified: the admin report joins other tables, where a bare
+            // `id` would be ambiguous. id as tie-breaker, or same-day rows would
+            // shuffle between pages.
+            'tanggal' => fn ($q, $dir) => $q->orderBy('jurnal.tanggal', $dir)->orderBy('jurnal.id', $dir),
+            'kelas' => fn ($q, $dir) => $q->orderBy($lewatJadwal('kelas', 'nama_kelas', 'kelas_id'), $dir),
+            'mapel' => fn ($q, $dir) => $q->orderBy($lewatJadwal('mata_pelajaran', 'nama', 'mata_pelajaran_id'), $dir),
+            'guru' => fn ($q, $dir) => $q->orderBy(
+                User::select('name')->whereColumn('users.id', 'jurnal.guru_id')->limit(1), $dir
+            ),
+            // Aliases added by withCount() on the calling query.
+            'hadir' => fn ($q, $dir) => $q->orderBy('hadir_count', $dir),
+            'siswa' => fn ($q, $dir) => $q->orderBy('total_siswa', $dir),
+            // "Tepat/Telat" is a SQL predicate, so the chip can be sorted on too.
+            'status' => fn ($q, $dir) => $q->orderByRaw(self::ekspresiTerlambat()." {$dir}"),
+        ];
     }
 
     /**

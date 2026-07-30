@@ -97,10 +97,10 @@ class CrudPagesTest extends TestCase
             "/mata-pelajaran/{$mapel->id}/edit",
             "/jadwal/{$jadwal->id}",
             "/jadwal/{$jadwal->id}/edit",
-            "/jurnal/{$jurnal->id}",
-            "/jurnal/{$jurnal->id}/edit",
-            "/presensi/{$jurnal->id}",
-            "/presensi/create/{$jurnal->id}",
+            "/jurnal/{$jurnal->public_id}",
+            "/jurnal/{$jurnal->public_id}/edit",
+            "/presensi/{$jurnal->public_id}",
+            "/presensi/create/{$jurnal->public_id}",
             "/admin/users/{$siswa->id}",
             "/admin/users/{$siswa->id}/edit",
         ];
@@ -180,7 +180,7 @@ class CrudPagesTest extends TestCase
         $jurnal = Jurnal::first();
         $siswa = $jurnal->jadwal->kelas->siswa;
 
-        $payload = ['jurnal_id' => $jurnal->id, 'presensi' => []];
+        $payload = ['jurnal_id' => $jurnal->public_id, 'presensi' => []];
 
         foreach ($siswa as $i => $s) {
             $payload['presensi'][$i] = [
@@ -192,7 +192,7 @@ class CrudPagesTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post('/presensi', $payload)
-            ->assertRedirect(route('presensi.show', $jurnal->id))
+            ->assertRedirect(route('presensi.show', $jurnal))
             ->assertSessionHasNoErrors();
 
         $this->assertSame(
@@ -207,7 +207,7 @@ class CrudPagesTest extends TestCase
         $siswa = $jurnal->jadwal->kelas->siswa->first();
 
         $this->actingAs($this->admin)
-            ->get("/presensi/create/{$jurnal->id}")
+            ->get("/presensi/create/{$jurnal->public_id}")
             ->assertOk()
             ->assertSee($siswa->name)
             ->assertSee($siswa->nis)

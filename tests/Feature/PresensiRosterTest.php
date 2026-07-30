@@ -102,7 +102,7 @@ class PresensiRosterTest extends TestCase
         $this->assertFalse($s['luar']->can('markRoster', $s['jurnal']));
 
         $this->actingAs($s['luar'])
-            ->get("/presensi/create/{$s['jurnal']->id}")
+            ->get("/presensi/create/{$s['jurnal']->public_id}")
             ->assertForbidden();
     }
 
@@ -111,14 +111,14 @@ class PresensiRosterTest extends TestCase
         $s = $this->skenario();
         $roster = $s['kelas']->siswa()->pluck('id');
 
-        $payload = ['jurnal_id' => $s['jurnal']->id, 'presensi' => []];
+        $payload = ['jurnal_id' => $s['jurnal']->public_id, 'presensi' => []];
         foreach ($roster as $i => $id) {
             $payload['presensi'][$i] = ['siswa_id' => $id, 'status' => 'hadir'];
         }
 
         $this->actingAs($s['wali'])
             ->post('/presensi', $payload)
-            ->assertRedirect(route('presensi.show', $s['jurnal']->id));
+            ->assertRedirect(route('presensi.show', $s['jurnal']));
 
         $this->assertDatabaseHas('presensi_log', [
             'jurnal_id' => $s['jurnal']->id,

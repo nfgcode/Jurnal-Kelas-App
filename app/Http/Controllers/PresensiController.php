@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Halaman;
-
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Models\User;
+use App\Support\Halaman;
+use App\Support\Periode;
 use App\Support\Ringkasan;
 use App\Support\SimpanPresensi;
+use App\Support\Urutan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -67,6 +68,8 @@ class PresensiController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $periode = Periode::dari($request);
+
         $perMapel = Presensi::query()
             ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
             ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
@@ -74,6 +77,7 @@ class PresensiController extends Controller
             ->join('users as guru', 'jadwal.guru_id', '=', 'guru.id')
             ->selectRaw('mata_pelajaran.id as mapel_id, mata_pelajaran.nama as mapel, guru.name as guru, presensi.status, COUNT(*) as total')
             ->where('presensi.siswa_id', $user->id)
+            ->whereBetween('jurnal.tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->where('mata_pelajaran.id', $id))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->where(fn ($inner) => $inner
                 ->where('mata_pelajaran.nama', 'like', "%{$cari}%")
@@ -90,7 +94,11 @@ class PresensiController extends Controller
 
         return view('presensi.rekap-saya', [
             'perMapel' => $perMapel,
-            'rekap' => Ringkasan::presensi(Presensi::where('siswa_id', $user->id)),
+            'periode' => $periode,
+            'rekap' => Ringkasan::presensi(
+                Presensi::where('siswa_id', $user->id)
+                    ->whereHas('jurnal', fn ($q) => $q->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
+            ),
             'mapelList' => MataPelajaran::orderBy('nama')->get(),
             'filters' => $filters,
         ]);
@@ -106,9 +114,12 @@ class PresensiController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $periode = Periode::dari($request);
+
         // Classes whose rosters this user may mark — null means every class (admin).
         $kelasIds = $this->kelasTerjangkau($user);
         $batasiKelas = fn ($query) => $query->whereHas('jadwal', fn ($j) => $j->whereIn('kelas_id', $kelasIds));
+        $dalamPeriode = fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
 
         $pertemuan = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
@@ -120,24 +131,35 @@ class PresensiController extends Controller
                 'presensis as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
             ])
             ->when($kelasIds !== null, $batasiKelas)
+            ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
-            ->latest('tanggal')
-            ->latest('id')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
+
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'siswa', 'hadir']));
+        Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
+
+        $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
 
         return view('presensi.index', [
             'pertemuan' => $pertemuan,
+            'periode' => $periode,
             // A guru/ketua filters only among classes they can mark; admin all.
             'kelasList' => Kelas::query()
                 ->when($kelasIds !== null, fn ($q) => $q->whereIn('id', $kelasIds))
                 ->orderBy('nama_kelas')->get(),
             'filters' => $filters,
+            // The recap follows the period too, so the H/S/I/A totals describe the
+            // meetings actually listed rather than every meeting ever held.
             'rekap' => Ringkasan::presensi(
-                Presensi::when($kelasIds !== null, fn ($q) => $q->whereHas('jurnal.jadwal', fn ($j) => $j->whereIn('kelas_id', $kelasIds)))
+                Presensi::whereHas('jurnal', $dalamPeriode)
+                    ->when($kelasIds !== null, fn ($q) => $q->whereHas('jurnal.jadwal', fn ($j) => $j->whereIn('kelas_id', $kelasIds)))
             ),
-            'totalPertemuan' => Jurnal::query()->when($kelasIds !== null, $batasiKelas)->count(),
+            // Meetings in this period the user may reach — the search/class filters
+            // deliberately do not narrow it, so the card stays a stable reference.
+            'totalPertemuan' => Jurnal::query()
+                ->when($kelasIds !== null, $batasiKelas)
+                ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
+                ->count(),
         ]);
     }
 
@@ -202,7 +224,9 @@ class PresensiController extends Controller
         $roster = $jurnal->jadwal->kelas->siswa()->pluck('id')->all();
 
         $validated = $request->validate([
-            'jurnal_id' => 'required|exists:jurnal,id',
+            // The form posts the opaque id, so this must check that column — the
+            // numeric key would never match and would reject every save.
+            'jurnal_id' => 'required|exists:jurnal,public_id',
             'presensi' => 'required|array',
             'presensi.*.siswa_id' => ['required', Rule::in($roster)],
             'presensi.*.status' => 'required|in:hadir,sakit,izin,alpa',

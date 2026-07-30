@@ -10,8 +10,8 @@
 
     <x-page-head
         title="Rekap Kehadiran Saya"
-        :sub="collect([$user->name, $user->kelas?->nama_kelas, number_format(array_sum($rekap), 0, ',', '.') . ' pertemuan tercatat'])->filter()->join(' · ')">
-        <span class="select-hifi" style="width: 170px">Semester Gasal</span>
+        :sub="collect([$user->name, $user->kelas?->nama_kelas, number_format(array_sum($rekap), 0, ',', '.') . ' pertemuan tercatat', $periode->label()])->filter()->join(' · ')">
+        <x-periode-filter :periode="$periode" />
         {{-- Exporting a recap is an admin job; a student only reads their own. --}}
     </x-page-head>
 

@@ -70,8 +70,8 @@ class AuthorizationTest extends TestCase
         $lain = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', '!=', $this->siswa->kelas_id))
             ->firstOrFail();
 
-        $this->actingAs($this->siswa)->get("/jurnal/{$lain->id}")->assertForbidden();
-        $this->actingAs($this->siswa)->get("/presensi/{$lain->id}")->assertForbidden();
+        $this->actingAs($this->siswa)->get("/jurnal/{$lain->public_id}")->assertForbidden();
+        $this->actingAs($this->siswa)->get("/presensi/{$lain->public_id}")->assertForbidden();
     }
 
     public function test_a_student_with_no_class_sees_no_journals(): void
@@ -89,7 +89,7 @@ class AuthorizationTest extends TestCase
         $lain = User::where('role', 'guru')->where('id', '!=', $this->jadwal->guru_id)->firstOrFail();
         $jurnal = Jurnal::where('guru_id', $this->jadwal->guru_id)->firstOrFail();
 
-        $this->actingAs($lain)->get("/jurnal/{$jurnal->id}/edit")->assertForbidden();
+        $this->actingAs($lain)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();
     }
 
     public function test_a_guru_cannot_view_a_class_they_do_not_teach(): void
@@ -109,7 +109,7 @@ class AuthorizationTest extends TestCase
 
         $this->actingAs($this->guru)
             ->post('/presensi', [
-                'jurnal_id' => $jurnal->id,
+                'jurnal_id' => $jurnal->public_id,
                 'presensi' => [['siswa_id' => $luar->id, 'status' => 'hadir', 'keterangan' => null]],
             ])
             ->assertSessionHasErrors('presensi.0.siswa_id');
@@ -132,7 +132,7 @@ class AuthorizationTest extends TestCase
         ]);
         $jurnal = Jurnal::where('guru_id', $this->jadwal->guru_id)->firstOrFail();
 
-        $this->actingAs($luar)->get("/presensi/create/{$jurnal->id}")->assertForbidden();
+        $this->actingAs($luar)->get("/presensi/create/{$jurnal->public_id}")->assertForbidden();
     }
 
     public function test_a_regular_siswa_cannot_author_a_journal(): void
@@ -196,8 +196,8 @@ class AuthorizationTest extends TestCase
         // The save must hand off to the roster screen, and the ketua must be
         // allowed to open it — this exact chain 403'd when presensi gained its
         // update gate before the policy knew about the ketua.
-        $simpan->assertRedirect(route('presensi.create', $jurnal->id));
-        $this->actingAs($ketua)->get("/presensi/create/{$jurnal->id}")->assertOk();
+        $simpan->assertRedirect(route('presensi.create', $jurnal));
+        $this->actingAs($ketua)->get("/presensi/create/{$jurnal->public_id}")->assertOk();
     }
 
     public function test_a_guru_cannot_write_against_another_gurus_schedule(): void
@@ -224,5 +224,52 @@ class AuthorizationTest extends TestCase
 
         $this->actingAs($this->guru)->get('/admin/laporan/presensi?ekspor=xlsx')->assertForbidden();
         $this->actingAs($this->siswa)->get('/admin/laporan/jurnal?ekspor=xlsx')->assertForbidden();
+    }
+
+    /**
+     * markRoster already lets a wali kelas mark any meeting of their homeroom
+     * class, so refusing them a read of that same meeting was inconsistent —
+     * their own screens list its contents. Read only: editing stays with the
+     * teacher who wrote it.
+     */
+    public function test_a_wali_kelas_reads_but_cannot_edit_another_gurus_journal_in_their_class(): void
+    {
+        $kelas = $this->jadwal->kelas;
+        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $kelas->update(['wali_kelas_id' => $wali->id]);
+
+        // A meeting of that class taught by somebody else.
+        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
+            ->where('guru_id', '!=', $wali->id)
+            ->firstOrFail();
+
+        $this->actingAs($wali)->get("/jurnal/{$jurnal->public_id}")->assertOk();
+        $this->actingAs($wali)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();
+    }
+
+    public function test_a_guru_outside_the_class_cannot_read_its_journal(): void
+    {
+        // A fresh guru teaches nothing and chairs nothing, so they are outside
+        // every class no matter how the demo timetable happens to be wired.
+        $luar = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $jurnal = Jurnal::firstOrFail();
+
+        $this->actingAs($luar)->get("/jurnal/{$jurnal->public_id}")->assertForbidden();
+        $this->actingAs($luar)->get("/presensi/{$jurnal->public_id}")->assertForbidden();
+    }
+
+    /**
+     * The route key is the opaque public_id; the sequential primary key must no
+     * longer resolve, so a hand-edited URL cannot walk the table.
+     */
+    public function test_the_numeric_journal_id_no_longer_resolves_in_web_routes(): void
+    {
+        $jurnal = Jurnal::where('guru_id', $this->guru->id)->firstOrFail();
+
+        $this->actingAs($this->guru)->get("/jurnal/{$jurnal->id}")->assertNotFound();
+        $this->actingAs($this->guru)->get("/presensi/{$jurnal->id}")->assertNotFound();
+        $this->actingAs($this->guru)->get('/presensi/01ANGKASANGAWURXXXXXXXXXXXX')->assertNotFound();
+
+        $this->actingAs($this->guru)->get("/jurnal/{$jurnal->public_id}")->assertOk();
     }
 }

@@ -145,22 +145,22 @@ class JurnalGandaTest extends TestCase
             ->where('diisi_oleh_peran', 'siswa')->firstOrFail();
 
         $roster = $this->jadwal->kelas->siswa()->pluck('id');
-        $payload = ['jurnal_id' => $jurnalGuru->id, 'presensi' => []];
+        $payload = ['jurnal_id' => $jurnalGuru->public_id, 'presensi' => []];
         foreach ($roster as $i => $id) {
             $payload['presensi'][$i] = ['siswa_id' => $id, 'status' => 'hadir'];
         }
 
         $this->actingAs($this->guru)->post('/presensi', $payload)
-            ->assertRedirect(route('presensi.show', $jurnalGuru->id));
+            ->assertRedirect(route('presensi.show', $jurnalGuru));
 
         // The ketua's copy must not start a second roster — that would double
         // every attendance figure for this lesson.
-        $this->actingAs($this->guru)->get("/presensi/create/{$jurnalKetua->id}")
-            ->assertRedirect(route('presensi.create', $jurnalGuru->id));
+        $this->actingAs($this->guru)->get("/presensi/create/{$jurnalKetua->public_id}")
+            ->assertRedirect(route('presensi.create', $jurnalGuru));
 
         $this->actingAs($this->guru)
-            ->post('/presensi', ['jurnal_id' => $jurnalKetua->id] + $payload)
-            ->assertRedirect(route('presensi.create', $jurnalGuru->id));
+            ->post('/presensi', ['jurnal_id' => $jurnalKetua->public_id] + $payload)
+            ->assertRedirect(route('presensi.create', $jurnalGuru));
 
         $this->assertSame($roster->count(), Presensi::where('jurnal_id', $jurnalGuru->id)->count());
         $this->assertSame(0, Presensi::where('jurnal_id', $jurnalKetua->id)->count());
