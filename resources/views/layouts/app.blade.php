@@ -17,8 +17,6 @@
 </head>
 <body>
 
-@include('partials.page-loader')
-
 @php
     $user = Auth::user();
     $isAdmin = $user?->isAdmin() ?? false;
@@ -136,6 +134,9 @@
                 <a href="{{ route('admin.kelas-qr.index') }}" class="sidebar__link {{ request()->routeIs('admin.kelas-qr.*') ? 'is-active' : '' }}">
                     <i class="bi bi-qr-code"></i><span>Cetak QR Kelas</span>
                 </a>
+                <a href="{{ route('admin.sistem.index') }}" class="sidebar__link {{ request()->routeIs('admin.sistem.*') ? 'is-active' : '' }}">
+                    <i class="bi bi-activity"></i><span>Sistem &amp; Log</span>
+                </a>
             @endif
         @endif
     </nav>
@@ -195,6 +196,9 @@
     </header>
 
     <main class="content">
+        {{-- Maintenance/disruption notices are for the people using the app, not
+             for the admin who posts them and has the Sistem page instead. --}}
+        <x-pengumuman-banner :untuk-peran="$user !== null && ! $isAdmin" />
         <x-flash />
         @yield('content')
     </main>

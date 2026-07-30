@@ -1241,6 +1241,27 @@ textarea.input-hifi {
 .flash--success { background: var(--green-100); color: #0b4a2b; }
 .flash--error { background: #ffe3e5; color: #8b1220; }
 
+/* Announcement / disruption banners shown to guru & siswa. Same shape as a
+   flash but persistent (they are not dismissible session messages), with a
+   left rule so a stack of them reads as one column of notices. */
+.banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-control);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    border-left: 3px solid currentColor;
+
+    i { line-height: 1.4; flex: none; }
+}
+
+.banner--info { background: #e7f1fb; color: #14477d; }
+.banner--peringatan { background: #fdf3d8; color: #7a5410; }
+.banner--maintenance { background: #ede9fb; color: #402b8c; }
+
 /* =========================================================================
    Responsive — the sidebar slides away, dense grids reflow.
    ========================================================================= */

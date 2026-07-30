@@ -24,7 +24,7 @@
     .qr-card__hint { font-size: 10px; color: var(--n-700); margin-top: 6px; }
 
     @media print {
-        .sidebar, .topbar, .sidebar-scrim, #page-loader, .page-head__actions { display: none !important; }
+        .sidebar, .topbar, .sidebar-scrim, .page-head__actions { display: none !important; }
         .main { margin-left: 0 !important; }
         .content { padding: 0 !important; }
         .qr-card { break-inside: avoid; page-break-inside: avoid; }
@@ -37,7 +37,7 @@
     <x-page-head
         title="Cetak QR Kelas"
         :sub="$daftar->count() . ' kelas · tempel di tiap ruang rombel'">
-        <button type="button" class="btn-hifi" onclick="window.print()" data-no-loader>
+        <button type="button" class="btn-hifi" onclick="window.print()">
             <i class="bi bi-printer"></i> Cetak
         </button>
     </x-page-head>

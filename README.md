@@ -78,9 +78,30 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 
 ### 📱 UX & Antarmuka
 - **Responsif mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width, target sentuh nyaman
-- **Loading screen** pada setiap load & navigasi halaman (memberi umpan balik selama round-trip server)
 - **Dropdown ber-pencarian** (progressive enhancement, tanpa dependency) untuk daftar panjang
 - Performa: indexing komposit, caching KPI landing, query agregat yang diringkas
+
+### 🚑 Error Handling Ramah-Peran
+- Guru & siswa **tidak pernah melihat stack trace Laravel**. Saat terjadi error mereka mendapat
+  halaman ramah berbahasa Indonesia + **kode referensi**, dengan tombol **Kembali** / **Ke Dashboard**
+- **Admin tetap melihat detail error penuh** — yang bertugas men-debug adalah admin
+- Guru/siswa bisa **mengirim laporan error** ke admin dari halaman tersebut. Detail teknis diambil
+  dari session (tidak bisa dipalsukan dari browser), bukan dari form
+- **Anti-spam berlapis**: 1 laporan per **10 menit** per akun, maksimal **5/hari**, dan **dedupe** —
+  error yang sama dilaporkan ulang menambah penghitung `jumlah` alih-alih membuat baris baru
+- Halaman 404/403/419/429/500/503 memakai tampilan ramah yang sama (konsisten saat `APP_DEBUG=false`)
+
+### 🩺 Sistem & Log (admin)
+- **Status komponen** langsung: database + latensi, **migrasi tertunda** (menangkap kelas bug
+  "tabel belum ada"), Cache/Redis, storage writable, ukuran log, keberadaan **objek DB lanjutan**
+  (view/function/procedure/trigger), serta kewajaran konfigurasi (`APP_DEBUG`, **`APP_URL` bukan
+  localhost** — penting untuk QR kelas)
+- **Log viewer**: hanya bagian akhir berkas log yang dibaca (aman untuk log besar), difilter per level,
+  dengan aksi bersihkan log
+- **Inbox laporan error** dari guru/siswa beserta triase status (baru → diproses → selesai)
+- **Pengelola pengumuman**: banner untuk guru & siswa saat pemeliharaan/gangguan — tanpa perlu
+  `artisan down` yang juga akan mematikan akses admin. Banner gangguan juga muncul otomatis
+  (generik, tanpa detail teknis) bila healthcheck ringkas mendeteksi masalah
 
 ---
 
@@ -470,6 +491,7 @@ Variabel penting di `.env`:
 | `APP_NAME` | `Jurnal Kelas` | Nama aplikasi |
 | `APP_URL` | `http://localhost:8888` | URL aplikasi — **set ke alamat LAN sekolah** (mis. `http://192.168.1.10:8888`) di deploy nyata agar QR code kelas bisa dibuka dari HP guru |
 | `APP_LOCALE` | `id` | Bahasa Indonesia |
+| `APP_DEBUG` | `true` | Detail error untuk admin. **Set `false` di produksi** — guru/siswa sudah selalu mendapat halaman ramah, tapi `false` menutup detail untuk semua peran |
 | `DB_CONNECTION` | `mysql` | Driver database |
 | `DB_HOST` | `mysql` | Host DB (nama container Docker) |
 | `DB_DATABASE` | `jurnal_kelas` | Nama database |
@@ -479,6 +501,15 @@ Variabel penting di `.env`:
 | `MAIL_HOST` | `mailpit` | SMTP server (Mailpit di Docker) |
 
 > Untuk development lokal tanpa Docker, ubah `DB_CONNECTION=sqlite` dan comment konfigurasi MySQL.
+
+---
+
+## 👥 Kontributor
+
+| Nama | GitHub | Bagian |
+|------|--------|--------|
+| **Nurfauzan Gymnastiar** | [@nfgcode](https://github.com/nfgcode) | UI/UX, Frontend, Responsive |
+| **Akmal Falah Maulana** | [@ShiroTenma](https://github.com/ShiroTenma) | Backend, Database, Responsive, Optimizing & Refactor, Fitur QR Code, Error Handling & Sistem/Healthcheck |
 
 ---
 

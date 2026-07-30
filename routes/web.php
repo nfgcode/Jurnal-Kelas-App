@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\KelasQrController;
 use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\PresensiLogController;
+use App\Http\Controllers\Admin\SistemController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\JurnalController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\LaporanErrorController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\QrController;
@@ -88,6 +90,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/presensi', [PresensiController::class, 'store'])->name('presensi.store');
     Route::get('/presensi/{jurnal_id}', [PresensiController::class, 'show'])->name('presensi.show');
 
+    // Error report a guru/siswa submits from the friendly error page. Throttled
+    // and deduped in the controller; technical details come from the session.
+    Route::post('/laporan-error', [LaporanErrorController::class, 'store'])->name('laporan-error.store');
+
     // QR entry point: a room's QR encodes this URL for its class. A guru scans
     // it, lands on a confirmation of the class + their subjects there, then
     // continues into the normal journal→presensi flow. Guru-only; the class is
@@ -119,5 +125,17 @@ Route::middleware('auth')->group(function () {
 
         // Printable per-room QR codes (one per class) for teachers to scan.
         Route::get('/kelas-qr', [KelasQrController::class, 'index'])->name('kelas-qr.index');
+
+        /*
+        |------------------------------------------------------------------
+        | Sistem & Log — health of the app, the error log, the inbox of
+        | reports from guru/siswa, and the banners shown to them.
+        |------------------------------------------------------------------
+        */
+        Route::get('/sistem', [SistemController::class, 'index'])->name('sistem.index');
+        Route::post('/sistem/laporan/{laporan}', [SistemController::class, 'ubahStatusLaporan'])->name('sistem.laporan.status');
+        Route::post('/sistem/pengumuman', [SistemController::class, 'simpanPengumuman'])->name('sistem.pengumuman.simpan');
+        Route::post('/sistem/pengumuman/{pengumuman}/alih', [SistemController::class, 'alihkanPengumuman'])->name('sistem.pengumuman.alih');
+        Route::post('/sistem/log/bersihkan', [SistemController::class, 'bersihkanLog'])->name('sistem.log.bersihkan');
     });
 });
