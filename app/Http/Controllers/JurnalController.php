@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Halaman;
+
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
@@ -51,7 +53,7 @@ class JurnalController extends Controller
             $query->where('guru_id', $user->id);
         }
 
-        $jurnals = $query->paginate(18)->withQueryString();
+        $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
         $milikSaya = $user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query();
 
         // Total and this-month count in one scan (SUM(BETWEEN) is 0/1 per row
@@ -95,7 +97,7 @@ class JurnalController extends Controller
         // A student with no class sees nothing — never every class's journals.
         // (Deleting a rombel NULLs its students' kelas_id.)
         if (! $kelas) {
-            $jurnals = $query->whereRaw('1 = 0')->paginate(18)->withQueryString();
+            $jurnals = $query->whereRaw('1 = 0')->paginate(Halaman::perHalaman())->withQueryString();
 
             return view('jurnal.riwayat', [
                 'jurnals' => $jurnals,
@@ -109,7 +111,7 @@ class JurnalController extends Controller
 
         $jurnals = $query
             ->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id))
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         // The student's own attendance for the rows on this page.
@@ -191,7 +193,7 @@ class JurnalController extends Controller
             );
         }
 
-        return redirect()->route('presensi.create', $jurnal->id)
+        return redirect()->route('presensi.create', $jurnal)
             ->with('success', 'Jurnal tersimpan. Lengkapi presensi siswa berikut ini.');
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\Halaman;
+
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\PresensiLog;
@@ -32,7 +34,7 @@ class PresensiLogController extends Controller
             ->when($filters['diedit_oleh_id'] ?? null, fn ($q, $id) => $q->where('diedit_oleh_id', $id))
             ->latest('created_at')
             ->latest('id')
-            ->paginate(25)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         return view('admin.presensi-log.index', [

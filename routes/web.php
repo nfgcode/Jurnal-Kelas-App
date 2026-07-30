@@ -85,10 +85,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('jurnal', JurnalController::class);
 
     // Presensi management — marking is authorized against the journal's policy.
+    // The journal is addressed by its opaque public_id (Jurnal::getRouteKeyName),
+    // so these URLs never expose the sequential primary key.
     Route::get('/presensi', [PresensiController::class, 'index'])->name('presensi.index');
-    Route::get('/presensi/create/{jurnal_id}', [PresensiController::class, 'create'])->name('presensi.create');
+    Route::get('/presensi/create/{jurnal}', [PresensiController::class, 'create'])->name('presensi.create');
     Route::post('/presensi', [PresensiController::class, 'store'])->name('presensi.store');
-    Route::get('/presensi/{jurnal_id}', [PresensiController::class, 'show'])->name('presensi.show');
+    Route::get('/presensi/{jurnal}', [PresensiController::class, 'show'])->name('presensi.show');
 
     // Error report a guru/siswa submits from the friendly error page. Throttled
     // and deduped in the controller; technical details come from the session.

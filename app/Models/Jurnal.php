@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class Jurnal extends Model
 {
@@ -28,6 +29,7 @@ class Jurnal extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'public_id',
         'jadwal_id',
         'tanggal',
         'materi',
@@ -42,6 +44,28 @@ class Jurnal extends Model
         'diisi_oleh_id',
         'diisi_oleh_peran',
     ];
+
+    /**
+     * Model events.
+     */
+    protected static function booted(): void
+    {
+        // Every journal gets an opaque public id, so web URLs never carry the
+        // sequential primary key.
+        static::creating(function (self $jurnal) {
+            $jurnal->public_id ??= (string) Str::ulid();
+        });
+    }
+
+    /**
+     * Web routes address a journal by its opaque id, not its primary key. The
+     * API keeps using the numeric id: that contract is documented and already
+     * guarded by token auth plus the same policies.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
+    }
 
     /**
      * Which side of a meeting a journal was written from. A meeting may hold one

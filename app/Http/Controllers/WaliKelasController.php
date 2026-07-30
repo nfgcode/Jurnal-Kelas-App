@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Halaman;
+
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
@@ -130,7 +132,7 @@ class WaliKelasController extends Controller
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->latest('tanggal')
             ->latest('id')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         // Total and this-month count folded into one scan; SUM(BETWEEN) yields
@@ -183,7 +185,7 @@ class WaliKelasController extends Controller
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->latest('tanggal')
             ->latest('id')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         $siswa = $kelas->siswa()->orderBy('name')->get();

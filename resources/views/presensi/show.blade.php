@@ -12,7 +12,7 @@
         title="Presensi Pertemuan"
         :sub="collect([$kelas?->nama_kelas, $jurnal->jadwal?->mataPelajaran?->nama, 'JP ' . $jurnal->jadwal?->jpLabel(), $jurnal->tanggal->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.show', $jurnal) }}">Lihat Jurnal</a>
-        <a class="btn-hifi" href="{{ route('presensi.create', $jurnal->id) }}">Ubah Presensi</a>
+        <a class="btn-hifi" href="{{ route('presensi.create', $jurnal) }}">Ubah Presensi</a>
     </x-page-head>
 
     <div class="grid-row grid-row--4">

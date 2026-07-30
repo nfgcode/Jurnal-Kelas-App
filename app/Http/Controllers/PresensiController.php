@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Halaman;
+
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
@@ -122,7 +124,7 @@ class PresensiController extends Controller
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->latest('tanggal')
             ->latest('id')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         return view('presensi.index', [
@@ -142,9 +144,9 @@ class PresensiController extends Controller
     /**
      * The roster marking screen for one meeting.
      */
-    public function create(int $jurnal_id)
+    public function create(Jurnal $jurnal)
     {
-        $jurnal = Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])->findOrFail($jurnal_id);
+        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru']);
 
         // A meeting's roster may be marked by admin, its class's ketua, and any
         // guru who teaches or is wali of that class — see JurnalPolicy::markRoster.
@@ -154,7 +156,7 @@ class PresensiController extends Controller
         // the meeting has both a guru and a ketua version. Send the user to
         // whichever journal already holds it instead of starting a second set.
         if ($pemegang = $jurnal->pemegangPresensi()) {
-            return redirect()->route('presensi.create', $pemegang->id)
+            return redirect()->route('presensi.create', $pemegang)
                 ->with('success', 'Presensi pertemuan ini sudah tercatat pada jurnal lain; perubahan dilakukan di sini.');
         }
 
@@ -177,7 +179,11 @@ class PresensiController extends Controller
      */
     public function store(Request $request)
     {
-        $jurnal = Jurnal::with('jadwal.kelas')->findOrFail($request->integer('jurnal_id'));
+        // The form posts the opaque public id, so the numeric key never appears in
+        // the page's HTML either.
+        $jurnal = Jurnal::with('jadwal.kelas')
+            ->where('public_id', $request->input('jurnal_id'))
+            ->firstOrFail();
 
         // A meeting's roster may be marked by admin, its class's ketua, and any
         // guru who teaches or is wali of that class — see JurnalPolicy::markRoster.
@@ -187,7 +193,7 @@ class PresensiController extends Controller
         // Jurnal::pemegangPresensi(). Marking a second set would double every
         // attendance figure for this lesson.
         if ($pemegang = $jurnal->pemegangPresensi()) {
-            return redirect()->route('presensi.create', $pemegang->id)
+            return redirect()->route('presensi.create', $pemegang)
                 ->with('error', 'Presensi pertemuan ini sudah tercatat pada jurnal lain. Perbarui di sini agar tidak terhitung dua kali.');
         }
 
@@ -205,21 +211,21 @@ class PresensiController extends Controller
 
         SimpanPresensi::simpan($jurnal, $validated['presensi'], $request->user());
 
-        return redirect()->route('presensi.show', $jurnal->id)
+        return redirect()->route('presensi.show', $jurnal)
             ->with('success', 'Presensi berhasil disimpan.');
     }
 
     /**
      * Show attendance records for a specific jurnal.
      */
-    public function show(int $jurnal_id)
+    public function show(Jurnal $jurnal)
     {
-        $jurnal = Jurnal::with([
+        $jurnal->load([
             'jadwal.kelas',
             'jadwal.mataPelajaran',
             'guru',
             'presensis.siswa',
-        ])->findOrFail($jurnal_id);
+        ]);
 
         Gate::authorize('viewRoster', $jurnal);
 

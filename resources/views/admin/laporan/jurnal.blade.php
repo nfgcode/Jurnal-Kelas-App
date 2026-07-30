@@ -108,7 +108,7 @@
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 28) }}</td>
                             <td class="is-muted">{{ $jp }} JP</td>
                             <td>
-                                <a class="meter-cell text-reset text-decoration-none" href="{{ route('presensi.show', $jurnal->id) }}">
+                                <a class="meter-cell text-reset text-decoration-none" href="{{ route('presensi.show', $jurnal) }}">
                                     <x-meter :percent="$jurnal->total_siswa ? $jurnal->hadir_count / $jurnal->total_siswa * 100 : 0" />
                                     <span class="is-muted">{{ $jurnal->hadir_count }}/{{ $jurnal->total_siswa }}</span>
                                 </a>

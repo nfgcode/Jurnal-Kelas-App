@@ -89,7 +89,7 @@
                                 </span>
                             </td>
                             <td class="is-num">
-                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.create', $jurnal->id) }}">
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.create', $jurnal) }}">
                                     {{ $jurnal->total_siswa ? 'Ubah' : 'Tandai' }}
                                 </a>
                             </td>

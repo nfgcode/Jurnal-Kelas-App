@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\Halaman;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UserRequest;
 use App\Models\Kelas;
@@ -50,7 +52,7 @@ class UserController extends Controller
                 // users_last_active_at_index provide the order.
                 fn ($query) => $query->orderByDesc('last_active_at')->orderBy('name')
             )
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         // One grouped pass over users covers every headline count below, instead

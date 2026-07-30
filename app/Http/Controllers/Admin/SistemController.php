@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\Halaman;
+
 use App\Http\Controllers\Controller;
 use App\Models\LaporanError;
 use App\Models\Pengumuman;
@@ -33,7 +35,7 @@ class SistemController extends Controller
             // Open reports first, then the most recent activity.
             ->orderByRaw("CASE status WHEN 'baru' THEN 1 WHEN 'diproses' THEN 2 ELSE 3 END")
             ->latest('updated_at')
-            ->paginate(15)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         return view('admin.sistem.index', [

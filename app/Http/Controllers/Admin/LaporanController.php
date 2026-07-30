@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Support\Halaman;
+
 use App\Http\Controllers\Controller;
 use App\Models\Jurnal;
 use App\Models\Kelas;
@@ -42,7 +44,7 @@ class LaporanController extends Controller
         $jurnals = $terisiCount($this->kueriJurnal($filters, $periode))
             ->latest('tanggal')
             ->latest('jurnal.id')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         // Completeness measures what was written against what was scheduled over
@@ -104,7 +106,7 @@ class LaporanController extends Controller
         $pertemuan = $rekapCount($this->kueriJurnal($filters, $periode))
             ->latest('tanggal')
             ->latest('jurnal.id')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         $rekap = Ringkasan::presensi(null, $periode);

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Halaman;
+
 use App\Http\Requests\MataPelajaranRequest;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
@@ -32,7 +34,7 @@ class MataPelajaranController extends Controller
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
             ->orderByDesc('jp_per_minggu')
             ->orderBy('nama')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         // One teacher name and the distinct class count per subject, aggregated

@@ -120,7 +120,7 @@
                     </div>
 
                     @if ($jurnal)
-                        <a class="auth__link d-inline-block mt-2" href="{{ route('presensi.create', $jurnal->id) }}">
+                        <a class="auth__link d-inline-block mt-2" href="{{ route('presensi.create', $jurnal) }}">
                             Tandai presensi per siswa →
                         </a>
                     @else

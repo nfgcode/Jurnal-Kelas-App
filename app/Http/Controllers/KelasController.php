@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Halaman;
+
 use App\Http\Requests\KelasRequest;
 use App\Models\Jadwal;
 use App\Models\Kelas;
@@ -39,7 +41,7 @@ class KelasController extends Controller
             ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
             ->orderBy('jurusan')
             ->orderBy('nama_kelas')
-            ->paginate(18)
+            ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
         $kelengkapan = Ringkasan::kelengkapan('kelas_id');

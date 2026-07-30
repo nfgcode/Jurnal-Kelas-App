@@ -40,7 +40,7 @@
 
     <form method="POST" action="{{ route('presensi.store') }}" id="formPresensi">
         @csrf
-        <input type="hidden" name="jurnal_id" value="{{ $jurnal->id }}">
+        <input type="hidden" name="jurnal_id" value="{{ $jurnal->public_id }}">
 
         <x-card :title="'Daftar Siswa — ' . ($kelas?->nama_kelas ?? '')" flush>
             <x-slot:actions>

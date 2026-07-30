@@ -287,6 +287,17 @@ body {
     font-size: 11px;
 }
 
+/* Compact field, same idea as .btn-hifi--sm — used by the pager's row-count and
+   jump-to-page controls, which sit inside a card footer. */
+.select-hifi--sm,
+.input-hifi--sm {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+}
+
+.select-hifi--sm { padding-right: 24px; background-position: right 7px center; }
+
 .select-hifi,
 .input-hifi {
     @extend %control-base;
@@ -594,6 +605,41 @@ a.name-cell:hover { text-decoration: underline; }
     white-space: nowrap;
 }
 
+/* Sortable column header. The arrow is always present (↕ when idle) so a column
+   reads as clickable before hovering, and the active column is highlighted so it
+   is obvious what the table is ordered by. */
+.tbl__sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover { color: var(--p-400); }
+
+    &.is-active {
+        color: var(--p-500);
+        font-weight: 700;
+    }
+}
+
+.tbl__sort-arrow {
+    font-size: 9px;
+    opacity: 0.35;
+    line-height: 1;
+}
+
+.tbl__sort:hover .tbl__sort-arrow { opacity: 0.7; }
+
+.tbl__sort.is-active .tbl__sort-arrow {
+    opacity: 1;
+    font-size: 10.5px;
+}
+
+/* The active column's cells lift slightly out of the neutral rows. */
+.tbl thead th:has(.tbl__sort.is-active) { background: var(--n-200); }
+
 .tbl tbody td {
     padding: 6px 14px;
     border-bottom: 1px solid var(--n-200);
@@ -616,6 +662,31 @@ a.name-cell:hover { text-decoration: underline; }
     align-items: center;
     gap: 8px;
 }
+
+/* Footer strip holding the row-count picker, the page links, and the jump box.
+   Wraps on narrow screens so the three groups stack instead of overflowing. */
+.pager-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+
+    form { display: flex; align-items: center; }
+
+    label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10.5px;
+        color: var(--n-600);
+        margin: 0;
+    }
+
+    input[type='number'] { width: 62px; }
+}
+
+.pager-bar__dari { font-size: 10.5px; color: var(--n-600); margin-left: 6px; }
 
 .pager {
     display: flex;
