@@ -8,6 +8,7 @@ use App\Models\Kelas;
 use App\Models\User;
 use App\Support\Halaman;
 use App\Support\Ringkasan;
+use App\Support\Urutan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -35,13 +36,28 @@ class KelasController extends Controller
                 Jadwal::where('guru_id', $user->id)->select('kelas_id')))
             ->when($filters['tingkat'] ?? null, fn ($query, $tingkat) => $query->where('tingkat', $tingkat))
             ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan', $jurusan))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
-            // CASE rather than MySQL's FIELD(): the test suite runs on SQLite.
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
+
+        // Only columns the database can order. "Kelengkapan"/"Status" are worked
+        // out in PHP from a separate aggregate after paginating, so sorting on
+        // them would only reorder the page in hand — worse than not offering it.
+        $peta = [
+            'nama' => fn ($q, $dir) => $q->orderBy('nama_kelas', $dir),
+            'wali' => fn ($q, $dir) => $q->orderBy(
+                User::select('name')->whereColumn('users.id', 'kelas.wali_kelas_id')->limit(1), $dir
+            ),
+            'ruang' => fn ($q, $dir) => $q->orderBy('ruang', $dir),
+            'siswa' => fn ($q, $dir) => $q->orderBy('siswa_count', $dir),
+            'jadwal' => fn ($q, $dir) => $q->orderBy('jadwals_count', $dir),
+        ];
+
+        // CASE rather than MySQL's FIELD(): the test suite runs on SQLite.
+        Urutan::terapkan($kelas, $request, $peta, fn ($q) => $q
             ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
             ->orderBy('jurusan')
-            ->orderBy('nama_kelas')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+            ->orderBy('nama_kelas'));
+
+        $kelas = $kelas->paginate(Halaman::perHalaman())->withQueryString();
 
         $kelengkapan = Ringkasan::kelengkapan('kelas_id');
         $totalSiswa = User::where('role', 'siswa')->count();

@@ -57,7 +57,7 @@ class JurnalController extends Controller
         }
 
         // Newest first unless the reader asked for another column.
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'hadir', 'status']));
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'kelas', 'mapel', 'materi', 'tugas', 'persen', 'kehadiran_guru', 'status']));
         Urutan::terapkan($query, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
@@ -110,7 +110,7 @@ class JurnalController extends Controller
     {
         $kelas = $user->kelas;
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'mapel', 'guru', 'status']));
+        $peta = array_intersect_key(Jurnal::petaUrutan($user), array_flip(['tanggal', 'jam', 'mapel', 'guru', 'kehadiran_guru', 'materi', 'tugas', 'presensi_saya', 'status']));
         Urutan::terapkan($query, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         // A student with no class sees nothing — never every class's journals.

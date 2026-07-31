@@ -43,7 +43,7 @@ class LaporanController extends Controller
 
         $jurnals = $terisiCount($this->kueriJurnal($filters, $periode));
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'guru', 'hadir', 'status']));
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'kelas', 'mapel', 'guru', 'materi', 'persen', 'kehadiran_guru', 'status']));
         Urutan::terapkan($jurnals, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('jurnal.id'));
 
         $jurnals = $jurnals->paginate(Halaman::perHalaman())->withQueryString();
@@ -106,7 +106,7 @@ class LaporanController extends Controller
 
         $pertemuan = $rekapCount($this->kueriJurnal($filters, $periode));
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'guru', 'siswa', 'hadir']));
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'guru', 'kehadiran_guru', 'siswa', 'hadir', 'sakit', 'izin', 'alpa', 'persen']));
         Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('jurnal.id'));
 
         $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();

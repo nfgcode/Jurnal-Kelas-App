@@ -49,22 +49,18 @@
     </form>
 
     <x-card title="Riwayat Jurnal Mengajar" flush>
-        <x-slot:actions>
-            <span class="card-hifi__meta">diurutkan: terbaru</span>
-        </x-slot:actions>
-
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
                         <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
-                        <th>Jam Ke</th>
+                        <th><x-th-sort kolom="jam" label="Jam Ke" /></th>
                         <th><x-th-sort kolom="kelas" label="Kelas" /></th>
                         <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
-                        <th>Materi</th>
-                        <th>Tugas</th>
-                        <th><x-th-sort kolom="hadir" label="Kehadiran" /></th>
-                        <th>Kehadiran Saya</th>
+                        <th><x-th-sort kolom="materi" label="Materi" /></th>
+                        <th><x-th-sort kolom="tugas" label="Tugas" /></th>
+                        <th><x-th-sort kolom="persen" label="Kehadiran" /></th>
+                        <th><x-th-sort kolom="kehadiran_guru" label="Kehadiran Saya" /></th>
                         <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
                         <th class="is-num">Aksi</th>
                     </tr>

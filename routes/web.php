@@ -127,6 +127,7 @@ Route::middleware('auth')->group(function () {
 
         // Printable per-room QR codes (one per class) for teachers to scan.
         Route::get('/kelas-qr', [KelasQrController::class, 'index'])->name('kelas-qr.index');
+        Route::get('/kelas-qr/pdf', [KelasQrController::class, 'pdf'])->name('kelas-qr.pdf');
 
         /*
         |------------------------------------------------------------------

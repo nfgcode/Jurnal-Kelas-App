@@ -66,6 +66,13 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 - Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah) → login → halaman konfirmasi kelas → langsung isi **jurnal + presensi** kelas itu
 - **Khusus role guru** — siswa/admin yang membuka URL QR ditolak (403); belum login otomatis dialihkan ke login lalu kembali (`redirect()->intended()`)
 - Halaman **cetak QR** untuk admin (`/admin/kelas-qr`), siap potong & tempel, dengan QR SVG (via `endroid/qr-code`, offline)
+- **Pilih kelas yang dicetak**: bawaannya seluruh kelas, tetapi bisa dipersempit ke satu atau
+  beberapa rombel lewat daftar centang — dipakai saat satu ruang pindah, satu QR sobek, atau ada
+  rombel baru, tanpa harus mencetak ulang semuanya. Pilihan ikut di URL sehingga bisa di-bookmark
+  atau dikirim ke orang yang mencetak
+- **Ekspor PDF** (`/admin/kelas-qr/pdf`) — tiga kartu per baris pada A4, mengikuti kelas yang
+  dipilih. Dirender `dompdf` (murni PHP, tetap jalan tanpa internet); QR di dalam PDF memakai PNG
+  karena dukungan SVG dompdf tidak dapat diandalkan, sementara tampilan layar tetap SVG
 - Waktu pengisian jurnal tercatat otomatis (`created_at`) dan ditampilkan di detail jurnal ("Diisi Pada")
 
 > **Deploy sekolah:** agar QR bisa dibuka dari HP, set `APP_URL` ke alamat LAN server (mis. `http://192.168.1.10:8888`), **bukan** `localhost`.
@@ -154,6 +161,7 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
 | [Laravel Sanctum](https://laravel.com/docs/sanctum) | latest | Autentikasi API berbasis token |
 | [Laravel Tinker](https://github.com/laravel/tinker) | 3.x | REPL / console interaktif |
 | `ext-zip` (ZipArchive) | bawaan PHP | Penulisan file `.xlsx` (OOXML) tanpa library eksternal |
+| [dompdf/dompdf](https://github.com/dompdf/dompdf) | 3.x | Ekspor PDF lembar QR kelas — murni PHP, tanpa binary eksternal, tetap jalan offline |
 
 ### Frontend
 | Teknologi | Versi | Peran |

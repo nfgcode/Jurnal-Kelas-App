@@ -106,24 +106,20 @@
     </form>
 
     <x-card title="Histori Presensi per Pertemuan" flush>
-        <x-slot:actions>
-            <span class="card-hifi__meta">diurutkan: terbaru</span>
-        </x-slot:actions>
-
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
                         <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
-                        <th>Jam Ke</th>
+                        <th><x-th-sort kolom="jam" label="Jam Ke" /></th>
                         <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
                         <th><x-th-sort kolom="guru" label="Guru" /></th>
                         <th class="is-num"><x-th-sort kolom="siswa" label="Total" /></th>
                         <th class="is-num"><x-th-sort kolom="hadir" label="H" /></th>
-                        <th class="is-num">S</th>
-                        <th class="is-num">I</th>
-                        <th class="is-num">A</th>
-                        <th>Persentase Kehadiran</th>
+                        <th class="is-num"><x-th-sort kolom="sakit" label="S" /></th>
+                        <th class="is-num"><x-th-sort kolom="izin" label="I" /></th>
+                        <th class="is-num"><x-th-sort kolom="alpa" label="A" /></th>
+                        <th><x-th-sort kolom="persen" label="Persentase Kehadiran" /></th>
                         <th class="is-num">Aksi</th>
                     </tr>
                 </thead>

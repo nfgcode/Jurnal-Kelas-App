@@ -74,10 +74,6 @@
     </x-card>
 
     <x-card title="Rekap Jurnal Mengajar" flush>
-        <x-slot:actions>
-            <span class="card-hifi__meta">diurutkan: terbaru</span>
-        </x-slot:actions>
-
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
@@ -86,10 +82,10 @@
                         <th><x-th-sort kolom="kelas" label="Kelas" /></th>
                         <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
                         <th><x-th-sort kolom="guru" label="Guru" /></th>
-                        <th>Materi</th>
-                        <th>JP</th>
-                        <th><x-th-sort kolom="hadir" label="Kehadiran" /></th>
-                        <th>Kehadiran Guru</th>
+                        <th><x-th-sort kolom="materi" label="Materi" /></th>
+                        <th><x-th-sort kolom="jam" label="JP" /></th>
+                        <th><x-th-sort kolom="persen" label="Kehadiran" /></th>
+                        <th><x-th-sort kolom="kehadiran_guru" label="Kehadiran Guru" /></th>
                         <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
                         <th class="is-num">Aksi</th>
                     </tr>

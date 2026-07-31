@@ -54,19 +54,15 @@
     </form>
 
     <x-card title="Daftar Kelas" flush>
-        <x-slot:actions>
-            <span class="card-hifi__meta">diurutkan: tingkat, jurusan</span>
-        </x-slot:actions>
-
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Kelas</th>
-                        <th>Wali Kelas</th>
-                        <th>Ruang</th>
-                        <th class="is-num">Siswa</th>
-                        <th>Mata Pelajaran</th>
+                        <th><x-th-sort kolom="nama" label="Kelas" /></th>
+                        <th><x-th-sort kolom="wali" label="Wali Kelas" /></th>
+                        <th><x-th-sort kolom="ruang" label="Ruang" /></th>
+                        <th class="is-num"><x-th-sort kolom="siswa" label="Siswa" /></th>
+                        <th><x-th-sort kolom="jadwal" label="Mata Pelajaran" /></th>
                         <th>Kelengkapan Jurnal</th>
                         <th class="is-num">Status</th>
                         <th class="is-num">Aksi</th>

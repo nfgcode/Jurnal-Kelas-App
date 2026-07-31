@@ -144,4 +144,63 @@ class QrAksesTest extends TestCase
         $this->actingAs($guru)->get('/admin/kelas-qr')->assertForbidden();
         $this->actingAs($siswa)->get('/admin/kelas-qr')->assertForbidden();
     }
+
+    public function test_the_sheet_covers_every_class_until_some_are_picked(): void
+    {
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $pilih = Kelas::orderBy('id')->take(2)->pluck('id')->all();
+
+        $this->actingAs($admin)->get('/admin/kelas-qr')
+            ->assertOk()
+            ->assertViewHas('daftar', fn ($daftar) => $daftar->count() === Kelas::count());
+
+        $this->actingAs($admin)->get('/admin/kelas-qr?kelas_id[]='.$pilih[0].'&kelas_id[]='.$pilih[1])
+            ->assertOk()
+            ->assertViewHas('daftar', fn ($daftar) => $daftar->count() === 2
+                && $daftar->every(fn ($item) => in_array($item['kelas']->id, $pilih, true)));
+    }
+
+    /** A bookmarked sheet must survive a class being deleted, not 500. */
+    public function test_an_unknown_class_id_is_dropped_rather_than_failing(): void
+    {
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $ada = Kelas::orderBy('id')->value('id');
+
+        $this->actingAs($admin)->get('/admin/kelas-qr?kelas_id[]='.$ada.'&kelas_id[]=999999')
+            ->assertOk()
+            ->assertViewHas('daftar', fn ($daftar) => $daftar->count() === 1);
+    }
+
+    public function test_the_sheet_downloads_as_a_pdf_for_admin_only(): void
+    {
+        [, $guru] = $this->kelasDenganPengajar();
+
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $siswa = User::where('role', 'siswa')->firstOrFail();
+
+        $respons = $this->actingAs($admin)->get('/admin/kelas-qr/pdf')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        // A PDF, not an HTML error page that merely claims to be one.
+        $this->assertStringStartsWith('%PDF-', $respons->getContent());
+
+        $this->actingAs($guru)->get('/admin/kelas-qr/pdf')->assertForbidden();
+        $this->actingAs($siswa)->get('/admin/kelas-qr/pdf')->assertForbidden();
+    }
+
+    public function test_the_pdf_shrinks_when_fewer_classes_are_picked(): void
+    {
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $satu = Kelas::orderBy('id')->value('id');
+
+        $semua = $this->actingAs($admin)->get('/admin/kelas-qr/pdf')->assertOk()->getContent();
+        $sebagian = $this->actingAs($admin)->get('/admin/kelas-qr/pdf?kelas_id[]='.$satu)
+            ->assertOk()->getContent();
+
+        // Each class contributes its own QR bitmap, so a one-class sheet cannot
+        // weigh as much as the full set — this is what proves the selection
+        // reaches the PDF and not just the screen.
+        $this->assertLessThan(strlen($semua), strlen($sebagian));
+    }
 }

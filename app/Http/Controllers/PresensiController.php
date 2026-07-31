@@ -135,7 +135,7 @@ class PresensiController extends Controller
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'kelas', 'mapel', 'siswa', 'hadir']));
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'kelas', 'mapel', 'siswa', 'hadir', 'sakit', 'izin', 'alpa', 'persen']));
         Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();

@@ -23,8 +23,26 @@
     .qr-card__url { font-size: 8.5px; color: var(--n-500); word-break: break-all; margin-top: 8px; }
     .qr-card__hint { font-size: 10px; color: var(--n-700); margin-top: 6px; }
 
+    /* Class picker: a plain checkbox list. With a couple of dozen rombel this
+       stays scannable, and unlike a multi-select every choice is visible at once. */
+    .pilih-kelas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        margin: 10px 0 12px;
+    }
+    .pilih-kelas label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .pilih-kelas input { width: 15px; height: 15px; cursor: pointer; }
+
     @media print {
-        .sidebar, .topbar, .sidebar-scrim, .page-head__actions { display: none !important; }
+        .sidebar, .topbar, .sidebar-scrim, .page-head__actions,
+        .card-hifi, .pilih-kelas { display: none !important; }
         .main { margin-left: 0 !important; }
         .content { padding: 0 !important; }
         .qr-card { break-inside: avoid; page-break-inside: avoid; }
@@ -36,11 +54,39 @@
 @section('content')
     <x-page-head
         title="Cetak QR Kelas"
-        :sub="$daftar->count() . ' kelas · tempel di tiap ruang rombel'">
+        :sub="($dipilih === [] ? 'Semua kelas' : $daftar->count() . ' kelas terpilih') . ' dari ' . $semuaKelas->count() . ' · tempel di tiap ruang rombel'">
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.kelas-qr.pdf', request()->query()) }}">
+            Unduh PDF
+        </a>
         <button type="button" class="btn-hifi" onclick="window.print()">
             <i class="bi bi-printer"></i> Cetak
         </button>
     </x-page-head>
+
+    <x-card title="Pilih Kelas">
+        {{-- No checkbox ticked means every class: reprinting the whole set is the
+             common case, and the empty state should not be an empty sheet. --}}
+        <form method="GET" id="formPilihKelas">
+            <div class="pilih-kelas">
+                @foreach ($semuaKelas as $k)
+                    <label>
+                        <input type="checkbox" name="kelas_id[]" value="{{ $k->id }}"
+                               @checked(in_array($k->id, $dipilih, true))>
+                        {{ $k->nama_kelas }}
+                    </label>
+                @endforeach
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn-hifi" type="submit">Tampilkan</button>
+                <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.kelas-qr.index') }}">Semua Kelas</a>
+                <button class="btn-hifi btn-hifi--ghost" type="button"
+                        onclick="document.querySelectorAll('#formPilihKelas input[type=checkbox]').forEach(c => c.checked = false)">
+                    Kosongkan Pilihan
+                </button>
+            </div>
+        </form>
+    </x-card>
 
     <x-card>
         <p class="field__hint mb-2">

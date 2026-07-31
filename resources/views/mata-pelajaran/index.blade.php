@@ -57,17 +57,13 @@
     </form>
 
     <x-card title="Daftar Mata Pelajaran" flush>
-        <x-slot:actions>
-            <span class="card-hifi__meta">diurutkan: JP terbanyak</span>
-        </x-slot:actions>
-
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Mata Pelajaran</th>
-                        <th>Kelompok</th>
-                        <th>JP / Minggu</th>
+                        <th><x-th-sort kolom="nama" label="Mata Pelajaran" /></th>
+                        <th><x-th-sort kolom="kelompok" label="Kelompok" /></th>
+                        <th><x-th-sort kolom="jp" label="JP / Minggu" bawaan /></th>
                         <th>Guru Pengampu</th>
                         <th>Diajarkan Di</th>
                         <th>Kelengkapan Jurnal</th>

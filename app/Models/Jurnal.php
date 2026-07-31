@@ -270,12 +270,18 @@ class Jurnal extends Model
      * Screens take a subset with array_intersect_key; the key set is the
      * whitelist {@see Urutan} checks the URL against.
      *
+     * @param  User|null  $siswa  enables the "my own attendance" column, which is
+     *                            per-reader and therefore not a fixed expression
      * @return array<string, callable>
      */
-    public static function petaUrutan(): array
+    public static function petaUrutan(?User $siswa = null): array
     {
         $lewatJadwal = fn (string $tabel, string $kolom, string $fk) => Jadwal::select("{$tabel}.{$kolom}")
             ->join($tabel, "jadwal.{$fk}", '=', "{$tabel}.id")
+            ->whereColumn('jadwal.id', 'jurnal.jadwal_id')
+            ->limit(1);
+
+        $kolomJadwal = fn (string $kolom) => Jadwal::select($kolom)
             ->whereColumn('jadwal.id', 'jurnal.jadwal_id')
             ->limit(1);
 
@@ -289,12 +295,37 @@ class Jurnal extends Model
             'guru' => fn ($q, $dir) => $q->orderBy(
                 User::select('name')->whereColumn('users.id', 'jurnal.guru_id')->limit(1), $dir
             ),
+            // The lesson periods the meeting occupies, e.g. "JP 3 - 4".
+            'jam' => fn ($q, $dir) => $q->orderBy($kolomJadwal('jam_ke_mulai'), $dir),
             // Aliases added by withCount() on the calling query.
             'hadir' => fn ($q, $dir) => $q->orderBy('hadir_count', $dir),
+            'sakit' => fn ($q, $dir) => $q->orderBy('sakit_count', $dir),
+            'izin' => fn ($q, $dir) => $q->orderBy('izin_count', $dir),
+            'alpa' => fn ($q, $dir) => $q->orderBy('alpa_count', $dir),
             'siswa' => fn ($q, $dir) => $q->orderBy('total_siswa', $dir),
+            // The percentage the bar shows, not the raw count — a meeting with
+            // 20/20 present should outrank one with 25/40. NULLIF keeps a roster
+            // that was never marked from dividing by zero.
+            'persen' => fn ($q, $dir) => $q->orderByRaw("hadir_count / NULLIF(total_siswa, 0) {$dir}"),
+            // Hadir / tidak hadir + tugas / tidak hadir tanpa tugas, in that order.
+            'kehadiran_guru' => fn ($q, $dir) => $q
+                ->orderBy('jurnal.kehadiran_guru_status', $dir)
+                ->orderBy('jurnal.kehadiran_guru_ada_tugas', $dir),
+            'materi' => fn ($q, $dir) => $q->orderBy('jurnal.materi', $dir),
+            'tugas' => fn ($q, $dir) => $q->orderBy('jurnal.tugas', $dir),
             // "Tepat/Telat" is a SQL predicate, so the chip can be sorted on too.
             'status' => fn ($q, $dir) => $q->orderByRaw(self::ekspresiTerlambat()." {$dir}"),
-        ];
+        ] + ($siswa === null ? [] : [
+            // How this particular student was marked at each meeting. Per-reader,
+            // so it only exists when a student is the one looking.
+            'presensi_saya' => fn ($q, $dir) => $q->orderBy(
+                Presensi::select('status')
+                    ->whereColumn('presensi.jurnal_id', 'jurnal.id')
+                    ->where('presensi.siswa_id', $siswa->id)
+                    ->limit(1),
+                $dir
+            ),
+        ]);
     }
 
     /**

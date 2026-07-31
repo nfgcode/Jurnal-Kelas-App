@@ -8,6 +8,7 @@ use App\Models\MataPelajaran;
 use App\Models\User;
 use App\Support\Halaman;
 use App\Support\Ringkasan;
+use App\Support\Urutan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -30,11 +31,21 @@ class MataPelajaranController extends Controller
             // A guru only sees subjects they are timetabled to teach; admin all.
             ->when($user->isGuru(), fn ($query) => $query->whereHas('jadwals', fn ($j) => $j->where('guru_id', $user->id)))
             ->when($filters['kelompok'] ?? null, fn ($query, $kelompok) => $query->where('kelompok', $kelompok))
-            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
-            ->orderByDesc('jp_per_minggu')
-            ->orderBy('nama')
-            ->paginate(Halaman::perHalaman())
-            ->withQueryString();
+            ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
+
+        // "Guru Pengampu", "Diajarkan Di", "Kelengkapan" and "Status" come from
+        // aggregates resolved after this query, so they cannot be ordered here
+        // without reordering only the page already fetched.
+        $peta = [
+            'nama' => fn ($q, $dir) => $q->orderBy('nama', $dir),
+            'kelompok' => fn ($q, $dir) => $q->orderBy('kelompok', $dir),
+            'jp' => fn ($q, $dir) => $q->orderBy('jp_per_minggu', $dir),
+        ];
+
+        Urutan::terapkan($mataPelajaran, $request, $peta, fn ($q) => $q
+            ->orderByDesc('jp_per_minggu')->orderBy('nama'));
+
+        $mataPelajaran = $mataPelajaran->paginate(Halaman::perHalaman())->withQueryString();
 
         // One teacher name and the distinct class count per subject, aggregated
         // in a single query rather than hydrating every jadwal + guru + kelas.

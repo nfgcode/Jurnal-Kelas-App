@@ -131,7 +131,7 @@ class WaliKelasController extends Controller
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'mapel', 'guru', 'hadir', 'status']));
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'mapel', 'guru', 'materi', 'tugas', 'persen', 'kehadiran_guru', 'status']));
         Urutan::terapkan($jurnals, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         $jurnals = $jurnals->paginate(Halaman::perHalaman())->withQueryString();
@@ -185,7 +185,7 @@ class WaliKelasController extends Controller
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'mapel', 'guru', 'siswa', 'hadir']));
+        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'mapel', 'guru', 'siswa', 'hadir', 'sakit', 'izin', 'alpa', 'persen']));
         Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
