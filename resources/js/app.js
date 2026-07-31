@@ -1,8 +1,27 @@
-// Bootstrap JS
-import * as bootstrap from 'bootstrap';
+// Fonts and icons ship with the build rather than coming from a CDN: this app
+// runs on a school LAN that may have no internet at all, where CDN requests
+// simply hang and every icon renders as an empty box.
+// Latin subset only. The full package also ships Cyrillic, Greek and Vietnamese
+// cuts — 58 font files for an Indonesian school app that will never render a
+// single one of those glyphs.
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/inter/latin-700.css';
+// Icons come from resources/sass/_ikon.scss (a subset, see the note there),
+// pulled in by app.scss rather than imported here.
 
-// Make bootstrap available globally
-window.bootstrap = bootstrap;
+// Bootstrap JS — only the two components with behaviour here. Importing the
+// whole package also pulled in carousel, collapse, offcanvas, scrollspy, tab,
+// toast, tooltip and popover, none of which this app uses. Each component file
+// registers its own data-api listeners, so data-bs-toggle="dropdown" still works
+// without any wiring of ours.
+import Dropdown from 'bootstrap/js/dist/dropdown';
+import Modal from 'bootstrap/js/dist/modal';
+
+// The dashboard drill-down opens the modal by hand; the dropdown runs off its
+// data attributes, but is exposed for symmetry.
+window.bootstrap = { Dropdown, Modal };
 
 // The mobile sidebar toggle lives inline in layouts/app.blade.php, where it can
 // also drive the scrim. A second handler here only fought it for the same

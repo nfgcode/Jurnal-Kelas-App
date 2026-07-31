@@ -29,48 +29,9 @@
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
-                <div class="form-grid form-grid--3">
-                    <x-field label="Tanggal" name="tanggal" required>
-                        {{-- Reloading on change is what makes the schedule list
-                             below match the chosen day. Editing keeps its own
-                             date, so only the create form reloads. --}}
-                        <input class="input-hifi" type="date" name="tanggal"
-                               value="{{ old('tanggal', $tanggalAktif->toDateString()) }}" required
-                               @unless ($jurnal)
-                                   onchange="window.location = '{{ route('jurnal.create') }}?tanggal=' + this.value"
-                               @endunless>
-                    </x-field>
-
-                    <x-field label="Jam Ke (Mulai)">
-                        <input class="input-hifi" type="text" value="JP {{ $jadwal?->jam_ke_mulai ?? '—' }}" readonly>
-                    </x-field>
-
-                    <x-field label="Jam Ke (Selesai)">
-                        <input class="input-hifi" type="text" value="JP {{ $jadwal?->jam_ke_selesai ?? '—' }}" readonly>
-                    </x-field>
-                </div>
-
-                <div class="form-grid form-grid--2">
-                    <x-field label="Jadwal (Kelas · Mata Pelajaran)" name="jadwal_id" required>
-                        @if ($jadwalList->isEmpty())
-                            <x-jadwal-kosong :tanggal="$tanggalAktif" />
-                        @else
-                            <select class="select-hifi" name="jadwal_id" id="jadwalSelect" data-searchable required
-                                    onchange="window.location = '{{ route('jurnal.create') }}?tanggal={{ $tanggalAktif->toDateString() }}&jadwal_id=' + this.value">
-                                @foreach ($jadwalList as $pilihanJadwal)
-                                    <option value="{{ $pilihanJadwal->id }}" @selected($jadwal?->id === $pilihanJadwal->id)>
-                                        {{ $pilihanJadwal->kelas?->nama_kelas }} · {{ $pilihanJadwal->mataPelajaran?->nama }}
-                                        · JP {{ $pilihanJadwal->jpLabel() }}@if (in_array($pilihanJadwal->id, $jadwalTerisi, true)) — sudah diisi @endif
-                                    </option>
-                                @endforeach
-                            </select>
-                        @endif
-                    </x-field>
-
-                    <x-field label="Ruang">
-                        <input class="input-hifi" type="text" value="{{ $jadwal?->ruang ?? $kelas?->ruang ?? '—' }}" readonly>
-                    </x-field>
-                </div>
+                <x-jurnal-slot label="Jadwal (Kelas · Mata Pelajaran)" dengan-kelas
+                               :jadwal="$jadwal" :jadwal-list="$jadwalList" :jadwal-terisi="$jadwalTerisi"
+                               :tanggal-aktif="$tanggalAktif" :jurnal="$jurnal" :kelas="$kelas" />
 
                 <x-field label="Guru Pengajar">
                     <input class="input-hifi" type="text" value="{{ Auth::user()->name }}" readonly>

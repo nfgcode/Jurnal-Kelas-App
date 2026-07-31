@@ -33,12 +33,4 @@ class Urutan
 
         return $bawaan($query);
     }
-
-    /** The column currently sorted on, or null when the default ordering is in force. */
-    public static function kolomAktif(Request $request, array $peta): ?string
-    {
-        $sort = (string) $request->query('sort');
-
-        return isset($peta[$sort]) ? $sort : null;
-    }
 }

@@ -63,6 +63,12 @@ class JurnalController extends Controller
         $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
         $milikSaya = $user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query();
 
+        // A guru filters only among the classes/subjects they teach; admin all.
+        $kelasList = Kelas::query()
+            ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+            ->orderBy('nama_kelas')
+            ->get();
+
         // All-time total and the selected period's count in one scan (SUM(BETWEEN)
         // is 0/1 per row on both MySQL and SQLite) instead of two separate COUNTs.
         $agregat = (clone $milikSaya)
@@ -75,10 +81,7 @@ class JurnalController extends Controller
         return view('jurnal.histori', [
             'jurnals' => $jurnals,
             'periode' => $periode,
-            // A guru filters only among the classes/subjects they teach; admin all.
-            'kelasList' => Kelas::query()
-                ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
-                ->orderBy('nama_kelas')->get(),
+            'kelasList' => $kelasList,
             'mapelList' => MataPelajaran::query()
                 ->when($user->isGuru(), fn ($q) => $q->whereHas('jadwals', fn ($j) => $j->where('guru_id', $user->id)))
                 ->orderBy('nama')->get(),
@@ -86,9 +89,10 @@ class JurnalController extends Controller
             'statistik' => [
                 'total' => (int) $agregat->total,
                 'periode' => (int) $agregat->periode,
-                'kelas' => $user->isGuru()
-                    ? Jadwal::where('guru_id', $user->id)->distinct()->count('kelas_id')
-                    : Kelas::count(),
+                // The filter list already holds exactly the classes this figure
+                // counts — a guru's own, or every class for admin — so counting
+                // it costs nothing instead of a second query.
+                'kelas' => $kelasList->count(),
                 // Scoped to the period so the cards describe the same rows as
                 // the table below them.
                 'kehadiran' => Ringkasan::kehadiranGuru(

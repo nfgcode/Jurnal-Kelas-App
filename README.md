@@ -100,6 +100,26 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
   sudah diisi, dan menampilkan pesan "hubungi admin" bila hari itu memang tidak ada jadwal
 - Performa: indexing komposit, caching KPI landing, query agregat yang diringkas
 
+### ⚡ Bobot Aset & Mode Offline
+Sekolah bisa saja menjalankan aplikasi ini di LAN **tanpa internet**, jadi tidak ada satu pun
+permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan diambil dari CDN.
+
+- **Font Inter** hanya subset **Latin** (paket penuh membawa Cyrillic/Greek/Vietnamese yang tidak
+  akan pernah dirender): 58 → **10** berkas font
+- **Bootstrap** diimpor per-lapisan, bukan sebagai satu bundel. Aplikasi memakai 42 kelas utilitas
+  dan dua komponen (dropdown, modal); grid, tabel, form, tombol, navbar, alert, carousel, tooltip
+  dan lainnya tidak pernah dirujuk sehingga tidak ikut dikirim
+- **Bootstrap Icons** disubset — 2078 kelas didefinisikan, **30** dipakai. Dijaga `IkonTest`:
+  memakai ikon di halaman tanpa mendaftarkannya akan **menggagalkan test**, bukan tampil kosong
+  diam-diam
+- Halaman error tetap **berdiri sendiri**: CSS inline dan lambangnya SVG inline, supaya tetap
+  tampil justru ketika yang rusak adalah pipeline aset
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| CSS | 321,3 KB | **124,1 KB** |
+| JS | 85,7 KB | **57,3 KB** |
+
 ### 🚑 Error Handling Ramah-Peran
 - Guru & siswa **tidak pernah melihat stack trace Laravel**. Saat terjadi error mereka mendapat
   halaman ramah berbahasa Indonesia + **kode referensi**, dengan tombol **Kembali** / **Ke Dashboard**

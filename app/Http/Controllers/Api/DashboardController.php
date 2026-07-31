@@ -5,12 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Kelas;
-use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A compact, role-aware KPI summary — the same figures the web dashboards
@@ -36,15 +35,30 @@ class DashboardController extends Controller
     {
         $kelengkapan = Ringkasan::kelengkapan('kelas_id');
 
+        // Six separate COUNT(*) round trips for six numbers became two: one
+        // grouped pass over users (the same idiom Admin\UserController uses), and
+        // one statement whose scalar subqueries each resolve from an index.
+        $peran = User::selectRaw('role, COUNT(*) as total')
+            ->whereIn('role', ['guru', 'siswa'])
+            ->groupBy('role')
+            ->pluck('total', 'role');
+
+        $baris = DB::selectOne(
+            'select (select count(*) from kelas) as kelas,'
+            .' (select count(*) from mata_pelajaran) as mata_pelajaran,'
+            .' (select count(*) from jadwal) as jadwal,'
+            .' (select count(*) from jurnal) as jurnal'
+        );
+
         return [
             'role' => 'admin',
             'totals' => [
-                'guru' => User::where('role', 'guru')->count(),
-                'siswa' => User::where('role', 'siswa')->count(),
-                'kelas' => Kelas::count(),
-                'mata_pelajaran' => MataPelajaran::count(),
-                'jadwal' => Jadwal::count(),
-                'jurnal' => Jurnal::count(),
+                'guru' => (int) ($peran['guru'] ?? 0),
+                'siswa' => (int) ($peran['siswa'] ?? 0),
+                'kelas' => (int) $baris->kelas,
+                'mata_pelajaran' => (int) $baris->mata_pelajaran,
+                'jadwal' => (int) $baris->jadwal,
+                'jurnal' => (int) $baris->jurnal,
             ],
             'presensi' => Ringkasan::presensi(),
             'kehadiran_guru' => Ringkasan::kehadiranGuru(),

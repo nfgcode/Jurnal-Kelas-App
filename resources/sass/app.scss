@@ -1,7 +1,30 @@
-// Bootstrap supplies the grid, dropdown and modal behaviour. Everything that
-// carries the visual identity below is bespoke and namespaced, so the two
-// layers never collide.
-@import "bootstrap/scss/bootstrap";
+// Only the Bootstrap layers this app actually uses. Everything carrying the
+// visual identity below is bespoke and namespaced, so the app never referenced
+// Bootstrap's grid, tables, forms, buttons, navbar, alerts, badges, carousel,
+// accordion, pagination, progress, spinners, toasts or offcanvas — importing the
+// full bundle shipped all of it anyway. What is left: the reset and typography
+// everything sits on, the utility API (d-*, gap-*, text-*, m*-*, flex-*), and
+// the two components with real behaviour, dropdown and modal.
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/dropdown";
+@import "bootstrap/scss/modal";
+@import "bootstrap/scss/close";
+@import "bootstrap/scss/helpers";
+
+// Must come last: this is what generates the utility classes from the map above.
+@import "bootstrap/scss/utilities/api";
+
+@import "ikon";
 
 /* =========================================================================
    Global Tokens — mirrors the Figma variable collection of the same name.
@@ -237,6 +260,10 @@ body {
 .page-head__actions {
     display: flex;
     align-items: center;
+    // Wraps because this row grew: a period filter, a back link and one or two
+    // action buttons. .page-head wraps the block onto its own line, but without
+    // this the items inside it still could not break and ran off a phone screen.
+    flex-wrap: wrap;
     gap: 10px;
 }
 
@@ -1508,4 +1535,15 @@ textarea.input-hifi {
 
     // Row actions stack rather than squeeze the last column to nothing.
     .tbl__aksi { justify-content: flex-start; }
+
+    // Custom period range: two date inputs plus a separator do not fit on one
+    // line at ~320px, so let them take a line each rather than overflow.
+    .periode-filter { width: 100%; }
+
+    .periode-filter__custom {
+        width: 100%;
+        flex-wrap: wrap;
+
+        .input-hifi { flex: 1 1 140px; }
+    }
 }

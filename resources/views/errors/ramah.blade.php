@@ -21,7 +21,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $teks['judul'] }} · Jurnal Kelas</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    {{-- No stylesheet, font or script from anywhere else: this page has to render
+         when the asset pipeline is the thing that broke, and on a school LAN
+         without internet an external request just hangs. The emblem below is
+         inline SVG for the same reason. --}}
     <style>
         *, *::before, *::after { box-sizing: border-box; }
         body {
@@ -112,7 +115,7 @@
 </head>
 <body>
     <main class="kotak">
-        <div class="lambang"><i class="bi {{ $teks['ikon'] }}"></i></div>
+        <div class="lambang">{!! \App\Support\PesanError::svg($teks['ikon']) !!}</div>
 
         <p class="kode">Kesalahan {{ $status }}</p>
         <h1>{{ $teks['judul'] }}</h1>
@@ -130,11 +133,11 @@
         @endif
 
         <div class="aksi">
-            <a class="tombol tombol--hantu" href="javascript:history.back()">
-                <i class="bi bi-arrow-left"></i> Kembali
-            </a>
+            {{-- Text only: these labels already say what the buttons do, so a
+                 decorative glyph is not worth a font dependency here. --}}
+            <a class="tombol tombol--hantu" href="javascript:history.back()">← Kembali</a>
             <a class="tombol" href="{{ $user ? url('/dashboard') : url('/login') }}">
-                <i class="bi bi-house"></i> {{ $user ? 'Ke Dashboard' : 'Ke Halaman Masuk' }}
+                {{ $user ? 'Ke Dashboard' : 'Ke Halaman Masuk' }}
             </a>
         </div>
 
@@ -150,9 +153,7 @@
                     <textarea name="pesan" maxlength="1000"
                               placeholder="Contoh: saya menekan Simpan Presensi untuk kelas XII TKJ 1, lalu muncul halaman ini."></textarea>
                     <div class="aksi" style="justify-content: flex-start; margin-top: 10px">
-                        <button class="tombol" type="submit">
-                            <i class="bi bi-send"></i> Kirim Laporan
-                        </button>
+                        <button class="tombol" type="submit">Kirim Laporan</button>
                     </div>
                 </form>
             </details>
