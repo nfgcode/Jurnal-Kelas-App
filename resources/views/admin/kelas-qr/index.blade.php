@@ -59,7 +59,7 @@
             Unduh PDF
         </a>
         <button type="button" class="btn-hifi" onclick="window.print()">
-            <i class="bi bi-printer"></i> Cetak
+            <x-ikon nama="printer" /> Cetak
         </button>
     </x-page-head>
 

@@ -25,7 +25,7 @@
         <x-query-hidden />
 
         <label class="filter-bar__search">
-            <i class="bi bi-search"></i>
+            <x-ikon nama="search" />
             <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
                    placeholder="Cari materi...">
         </label>

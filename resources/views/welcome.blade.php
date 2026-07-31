@@ -28,7 +28,7 @@
 <div class="landing">
     <header class="landing__bar">
         <div class="sidebar__brand p-0">
-            <span class="sidebar__mark"><i class="bi bi-journal-text"></i></span>
+            <span class="sidebar__mark"><x-ikon nama="journal-text" /></span>
             <span class="sidebar__wordmark">Jurnal Kelas</span>
         </div>
 
@@ -45,21 +45,21 @@
                 </p>
 
                 <div class="auth__feature">
-                    <i class="bi bi-check-lg"></i>
+                    <x-ikon nama="check-lg" />
                     <div>
                         <p class="auth__feature-title">Jurnal terisi otomatis dari jadwal</p>
                         <p class="auth__feature-sub">Tidak perlu ketik ulang kelas, mapel, atau jam.</p>
                     </div>
                 </div>
                 <div class="auth__feature">
-                    <i class="bi bi-check-lg"></i>
+                    <x-ikon nama="check-lg" />
                     <div>
                         <p class="auth__feature-title">Presensi dalam satu ketukan</p>
                         <p class="auth__feature-sub">Tandai hadir, sakit, izin, alpa langsung dari daftar siswa.</p>
                     </div>
                 </div>
                 <div class="auth__feature">
-                    <i class="bi bi-check-lg"></i>
+                    <x-ikon nama="check-lg" />
                     <div>
                         <p class="auth__feature-title">Kehadiran guru ikut tercatat</p>
                         <p class="auth__feature-sub">Guru dan ketua kelas sama-sama bisa melaporkannya.</p>

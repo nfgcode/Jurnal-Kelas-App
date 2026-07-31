@@ -24,7 +24,6 @@
 // Must come last: this is what generates the utility classes from the map above.
 @import "bootstrap/scss/utilities/api";
 
-@import "ikon";
 
 /* =========================================================================
    Global Tokens — mirrors the Figma variable collection of the same name.
@@ -142,10 +141,9 @@ body {
     text-align: left;
     transition: background 0.15s ease, color 0.15s ease;
 
-    i {
+    svg {
         font-size: 16px;
         width: 20px;
-        text-align: center;
         flex: none;
     }
 
@@ -377,7 +375,7 @@ body {
     flex: 1 1 260px;
     max-width: 272px;
 
-    i {
+    svg {
         position: absolute;
         left: 12px;
         top: 50%;
@@ -1204,7 +1202,7 @@ textarea.input-hifi {
     gap: 12px;
     margin-bottom: 20px;
 
-    i { color: var(--p-100); font-size: 14px; margin-top: 2px; }
+    svg { color: var(--p-100); font-size: 14px; margin-top: 2px; }
 }
 
 .auth__feature-title { font-size: 13.5px; font-weight: 600; margin: 0; }
@@ -1363,7 +1361,7 @@ textarea.input-hifi {
     line-height: 1.5;
     border-left: 3px solid currentColor;
 
-    i { line-height: 1.4; flex: none; }
+    svg { line-height: 1.4; flex: none; }
 }
 
 .banner--info { background: #e7f1fb; color: #14477d; }

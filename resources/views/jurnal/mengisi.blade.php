@@ -188,7 +188,7 @@
                         'Konfirmasi ke guru sebelum kirim' => false,
                     ] as $label => $selesai)
                         <div class="checklist__item {{ $selesai ? 'checklist__item--done' : 'checklist__item--todo' }}">
-                            <span class="checklist__box"><i class="bi bi-check-lg"></i></span>{{ $label }}
+                            <span class="checklist__box"><x-ikon nama="check-lg" /></span>{{ $label }}
                         </div>
                     @endforeach
                 </div>

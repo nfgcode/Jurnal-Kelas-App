@@ -8,30 +8,30 @@
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge" alt="License">
 </p>
 
-# 📓 Jurnal Kelas App
+# Jurnal Kelas App
 
-Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presensi siswa berbasis web untuk lingkungan sekolah menengah. Dibangun dengan Laravel 13, aplikasi ini menyediakan platform terpadu bagi **Admin**, **Guru**, dan **Siswa** untuk mengelola kegiatan belajar-mengajar secara digital.
+Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presensi siswa berbasis web untuk lingkungan sekolah menengah. Dibangun dengan PHP dengan framework Laravel 13, aplikasi ini menyediakan platform terpadu bagi **Admin**, **Guru**, dan **Siswa** untuk mengelola dan memonitoring kegiatan belajar-mengajar secara digital.
 
 ---
 
-## ✨ Fitur Utama
+## Fitur Utama
 
-### 🔐 Multi-Role Authentication
+### Multi-Role Authentication
 - **Admin** — login via email
 - **Guru** — login via NIP (Nomor Induk Pegawai)
 - **Siswa** — login via NIS (Nomor Induk Siswa)
 - Token-based API authentication menggunakan Laravel Sanctum
 
-### 📊 Dashboard Role-Based
+### Dashboard Role-Based
 | Role | Fitur Dashboard |
 |------|----------------|
-| **Admin** | Statistik sekolah, tren pengisian jurnal, peringatan kehadiran guru, heatmap aktivitas, drill-down interaktif |
+| **Admin** | Statistik sekolah, tren pengisian jurnal, peringatan kehadiran guru, heatmap aktivitas, drill-down interaktif, Sistem Monitor |
 | **Guru** | Jadwal mengajar hari ini, status pengisian jurnal, metrik kehadiran per kelas, heatmap aktivitas |
 | **Siswa** | Jadwal kelas hari ini, persentase kehadiran per mata pelajaran, heatmap kehadiran |
 
-### 📝 Manajemen Jurnal Kelas
+### Manajemen Jurnal Kelas
 - Pencatatan materi, tugas, kegiatan, dan catatan per pertemuan
-- Sistem **dual-fill**: Guru mengisi sendiri, atau **Ketua Kelas** mengisi atas nama guru yang berhalangan
+- Sistem **dual-fill**: Guru mengisi sendiri dan **Ketua Kelas** mengisi jika guru tersebut berhalangan hadir
 - Tracking status kehadiran guru dengan satu kosakata seragam untuk kedua peran: **Hadir / Tidak Hadir – Ada Tugas / Tidak Hadir – Tanpa Tugas**
 - Deteksi pengisian terlambat (>24 jam setelah tanggal pelajaran)
 - Full-text search pada materi, tugas, catatan, dan kegiatan
@@ -41,33 +41,34 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
   `presensi_log` ber-`ON DELETE CASCADE` pada jurnal — angka kehadiran kelas akan berubah
 - Audit trail otomatis via database trigger, termasuk saat penghapusan (`trg_jurnal_after_delete`)
 
-### 📋 Presensi Siswa
+### Presensi Siswa
 - Input presensi bulk per jurnal (Hadir / Sakit / Izin / Alpa)
 - Stored procedure MySQL untuk penyimpanan atomik via JSON
 - Unique constraint mencegah duplikasi presensi
 - Statistik kehadiran via stored function
 
-### 🏫 Master Data
+### Master Data
 - **Kelas** — Tingkat (X/XI/XII), jurusan, ruang, kapasitas, wali kelas, tahun ajaran
 - **Mata Pelajaran** — Kelompok kurikulum (Wajib / Peminatan / Muatan Lokal / Kejuruan), JP per minggu
 - **Jadwal** — Penjadwalan per hari, jam pelajaran, ruang, guru pengampu
 - **User Management** — CRUD admin, guru, siswa dengan role & status
 
-### 📈 Laporan Admin
+### Laporan Admin
 - Laporan jurnal dengan filter periode
 - Laporan presensi per kelas
 - Rekap kelas (via API)
 - Drill-down interaktif dari dashboard
 - **Ekspor Excel (.xlsx)** — file spreadsheet asli (OOXML) yang ditulis tanpa dependency tambahan (via `ZipArchive`), khusus admin
 
-### 🎓 Mode Wali Kelas
+### Mode Wali Kelas
 - Toggle "Mode Wali Kelas" di topbar untuk guru yang menjadi wali kelas (mirip tombol tema)
 - Ruang kerja khusus terfokus pada kelas perwaliannya: **Data Kelas, Jadwal Kelas, Jurnal Kelas, Presensi Kelas**
 - Rekap kehadiran per siswa + sorot siswa dengan kehadiran terendah
 
-### 📷 Presensi via QR Code (per ruang kelas)
+### Pengisian Jurnal dan Presensi via QR Code (per ruang kelas)
 - Tiap kelas punya **QR code unik** (token acak, bukan id berurutan) untuk ditempel di ruangnya
-- Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah) → login → halaman konfirmasi kelas → langsung isi **jurnal + presensi** kelas itu
+- Alur kerja pengisian via QR Code:
+Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah) → login → halaman konfirmasi kelas → langsung isi **jurnal + presensi** kelas tersebut
 - **Khusus role guru** — siswa/admin yang membuka URL QR ditolak (403); belum login otomatis dialihkan ke login lalu kembali (`redirect()->intended()`)
 - Halaman **cetak QR** untuk admin (`/admin/kelas-qr`), siap potong & tempel, dengan QR SVG (via `endroid/qr-code`, offline)
 - **Pilih kelas yang dicetak**: bawaannya seluruh kelas, tetapi bisa dipersempit ke satu atau
@@ -81,8 +82,11 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 
 > **Deploy sekolah:** agar QR bisa dibuka dari HP, set `APP_URL` ke alamat LAN server (mis. `http://192.168.1.10:8888`), **bukan** `localhost`.
 
-### 🔒 Keamanan & Otorisasi
-- Otorisasi web berlapis: **middleware peran** (`CheckRole`) di route + **Policy per-record** (`Kelas`, `MataPelajaran`, `Jadwal`, `Jurnal`, `Presensi`)
+### Keamanan & Otorisasi
+- Otorisasi web berlapis: **middleware peran** (`CheckRole`) di route + **Policy per-record**
+  (`KelasPolicy`, `MataPelajaranPolicy`, `JadwalPolicy`, `JurnalPolicy`). Presensi tidak punya
+  policy sendiri — haknya melekat pada pertemuannya lewat `JurnalPolicy::markRoster()` /
+  `viewRoster()`, sehingga "siapa boleh menandai kehadiran" hanya ditulis di satu tempat
 - **Data scoping per peran**: guru hanya melihat kelas/mapel yang ia ampu; siswa hanya kelasnya sendiri
 - Presensi tervalidasi terhadap daftar siswa rombel (mencegah injeksi `siswa_id` asing)
 - Concurrency-safe: transaksi + `lockForUpdate` + unique constraint pada penyimpanan presensi
@@ -94,45 +98,57 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
   layar), dan `?preset=`/rentang periode. Nilai tak dikenal jatuh ke default, bukan error — dan
   tidak ada nilai dari URL yang masuk ke SQL secara langsung
 
-### 📱 UX & Antarmuka
-- **Responsif mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width.
-  Tombol kehadiran H/S/I/A membesar jadi **38px** di ponsel — layar tersibuk guru, dan salah tekan
-  di sana berarti presensi salah
+### UX & Antarmuka
+- **Responsif Perangkat Mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width.
+  Tombol kehadiran H/S/I/A menyesuaikan dengan besar layar, serta opsi memilih besar font
 - **Dropdown ber-pencarian** (progressive enhancement, tanpa dependency) untuk daftar panjang
 - **Filter periode** di histori jurnal, riwayat siswa, dan presensi: preset Hari Ini / Minggu Ini /
   Minggu Lalu / Bulan Ini / Bulan Lalu / 30 Hari / Tahun Ini + rentang kustom. Kartu statistik ikut
-  periode agar angkanya konsisten dengan tabel, dan filter lain tetap terbawa saat periode diganti
-- **Sortir kolom** dengan panah ↑/↓ dan kolom aktif ter-highlight, pada tabel jurnal, presensi,
-  wali kelas, laporan admin, dan pengguna
+  periode agar angka bisa konsisten dengan tabel, dan filter yang lain tetap terbawa saat periode diganti
+- **Sortir kolom** dengan panah ↑/↓ dan kolom aktif ter-highlight — **81 kolom di 10 tabel**
+  (jurnal guru & siswa, presensi, wali kelas, laporan admin, pengguna, kelas, mata pelajaran):
+  tanggal, jam ke, kelas, mapel, guru, materi, tugas, H/S/I/A, persentase, kehadiran guru, status.
+  Kolom yang menampilkan **bar persentase diurutkan menurut rasionya**, pertemuan 20/20 tidak boleh kalah dari 25/40 sehingga tidak sepenuhnya semua data asli di tampilkan.
+  Kolom yang dihitung di PHP **setelah** paginasi (Kelengkapan, Status kelas, Guru Pengampu)
+  sengaja **tidak** diberi sortir: mengurutkannya hanya akan mengacak baris yang sudah terlanjur
+  diambil — terlihat berfungsi padahal salah
 - **Jumlah baris tabel** dapat dipilih (25/50/75/100) plus **lompat ke halaman** tertentu
-- **Tombol "Lihat" di kolom Aksi** — cara membuka satu baris tidak lagi berupa tautan tak terlihat
-  di dalam teks nama kelas/mapel
+- **Pilihan tidak saling menghapus**: mencari atau mengganti filter tetap mempertahankan sortir,
+  periode, dan ukuran halaman (`<x-query-hidden>` membawanya sebagai hidden field). Sebelumnya
+  mengetik satu kata pencarian diam-diam mereset ketiganya
+- **Tombol "Lihat" di kolom Aksi** — Mempermudah User Experience/UX bagi pengguna yang memiliki umur diatas 30 tahun atau orang yang tidak begitu faham.
 - **Dropdown jadwal mengikuti tanggal** yang dipilih (bukan seluruh jadwal), ditandai bila slot
   sudah diisi, dan menampilkan pesan "hubungi admin" bila hari itu memang tidak ada jadwal
-- Performa: indexing komposit, caching KPI landing, query agregat yang diringkas
+- Performa: Composite indexing, caching KPI landing, Agregate query yang diringkas
 
-### ⚡ Bobot Aset & Mode Offline
-Sekolah bisa saja menjalankan aplikasi ini di LAN **tanpa internet**, jadi tidak ada satu pun
-permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan diambil dari CDN.
+### Bobot Aset & Mode Offline
+Sekolah bisa saja menjalankan aplikasi (atau mendeploy project) ini secara intranet atau Local deploy yang hanya terhubung melalui cakupan internet LAN sekolah (tanpa terakses internet keluar) jadi tidak ada satu pun permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan diambil dari CDN.
 
 - **Font Inter** hanya subset **Latin** (paket penuh membawa Cyrillic/Greek/Vietnamese yang tidak
-  akan pernah dirender): 58 → **10** berkas font
-- **Bootstrap** diimpor per-lapisan, bukan sebagai satu bundel. Aplikasi memakai 42 kelas utilitas
-  dan dua komponen (dropdown, modal); grid, tabel, form, tombol, navbar, alert, carousel, tooltip
-  dan lainnya tidak pernah dirujuk sehingga tidak ikut dikirim
-- **Bootstrap Icons** disubset — 2078 kelas didefinisikan, **30** dipakai. Dijaga `IkonTest`:
-  memakai ikon di halaman tanpa mendaftarkannya akan **menggagalkan test**, bukan tampil kosong
-  diam-diam
+  akan pernah dirender): 58 → **8** berkas font
+- **Bootstrap** diimpor per-lapisan. Aplikasi memakai 42 kelas utilitas dan dua komponen (dropdown, modal); grid, tabel, form, tombol, navbar, alert, carousel, tooltip
+  dan lainnya tidak dirujuk
+- **Ikon sebagai SVG inline** (`App\Support\Ikon`), bukan menggunakan icon font. Bootstrap Icons mengirim
+  stylesheet 2078 kelas plus webfont ~134 KB untuk 30 glyph yang dipakai; ketiganya kini tidak
+  di masukkan sama sekali, dan ikon tidak akan tampil sebagai kotak
+  kosong karena font gagal dimuat. Hal ini dikarenakan adanya `IkonTest` yang jika di website tersebut memakai ikon yang belum terdaftar maka secara otomatis akan
+  **menggagalkan test**
 - Halaman error tetap **berdiri sendiri**: CSS inline dan lambangnya SVG inline, supaya tetap
   tampil justru ketika yang rusak adalah pipeline aset
 
+Kira kira seperti ini hasil dari optimalisasinya
+
 | | Sebelum | Sesudah |
 |---|---|---|
-| CSS | 321,3 KB | **124,1 KB** |
+| CSS | 321,3 KB | **122,8 KB** |
 | JS | 85,7 KB | **57,3 KB** |
+| Webfont ikon | 134 KB woff2 + 180 KB woff | **tidak ada** |
+| Berkas font total | 58 | **8** (Inter Latin saja) |
 
-### 🚑 Error Handling Ramah-Peran
-- Guru & siswa **tidak pernah melihat stack trace Laravel**. Saat terjadi error mereka mendapat
+Ukuran di atas adalah berkas nyata di `public/build/assets/` setelah `bun run build`.
+
+### Error Handling Ramah-Peran
+- Guru & siswa **tidak pernah melihat stack trace Laravel**. Saat terjadi error, mereka mendapat
   halaman ramah berbahasa Indonesia + **kode referensi**, dengan tombol **Kembali** / **Ke Dashboard**
 - **Admin tetap melihat detail error penuh** — yang bertugas men-debug adalah admin
 - Guru/siswa bisa **mengirim laporan error** ke admin dari halaman tersebut. Detail teknis diambil
@@ -141,7 +157,7 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
   error yang sama dilaporkan ulang menambah penghitung `jumlah` alih-alih membuat baris baru
 - Halaman 404/403/419/429/500/503 memakai tampilan ramah yang sama (konsisten saat `APP_DEBUG=false`)
 
-### 🩺 Sistem & Log (admin)
+### Sistem & Log (admin)
 - **Status komponen** langsung: database + latensi, **migrasi tertunda** (menangkap kelas bug
   "tabel belum ada"), Cache/Redis, storage writable, ukuran log, keberadaan **objek DB lanjutan**
   (view/function/procedure/trigger), serta kewajaran konfigurasi (`APP_DEBUG`, **`APP_URL` bukan
@@ -155,7 +171,7 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
 
 ---
 
-## 🧰 Framework & Teknologi
+## Framework & Teknologi
 
 ### Backend
 | Teknologi | Versi | Peran |
@@ -171,13 +187,14 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
 | Teknologi | Versi | Peran |
 |-----------|-------|-------|
 | [Blade](https://laravel.com/docs/blade) | — | Templating server-side |
-| [Bootstrap](https://getbootstrap.com) | 5.3 | Komponen UI & grid |
-| [@popperjs/core](https://popper.js.org) | 2.11 | Positioning untuk dropdown/tooltip Bootstrap |
+| [Bootstrap](https://getbootstrap.com) | 5.3 | Diimpor **per-lapisan**, bukan sebagai bundel: utility API + dropdown + modal saja. Grid, tabel, form, tombol, navbar, alert, carousel, tooltip tidak dipakai sehingga tidak ikut dikirim |
+| [@popperjs/core](https://popper.js.org) | 2.11 | Positioning dropdown Bootstrap (dependensi dropdown; tooltip/popover tidak dibundel) |
+| [@fontsource/inter](https://fontsource.org/fonts/inter) | 5.x | Font Inter **self-hosted**, subset Latin — tidak ada permintaan ke Google Fonts |
 | [Sass (Dart Sass)](https://sass-lang.com) | 1.77 | Preprocessor CSS (`resources/sass/app.scss`) |
 | [Vite](https://vitejs.dev) | 8.x | Build tool & dev server (HMR) |
 | [laravel-vite-plugin](https://github.com/laravel/vite-plugin) | 3.x | Integrasi Vite ⇄ Laravel |
-| [Bootstrap Icons](https://icons.getbootstrap.com) | 1.11 | Ikon (via CDN) |
-| Vanilla JS | — | Drill-down AJAX, searchable-select, loading screen (tanpa framework JS) |
+| [Bootstrap Icons](https://icons.getbootstrap.com) | 1.13 | **Sumber jalur SVG saja** — bukan dependensi runtime. Ikon di-inline lewat `App\Support\Ikon`; stylesheet & webfont-nya tidak ikut dibundel |
+| Vanilla JS | — | Drill-down AJAX, searchable-select (tanpa framework JS) |
 
 ### Database & Infrastruktur
 | Teknologi | Versi | Peran |
@@ -203,7 +220,7 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
 
 ---
 
-## 🏗️ Arsitektur & Tech Stack
+## Arsitektur & Tech Stack
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -213,12 +230,12 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
 │   Bootstrap 5.3    │         Sanctum Token Auth         │
 ├────────────────────┴────────────────────────────────────┤
 │                  Laravel 13 (PHP 8.3)                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐ │
-│  │Controller│ │  Policy  │ │  Model   │ │  Support   │ │
-│  │ (Web+API)│ │ (Jurnal) │ │(Eloquent)│ │(Periode,   │ │
-│  │          │ │          │ │          │ │ Ringkasan, │ │
-│  │          │ │          │ │          │ │ LoginRes.) │ │
-│  └──────────┘ └──────────┘ └──────────┘ └────────────┘ │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │
+│  │Controller│ │  Policy  │ │  Model   │ │  Support   │  │
+│  │ (Web+API)│ │ (Jurnal) │ │(Eloquent)│ │(Periode,   │  │
+│  │          │ │          │ │          │ │ Ringkasan, │  │
+│  │          │ │          │ │          │ │ LoginRes.) │  │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │
 ├─────────────────────────────────────────────────────────┤
 │                     MySQL 8.0                           │
 │  Views │ Stored Functions │ Stored Procedures │Triggers │
@@ -241,7 +258,7 @@ permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan d
 
 ---
 
-## 📦 Entity Relationship
+## Entity Relationship
 
 ```
 User (admin/guru/siswa)
@@ -278,7 +295,7 @@ Presensi
 
 ---
 
-## 🚀 Instalasi & Setup
+## Instalasi & Setup
 
 ### Prasyarat
 
@@ -353,7 +370,7 @@ npm run dev  # di terminal terpisah
 
 ---
 
-## 🔧 Perintah yang Tersedia
+## Perintah - Perintah
 
 ### Makefile (Docker)
 
@@ -387,7 +404,7 @@ composer quality    # Gate: cek code style (pint --test) + jalankan test suite
 
 ---
 
-## 🌐 REST API
+## REST API
 
 Semua endpoint API menggunakan prefix `/api` dan autentikasi via **Laravel Sanctum** bearer token.
 
@@ -433,7 +450,7 @@ GET /api/me
 
 ---
 
-## 🐳 Docker Services
+## Docker Services (Containers yang dibuat)
 
 | Container | Image | Port | Keterangan |
 |-----------|-------|------|------------|
@@ -453,14 +470,15 @@ GET /api/me
 
 ---
 
-## 📁 Struktur Project
+## Struktur Project
 
 ```
 Jurnal-Kelas-App/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Admin/            # DashboardController, LaporanController, UserController
+│   │   │   ├── Admin/            # Dashboard, Laporan, User, Sistem,
+│   │   │   │                     #   KelasQr (cetak/PDF), PresensiLog
 │   │   │   ├── Api/              # REST API controllers (mirror web controllers)
 │   │   │   ├── Auth/             # LoginController
 │   │   │   ├── DashboardController.php
@@ -468,35 +486,44 @@ Jurnal-Kelas-App/
 │   │   │   ├── JurnalController.php
 │   │   │   ├── KelasController.php
 │   │   │   ├── LandingController.php
+│   │   │   ├── LaporanErrorController.php   # Laporan error dari guru/siswa
 │   │   │   ├── MataPelajaranController.php
-│   │   │   └── PresensiController.php
+│   │   │   ├── PresensiController.php
+│   │   │   ├── QrController.php             # Landing hasil scan QR ruang kelas
+│   │   │   └── WaliKelasController.php      # Mode Wali Kelas
 │   │   ├── Middleware/
 │   │   │   └── CheckRole.php     # Role-based access control (role:admin,guru,…)
 │   │   ├── Requests/             # Form requests dipakai bersama web + API
 │   │   │   └── Api/              # JurnalRequest khusus API
 │   │   └── Resources/            # API resource transformers
-│   ├── Models/                   # Eloquent models (7 models)
-│   ├── Policies/                 # KelasPolicy, MataPelajaranPolicy,
-│   │                             #   JadwalPolicy, JurnalPolicy, PresensiPolicy
+│   ├── Models/                   # 10 Eloquent models
+│   ├── Policies/                 # KelasPolicy, MataPelajaranPolicy, JadwalPolicy, JurnalPolicy
+│   │                             #   (presensi diotorisasi lewat JurnalPolicy::markRoster)
 │   └── Support/
 │       ├── DbDriver.php          # Deteksi driver (MySQL vs SQLite fallback)
+│       ├── Halaman.php           # Whitelist ukuran halaman (25/50/75/100)
+│       ├── Ikon.php              # Ikon sebagai SVG inline (pengganti icon font)
 │       ├── LoginResolver.php     # NIP/NIS/Email login resolver
+│       ├── PembacaLog.php        # Pembaca ekor berkas log (aman untuk log besar)
 │       ├── Periode.php           # Date range value object
+│       ├── PesanError.php        # Kata-kata halaman error ramah-peran
 │       ├── Ringkasan.php         # Statistics aggregator
 │       ├── SimpanPresensi.php    # Satu jalur simpan presensi (procedure/transaksi)
+│       ├── SistemStatus.php      # Healthcheck komponen untuk halaman Sistem & Log
+│       ├── Urutan.php            # Sortir kolom ber-whitelist (?sort=/?dir=)
 │       └── XlsxExport.php        # Penulis .xlsx (OOXML) via ZipArchive
 ├── database/
-│   ├── migrations/               # 21 migrations (tables, indexes, views, functions, triggers)
+│   ├── migrations/               # 31 migrations (tables, indexes, views, functions, triggers)
 │   └── seeders/
 │       └── DemoSeeder.php        # Realistic demo data
 ├── docker/
 │   ├── nginx/                    # Nginx configuration
 │   └── php/                      # PHP Dockerfile & config
 ├── resources/
-│   ├── sass/                     # SCSS (Bootstrap 5 + custom + breakpoint mobile)
-│   ├── js/                       # JS (Bootstrap, AJAX drill-down, searchable-select)
+│   ├── sass/                     # SCSS (lapisan Bootstrap terpilih + custom + breakpoint mobile)
+│   ├── js/                       # JS (dropdown/modal Bootstrap, AJAX drill-down, searchable-select)
 │   └── views/                    # Blade templates
-│       ├── admin/                # Admin views
+│       ├── admin/                # Admin views (users, laporan, sistem, kelas-qr, presensi-log)
 │       ├── dashboard/            # Role-based dashboard views
 │       ├── wali-kelas/           # Mode Wali Kelas (dashboard, data, jadwal, jurnal, presensi)
 │       ├── jurnal/               # Jurnal CRUD views
@@ -504,9 +531,11 @@ Jurnal-Kelas-App/
 │       ├── kelas/                # Kelas views
 │       ├── mata-pelajaran/       # Mata pelajaran views
 │       ├── jadwal/               # Jadwal views
+│       ├── qr/                   # Halaman konfirmasi setelah scan QR
+│       ├── errors/               # ramah.blade.php + view konvensi 403/404/419/429/500/503
 │       ├── layouts/              # Main layout (sidebar, nav)
-│       ├── partials/             # page-loader (loading screen)
-│       └── components/           # Reusable Blade components
+│       └── components/           # 24 komponen Blade — a.l. x-ikon, x-th-sort,
+│                                 #   x-pager, x-periode-filter, x-query-hidden
 ├── routes/
 │   ├── web.php                   # Web routes
 │   └── api.php                   # REST API routes
@@ -518,11 +547,14 @@ Jurnal-Kelas-App/
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Via Composer
 composer test
+
+# Pint + seluruh suite sekaligus (gerbang sebelum commit)
+composer quality
 
 # Atau langsung
 php artisan test
@@ -531,9 +563,28 @@ php artisan test
 make artisan cmd="test"
 ```
 
+Suite berjalan di **SQLite in-memory**, sehingga objek DB khusus MySQL (view, function,
+procedure, trigger, FULLTEXT) dilewati lewat cabang `DbDriver::mysql()` dan test tetap
+bisa dijalankan tanpa MySQL.
+
+Yang dijaga suite — tiap berkas mengunci satu kelas kesalahan yang pernah benar-benar terjadi:
+
+| Berkas | Yang dikunci |
+|--------|--------------|
+| `AuthorizationTest` | Batas peran: master data tertutup untuk siswa, guru tidak menyentuh kelas/jurnal orang lain, wali kelas boleh **baca** tapi tidak boleh **hapus**, ekspor khusus admin, id angka lama tidak lagi resolve |
+| `JurnalGandaTest` | Satu jurnal per sisi per pertemuan (guru + ketua), termasuk saat unique index yang menolaknya |
+| `PresensiRosterTest` | Satu roster per pertemuan agar kehadiran tidak terhitung dua kali + audit log |
+| `JadwalFormTest` | Dropdown jadwal mengikuti tanggal, slot terisi ditandai, hari kosong menjelaskan diri |
+| `PeriodeFilterTest` | Preset periode benar-benar menyaring, tidak melebarkan cakupan peran, dan filter form tidak membuang sortir/periode/ukuran halaman |
+| `PaginationTest` | Whitelist `?per=`; ukuran halaman tidak bisa dipakai memperlebar akses |
+| `QrAksesTest` | QR guru-only, pilih sebagian kelas, unduhan PDF benar-benar PDF & admin-only |
+| `IkonTest` | Setiap ikon yang dipakai ada — mencegah ikon tampil kosong diam-diam |
+| `ErrorHandlingTest` | Guru/siswa tidak pernah melihat stack trace; admin tetap melihat detail |
+| `RolePagesTest`, `CrudPagesTest`, `AdminSectionTest`, `DashboardPeriodeTest`, `LoginTest` | Setiap halaman per peran merender, form CRUD bekerja, login per peran |
+
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 Variabel penting di `.env`:
 
@@ -555,12 +606,12 @@ Variabel penting di `.env`:
 
 ---
 
-## 👥 Kontributor
+## Kontributor
 
 | Nama | GitHub | Bagian |
 |------|--------|--------|
 | **Nurfauzan Gymnastiar** | [@nfgcode](https://github.com/nfgcode) | UI/UX, Frontend, Responsive |
-| **Akmal Falah Maulana** | [@ShiroTenma](https://github.com/ShiroTenma) | Backend, Database, Responsive, Optimizing & Refactor, Fitur QR Code, Error Handling & Sistem/Healthcheck, Otorisasi & ID abstrak, Filter periode / sortir / paginasi |
+| **Akmal Falah Maulana** | [@ShiroTenma](https://github.com/ShiroTenma) | Backend, Database, Responsive, Optimizing & Refactor, Fitur QR Code (+ cetak/ekspor PDF), Error Handling, Otorisasi & ID abstrak, Filter periode / sortir / paginasi, Optimasi bobot aset & mode offline |
 
 ---
 

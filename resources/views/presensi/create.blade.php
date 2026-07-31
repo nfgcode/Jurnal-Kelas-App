@@ -30,7 +30,7 @@
 
     <div class="filter-bar">
         <label class="filter-bar__search">
-            <i class="bi bi-search"></i>
+            <x-ikon nama="search" />
             <input class="input-hifi" type="search" id="cariSiswa" placeholder="Cari nama atau NIS...">
         </label>
 

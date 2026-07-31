@@ -90,7 +90,7 @@
         <input type="hidden" name="kelas_id" value="{{ $kelas->id }}">
 
         <label class="filter-bar__search">
-            <i class="bi bi-search"></i>
+            <x-ikon nama="search" />
             <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
                    placeholder="Cari materi, mapel atau guru...">
         </label>

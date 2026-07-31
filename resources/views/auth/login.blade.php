@@ -24,7 +24,7 @@
 <div class="auth">
     <section class="auth__brand">
         <a class="sidebar__brand p-0" href="{{ route('landing') }}">
-            <span class="sidebar__mark"><i class="bi bi-journal-text"></i></span>
+            <span class="sidebar__mark"><x-ikon nama="journal-text" /></span>
             <span class="sidebar__wordmark">Jurnal Kelas</span>
         </a>
 
@@ -33,21 +33,21 @@
             <p class="auth__lede">Satu tempat untuk jurnal mengajar, presensi siswa, dan rekap laporan sekolah.</p>
 
             <div class="auth__feature">
-                <i class="bi bi-check-lg"></i>
+                <x-ikon nama="check-lg" />
                 <div>
                     <p class="auth__feature-title">Jurnal terisi otomatis dari jadwal</p>
                     <p class="auth__feature-sub">Tidak perlu ketik ulang kelas, mapel, atau jam.</p>
                 </div>
             </div>
             <div class="auth__feature">
-                <i class="bi bi-check-lg"></i>
+                <x-ikon nama="check-lg" />
                 <div>
                     <p class="auth__feature-title">Presensi dalam satu ketukan</p>
                     <p class="auth__feature-sub">Tandai hadir, sakit, izin, alpa langsung dari daftar siswa.</p>
                 </div>
             </div>
             <div class="auth__feature">
-                <i class="bi bi-check-lg"></i>
+                <x-ikon nama="check-lg" />
                 <div>
                     <p class="auth__feature-title">Rekap siap diekspor</p>
                     <p class="auth__feature-sub">Laporan bulanan per kelas dan per guru.</p>
@@ -103,7 +103,7 @@
                 <div class="password-wrap">
                     <input class="input-hifi" type="password" id="password" name="password" required>
                     <button class="password-toggle" type="button" id="togglePassword" aria-label="Tampilkan kata sandi">
-                        <i class="bi bi-eye"></i>
+                        <x-ikon nama="eye" />
                     </button>
                 </div>
                 @error('password')<span class="field__error">{{ $message }}</span>@enderror

@@ -15,14 +15,14 @@
 
     @foreach ($tayang as $item)
         <div class="banner banner--{{ $item['warna'] }}">
-            <i class="bi {{ $item['ikon'] }}"></i>
+            <x-ikon :nama="$item['ikon']" />
             <span>{{ $item['pesan'] }}</span>
         </div>
     @endforeach
 
     @unless ($kesehatan['sehat'])
         <div class="banner banner--peringatan">
-            <i class="bi bi-exclamation-triangle"></i>
+            <x-ikon nama="exclamation-triangle" />
             <span>
                 Sedang ada gangguan teknis pada sistem. Admin sudah diberi tahu —
                 bila ada menu yang gagal dibuka, coba beberapa saat lagi.
