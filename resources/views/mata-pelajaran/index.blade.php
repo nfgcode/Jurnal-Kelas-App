@@ -38,6 +38,8 @@
     </div>
 
     <form class="filter-bar" method="GET">
+        <x-query-hidden />
+
         <label class="filter-bar__search">
             <i class="bi bi-search"></i>
             <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"

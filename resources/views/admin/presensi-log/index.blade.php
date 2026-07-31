@@ -8,6 +8,8 @@
         :sub="'Jejak audit siapa menyimpan presensi tiap kelas · ' . number_format($log->total(), 0, ',', '.') . ' entri'" />
 
     <form class="filter-bar" method="GET">
+        <x-query-hidden />
+
         <select class="select-hifi" name="kelas_id" style="width: 160px" onchange="this.form.submit()">
             <option value="">Semua Kelas</option>
             @foreach ($kelasList as $kelas)

@@ -1369,6 +1369,9 @@ textarea.input-hifi {
 .banner--info { background: #e7f1fb; color: #14477d; }
 .banner--peringatan { background: #fdf3d8; color: #7a5410; }
 .banner--maintenance { background: #ede9fb; color: #402b8c; }
+/* Irreversible loss — deliberately louder than "peringatan", which warns about
+   something the reader can still walk back from. */
+.banner--bahaya { background: #fdecec; color: #7d2b2b; }
 
 /* =========================================================================
    Responsive — the sidebar slides away, dense grids reflow.

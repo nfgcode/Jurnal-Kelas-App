@@ -17,7 +17,55 @@
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.create', $jurnal) }}">Ubah Presensi</a>
         <a class="btn-hifi" href="{{ route('jurnal.edit', $jurnal) }}">Ubah Jurnal</a>
+        @can('delete', $jurnal)
+            <button type="button" class="btn-hifi btn-hifi--danger"
+                    data-bs-toggle="modal" data-bs-target="#hapusJurnal">Hapus</button>
+        @endcan
     </x-page-head>
+
+    @can('delete', $jurnal)
+        {{-- A confirm() dialog cannot say what actually goes: presensi and
+             presensi_log both cascade on this row, so deleting one journal also
+             erases the whole roster for that lesson and the record of who marked
+             it. The count is named here so nobody discovers that afterwards. --}}
+        <div class="modal fade" id="hapusJurnal" tabindex="-1" aria-labelledby="hapusJurnalJudul" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="mb-0" id="hapusJurnalJudul">Hapus jurnal ini?</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p class="mb-2">
+                            <strong>{{ $jurnal->jadwal?->kelas?->nama_kelas }} ·
+                            {{ $jurnal->jadwal?->mataPelajaran?->nama }}</strong><br>
+                            {{ $jurnal->tanggal->translatedFormat('l, j F Y') }} · JP {{ $jurnal->jadwal?->jpLabel() }}
+                        </p>
+
+                        @if ($jurnal->presensis->isNotEmpty())
+                            <p class="banner banner--bahaya mb-2">
+                                Presensi <strong>{{ $jurnal->presensis->count() }} siswa</strong> pada pertemuan ini
+                                ikut terhapus, beserta catatan siapa yang menandainya. Angka kehadiran kelas
+                                akan berubah.
+                            </p>
+                        @endif
+
+                        <p class="field__hint mb-0">Tindakan ini tidak dapat dibatalkan.</p>
+                    </div>
+
+                    <div class="modal-footer d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn-hifi btn-hifi--ghost" data-bs-dismiss="modal">Batal</button>
+                        <form method="POST" action="{{ route('jurnal.destroy', $jurnal) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-hifi btn-hifi--danger">Ya, Hapus</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endcan
 
     <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="$rekap['hadir'] ?? 0" :caption="round(($rekap['hadir'] ?? 0) / $total * 100) . '% dari kelas'" />

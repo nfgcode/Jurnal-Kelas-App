@@ -137,4 +137,46 @@ class PeriodeFilterTest extends TestCase
             ->assertSee('name="q" value="aljabar"', false)
             ->assertSee('name="per" value="50"', false);
     }
+
+    /**
+     * The mirror of the above, and the one that was actually broken: a filter form
+     * posts only its own inputs, so sorting, the period and the page size used to
+     * be wiped the moment the reader typed a search term.
+     */
+    public function test_a_filter_form_carries_the_sort_period_and_page_size(): void
+    {
+        $respons = $this->actingAs($this->guru)
+            ->get('/jurnal?preset=minggu_lalu&sort=kelas&dir=desc&per=50')
+            ->assertOk();
+
+        foreach ([
+            'name="sort" value="kelas"',
+            'name="dir" value="desc"',
+            'name="per" value="50"',
+            'name="preset" value="minggu_lalu"',
+        ] as $medan) {
+            $respons->assertSee($medan, false);
+            // Exactly once per form, never a duplicate of a field the form owns.
+            $this->assertLessThanOrEqual(
+                substr_count($respons->getContent(), '<form'),
+                substr_count($respons->getContent(), $medan),
+            );
+        }
+    }
+
+    public function test_sorting_still_applies_alongside_a_search(): void
+    {
+        $urut = fn (string $dir) => $this->actingAs($this->guru)
+            ->get("/jurnal?preset=tahun_ini&q=a&sort=kelas&dir={$dir}")
+            ->assertOk()
+            ->viewData('jurnals')
+            ->map(fn ($j) => $j->jadwal?->kelas?->nama_kelas)
+            ->all();
+
+        $naik = $urut('asc');
+        $turun = $urut('desc');
+
+        $this->assertNotSame([], $naik, 'Pencarian harus menyisakan baris untuk diurutkan.');
+        $this->assertNotSame($naik, $turun);
+    }
 }

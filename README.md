@@ -35,7 +35,11 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 - Tracking status kehadiran guru dengan satu kosakata seragam untuk kedua peran: **Hadir / Tidak Hadir – Ada Tugas / Tidak Hadir – Tanpa Tugas**
 - Deteksi pengisian terlambat (>24 jam setelah tanggal pelajaran)
 - Full-text search pada materi, tugas, catatan, dan kegiatan
-- Audit trail otomatis via database trigger
+- **Hapus jurnal** — hanya oleh penulisnya (guru bersangkutan) atau admin. Wali kelas boleh
+  *membaca* seluruh jurnal kelas asuhannya tetapi **tidak** boleh menghapus catatan guru lain.
+  Dialog konfirmasi menyebutkan **berapa siswa** presensinya ikut terhapus, karena `presensi` dan
+  `presensi_log` ber-`ON DELETE CASCADE` pada jurnal — angka kehadiran kelas akan berubah
+- Audit trail otomatis via database trigger, termasuk saat penghapusan (`trg_jurnal_after_delete`)
 
 ### 📋 Presensi Siswa
 - Input presensi bulk per jurnal (Hadir / Sakit / Izin / Alpa)

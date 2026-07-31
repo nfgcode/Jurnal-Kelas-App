@@ -17,6 +17,8 @@
     </div>
 
     <form class="filter-bar" method="GET">
+        <x-query-hidden />
+
         <input type="hidden" name="kelas_id" value="{{ $kelas->id }}">
 
         <label class="filter-bar__search">

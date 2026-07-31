@@ -28,12 +28,8 @@
     </div>
 
     <form class="filter-bar" method="GET">
-        {{-- Filtering must not silently reset the column the reader sorted by.
-             Read straight from the URL, same source <x-th-sort> writes to. --}}
-        @if (request()->query('sort'))
-            <input type="hidden" name="sort" value="{{ request()->query('sort') }}">
-            <input type="hidden" name="dir" value="{{ request()->query('dir') === 'desc' ? 'desc' : 'asc' }}">
-        @endif
+        <x-query-hidden />
+
         <label class="filter-bar__search">
             <i class="bi bi-search"></i>
             <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"

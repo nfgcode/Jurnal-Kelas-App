@@ -272,4 +272,57 @@ class AuthorizationTest extends TestCase
 
         $this->actingAs($this->guru)->get("/jurnal/{$jurnal->public_id}")->assertOk();
     }
+
+    /**
+     * Deleting a journal is offered in the UI, so the boundary matters: a wali
+     * kelas may read every meeting of their class (see above) but must not be
+     * able to erase another teacher's record of it.
+     */
+    public function test_only_the_author_or_admin_may_delete_a_journal(): void
+    {
+        $kelas = $this->jadwal->kelas;
+        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $kelas->update(['wali_kelas_id' => $wali->id]);
+
+        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
+            ->where('guru_id', '!=', $wali->id)
+            ->firstOrFail();
+
+        // The wali can open it, but is offered no way to delete it...
+        $this->actingAs($wali)->get("/jurnal/{$jurnal->public_id}")
+            ->assertOk()
+            ->assertDontSee('data-bs-target="#hapusJurnal"', false);
+
+        // ...and forcing the request is refused, not merely hidden.
+        $this->actingAs($wali)->delete("/jurnal/{$jurnal->public_id}")->assertForbidden();
+        $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
+
+        // The teacher who wrote it may, and is shown the button.
+        $penulis = User::findOrFail($jurnal->guru_id);
+        $this->actingAs($penulis)->get("/jurnal/{$jurnal->public_id}")
+            ->assertOk()
+            ->assertSee('data-bs-target="#hapusJurnal"', false);
+    }
+
+    /**
+     * presensi and presensi_log both cascade off this row, so a deletion takes
+     * the lesson's whole roster with it. The modal warns about that; this pins
+     * that the warning is accurate.
+     */
+    public function test_deleting_a_journal_takes_its_attendance_with_it(): void
+    {
+        $jurnal = Jurnal::where('guru_id', $this->guru->id)
+            ->whereHas('presensis')
+            ->firstOrFail();
+
+        $jumlah = $jurnal->presensis()->count();
+        $this->assertGreaterThan(0, $jumlah);
+
+        $this->actingAs($this->guru)
+            ->delete("/jurnal/{$jurnal->public_id}")
+            ->assertRedirect(route('jurnal.index'));
+
+        $this->assertDatabaseMissing('jurnal', ['id' => $jurnal->id]);
+        $this->assertDatabaseMissing('presensi', ['jurnal_id' => $jurnal->id]);
+    }
 }
