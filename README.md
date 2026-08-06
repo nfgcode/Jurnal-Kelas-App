@@ -75,8 +75,11 @@ Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah)
   beberapa rombel lewat daftar centang — dipakai saat satu ruang pindah, satu QR sobek, atau ada
   rombel baru, tanpa harus mencetak ulang semuanya. Pilihan ikut di URL sehingga bisa di-bookmark
   atau dikirim ke orang yang mencetak
-- **Ekspor PDF** (`/admin/kelas-qr/pdf`) — tiga kartu per baris pada A4, mengikuti kelas yang
-  dipilih. Dirender `dompdf` (murni PHP, tetap jalan tanpa internet); QR di dalam PDF memakai PNG
+- **Cari & saring kelas**: kotak pencarian nama kelas + filter **Tingkat/Jurusan** menyaring daftar
+  centang secara langsung (client-side) — memudahkan menemukan rombel di sekolah dengan puluhan kelas
+- **Ukuran cetak A6**: baik cetak lewat browser maupun **Ekspor PDF** (`/admin/kelas-qr/pdf`) menyusun
+  **satu QR per A6** (2×2 = empat kartu per lembar A4) lengkap dengan garis potong, mengikuti kelas
+  yang dipilih. Dirender `dompdf` (murni PHP, tetap jalan tanpa internet); QR di dalam PDF memakai PNG
   karena dukungan SVG dompdf tidak dapat diandalkan, sementara tampilan layar tetap SVG
 - Waktu pengisian jurnal tercatat otomatis (`created_at`) dan ditampilkan di detail jurnal ("Diisi Pada")
 
@@ -105,6 +108,10 @@ Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah)
 - **Filter periode** di histori jurnal, riwayat siswa, dan presensi: preset Hari Ini / Minggu Ini /
   Minggu Lalu / Bulan Ini / Bulan Lalu / 30 Hari / Tahun Ini + rentang kustom. Kartu statistik ikut
   periode agar angka bisa konsisten dengan tabel, dan filter yang lain tetap terbawa saat periode diganti
+- **Filter Tingkat & Jurusan** di Jurnal, Presensi, Rekap Jurnal, dan Rekap Presensi — satu komponen
+  `<x-filter-tingkat-jurusan>` yang menurunkan daftar jurusan otomatis dari kelas yang boleh dilihat
+  peran itu (guru hanya jurusan yang ia ampu). Filter ikut sampai ke **ekspor Excel** dan ke
+  **drill-down** kartu KPI di halaman rekap — berguna saat sekolah punya banyak rombel/jurusan (mis. SMK)
 - **Sortir kolom** dengan panah ↑/↓ dan kolom aktif ter-highlight — **81 kolom di 10 tabel**
   (jurnal guru & siswa, presensi, wali kelas, laporan admin, pengguna, kelas, mata pelajaran):
   tanggal, jam ke, kelas, mapel, guru, materi, tugas, H/S/I/A, persentase, kehadiran guru, status.
@@ -140,8 +147,8 @@ Kira kira seperti ini hasil dari optimalisasinya
 
 | | Sebelum | Sesudah |
 |---|---|---|
-| CSS | 321,3 KB | **122,8 KB** |
-| JS | 85,7 KB | **57,3 KB** |
+| CSS | 321,3 KB | **124,8 KB** |
+| JS | 85,7 KB | **58,7 KB** |
 | Webfont ikon | 134 KB woff2 + 180 KB woff | **tidak ada** |
 | Berkas font total | 58 | **8** (Inter Latin saja) |
 
@@ -168,6 +175,21 @@ Ukuran di atas adalah berkas nyata di `public/build/assets/` setelah `bun run bu
 - **Pengelola pengumuman**: banner untuk guru & siswa saat pemeliharaan/gangguan — tanpa perlu
   `artisan down` yang juga akan mematikan akses admin. Banner gangguan juga muncul otomatis
   (generik, tanpa detail teknis) bila healthcheck ringkas mendeteksi masalah
+
+### Cadangan & Pemulihan Data (admin)
+Untuk **pindah server** atau **pemulihan** saat server bermasalah, tanpa perlu akses shell ke database
+(`/admin/cadangan`, khusus admin).
+- **Ekspor JSON** (format restore) — seluruh tabel beserta id & relasi, **di-stream tabel-per-tabel**
+  lalu **di-gzip** (`.json.gz`, ±20× lebih kecil) sehingga tabel presensi ratusan ribu baris tidak
+  pernah dimuat utuh ke memori
+- **Ekspor XLSX** yang bisa dibaca/diedit (satu sheet per tabel master; presensi & kolom sensitif
+  seperti password di-strip) — untuk sekadar melihat/mengolah data di spreadsheet
+- **Pilih tabel** yang dicadangkan lewat centang per tabel, untuk backup sebagian
+- **Pemulihan (restore)** dari berkas JSON atau `.json.gz` (gzip dideteksi dari *magic byte*, bukan
+  ekstensi), dua mode: **Gabung** (upsert per id, tidak menghapus apa pun) atau **Ganti total**
+  (kosongkan lalu isi ulang persis isi backup) — mode merusak wajib mencentang konfirmasi
+- Seluruh restore berjalan **dalam satu transaksi dengan FK dimatikan sementara** (menangani siklus
+  FK `users` ↔ `kelas`); bila gagal di tengah jalan, tidak ada perubahan yang tersimpan
 
 ---
 
@@ -477,7 +499,7 @@ Jurnal-Kelas-App/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Admin/            # Dashboard, Laporan, User, Sistem,
+│   │   │   ├── Admin/            # Dashboard, Laporan, User, Sistem, Cadangan (backup/restore),
 │   │   │   │                     #   KelasQr (cetak/PDF), PresensiLog
 │   │   │   ├── Api/              # REST API controllers (mirror web controllers)
 │   │   │   ├── Auth/             # LoginController
@@ -500,6 +522,7 @@ Jurnal-Kelas-App/
 │   ├── Policies/                 # KelasPolicy, MataPelajaranPolicy, JadwalPolicy, JurnalPolicy
 │   │                             #   (presensi diotorisasi lewat JurnalPolicy::markRoster)
 │   └── Support/
+│       ├── CadanganData.php      # Ekspor/impor seluruh data (backup JSON gzip + restore, XLSX)
 │       ├── DbDriver.php          # Deteksi driver (MySQL vs SQLite fallback)
 │       ├── Halaman.php           # Whitelist ukuran halaman (25/50/75/100)
 │       ├── Ikon.php              # Ikon sebagai SVG inline (pengganti icon font)
@@ -515,7 +538,8 @@ Jurnal-Kelas-App/
 ├── database/
 │   ├── migrations/               # 31 migrations (tables, indexes, views, functions, triggers)
 │   └── seeders/
-│       └── DemoSeeder.php        # Realistic demo data
+│       ├── DemoSeeder.php        # Data demo default (dipakai make setup & test suite)
+│       └── SmkSeeder.php         # Simulasi SMK besar (10 jurusan, ~45 rombel) — dev-only, opsional
 ├── docker/
 │   ├── nginx/                    # Nginx configuration
 │   └── php/                      # PHP Dockerfile & config
@@ -523,7 +547,7 @@ Jurnal-Kelas-App/
 │   ├── sass/                     # SCSS (lapisan Bootstrap terpilih + custom + breakpoint mobile)
 │   ├── js/                       # JS (dropdown/modal Bootstrap, AJAX drill-down, searchable-select)
 │   └── views/                    # Blade templates
-│       ├── admin/                # Admin views (users, laporan, sistem, kelas-qr, presensi-log)
+│       ├── admin/                # Admin views (users, laporan, sistem, kelas-qr, presensi-log, cadangan)
 │       ├── dashboard/            # Role-based dashboard views
 │       ├── wali-kelas/           # Mode Wali Kelas (dashboard, data, jadwal, jurnal, presensi)
 │       ├── jurnal/               # Jurnal CRUD views
@@ -534,8 +558,8 @@ Jurnal-Kelas-App/
 │       ├── qr/                   # Halaman konfirmasi setelah scan QR
 │       ├── errors/               # ramah.blade.php + view konvensi 403/404/419/429/500/503
 │       ├── layouts/              # Main layout (sidebar, nav)
-│       └── components/           # 24 komponen Blade — a.l. x-ikon, x-th-sort,
-│                                 #   x-pager, x-periode-filter, x-query-hidden
+│       └── components/           # 25 komponen Blade — a.l. x-ikon, x-th-sort, x-pager,
+│                                 #   x-periode-filter, x-query-hidden, x-filter-tingkat-jurusan
 ├── routes/
 │   ├── web.php                   # Web routes
 │   └── api.php                   # REST API routes
