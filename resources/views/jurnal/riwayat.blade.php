@@ -82,7 +82,7 @@
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 22) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 20) : '—' }}</td>
                             <td><x-chip :tone="$tonePresensi" :label="$saya ? ucfirst($saya->status) : '—'" /></td>
-                            <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
+                            <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /> <x-jurnal-edit-badge :jurnal="$jurnal" /></td>
                             <td class="is-num">
                                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
                             </td>

@@ -89,7 +89,7 @@
                                 </span>
                             </td>
                             <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
-                            <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
+                            <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /> <x-jurnal-edit-badge :jurnal="$jurnal" /></td>
                             <td class="is-num">
                                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
                             </td>

@@ -182,8 +182,25 @@ class JurnalController extends Controller
         $tanggal = $this->tanggalAcuan($request);
         $jadwal = $this->jadwalTerpilih($request, $user, $tanggal);
 
+        // A meeting the nightly backfill already placeholdered is corrected by
+        // editing that row (which "adopts" it), never by filing a second journal
+        // beside it — so send the writer straight there.
+        if ($jadwal && $sistem = $this->jurnalSistem($jadwal, $tanggal)) {
+            return redirect()->route('jurnal.edit', $sistem)
+                ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Silakan periksa dan perbaiki di sini.');
+        }
+
         return view($user->isSiswa() ? 'jurnal.mengisi' : 'jurnal.isi',
             $this->konteksForm($user, $jadwal, $tanggal));
+    }
+
+    /** The nightly-backfill placeholder for a meeting, if one is waiting to be adopted. */
+    private function jurnalSistem(Jadwal $jadwal, Carbon $tanggal): ?Jurnal
+    {
+        return Jurnal::where('jadwal_id', $jadwal->id)
+            ->whereDate('tanggal', $tanggal->toDateString())
+            ->where('diisi_oleh_peran', Jurnal::PERAN_SISTEM)
+            ->first();
     }
 
     /**
@@ -266,27 +283,51 @@ class JurnalController extends Controller
         Gate::authorize('update', $jurnal);
 
         $user = $request->user();
-        $validated = $request->validate($this->rules($user));
+        $dariSistem = $jurnal->dibuatSistem();
+
+        // Correcting an auto-filled journal is honesty-sensitive (it can flip an
+        // automatic "absent" into "present"), so it requires an explicit
+        // truthfulness attestation before the change is accepted.
+        $aturan = $this->rules($user);
+
+        if ($dariSistem) {
+            $aturan['pernyataan'] = ['accepted'];
+        }
+
+        $validated = $request->validate($aturan, [
+            'pernyataan.accepted' => 'Centang pernyataan kejujuran dulu sebelum mengubah jurnal otomatis ini.',
+        ]);
+        unset($validated['pernyataan']);
 
         // jadwal_id is editable, so re-check the caller may write against it —
         // otherwise an update could move the journal onto another class/teacher.
         $this->pastikanJadwalMilik($user, Jadwal::findOrFail($validated['jadwal_id']));
 
+        // A human editing a system placeholder "adopts" it as their own entry, so
+        // both the collision check and the saved row take the editor's side.
+        $peran = $dariSistem
+            ? Jurnal::peranPengisi($user)
+            : ($jurnal->diisi_oleh_peran ?? Jurnal::peranPengisi($user));
+
         // Moving a journal onto a meeting/date that already has one from this side
         // would collide with the unique index; reject it the same way as a
         // duplicate create. The row being edited is excluded from the check.
-        $lama = Jurnal::sudahAda(
-            (int) $validated['jadwal_id'],
-            $validated['tanggal'],
-            $jurnal->diisi_oleh_peran ?? Jurnal::peranPengisi($user),
-            $jurnal->id,
-        );
+        $lama = Jurnal::sudahAda((int) $validated['jadwal_id'], $validated['tanggal'], $peran, $jurnal->id);
 
         if ($lama) {
             return $this->tolakGanda($lama, $lama->diisi_oleh_peran);
         }
 
-        $jurnal->update($this->normalize($validated, $user));
+        $data = $this->normalize($validated, $user);
+
+        if ($dariSistem) {
+            $data['diisi_oleh_peran'] = $peran;
+            $data['diisi_oleh_id'] = $user->id;
+        }
+
+        // The "diedit setelah hari-H" flag is set by the Jurnal `updating` event,
+        // so it applies uniformly to every edit path (web + API).
+        $jurnal->update($data);
 
         return redirect()->route('jurnal.index')->with('success', 'Jurnal berhasil diperbarui.');
     }
@@ -443,6 +484,8 @@ class JurnalController extends Controller
             'jurnal' => $jurnal,
             'jadwal' => $jadwal,
             'kelas' => $kelas,
+            // Editing an auto-filled journal triggers the truthfulness attestation.
+            'dariSistem' => $jurnal?->dibuatSistem() ?? false,
             'jumlahSiswa' => $jumlahSiswa,
             'presensi' => $presensi,
             'rekapKehadiran' => $rekapKehadiran,

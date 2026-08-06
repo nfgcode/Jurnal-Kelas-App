@@ -198,8 +198,56 @@ class PresensiController extends Controller
             'jurnal' => $jurnal,
             'siswaList' => $siswaList,
             'presensiTersimpan' => $presensiTersimpan,
+            // Nothing marked yet? Offer the class's earlier lesson today as a
+            // starting point, so a teacher isn't retyping a roster the room
+            // already reported an hour ago. Only a suggestion — nothing is saved
+            // until they submit.
+            'prefill' => $presensiTersimpan->isEmpty() ? $this->prefillDariPertemuanLain($jurnal) : null,
             'rekap' => Ringkasan::presensi(Presensi::where('jurnal_id', $jurnal->id)),
         ]);
+    }
+
+    /**
+     * A starting roster copied from another meeting of the same class on the same
+     * day that already has attendance — the nearest earlier lesson preferred, so
+     * the suggestion reflects who was in the room closest to now. Returns null
+     * when the class has no other marked meeting that day.
+     *
+     * @return array{map: array<int, string>, label: string}|null
+     */
+    private function prefillDariPertemuanLain(Jurnal $jurnal): ?array
+    {
+        $kelasId = $jurnal->jadwal?->kelas_id;
+
+        if (! $kelasId) {
+            return null;
+        }
+
+        $jamIni = (int) ($jurnal->jadwal->jam_ke_mulai ?? 0);
+
+        $kandidat = Jurnal::query()
+            ->where('jadwal_id', '!=', $jurnal->jadwal_id)
+            ->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelasId))
+            ->whereDate('tanggal', $jurnal->tanggal)
+            ->whereHas('presensis')
+            ->with(['jadwal.mataPelajaran', 'presensis:id,jurnal_id,siswa_id,status'])
+            ->get();
+
+        if ($kandidat->isEmpty()) {
+            return null;
+        }
+
+        // Nearest earlier lesson first; failing that, the nearest later one.
+        $sumber = $kandidat->sortBy(function ($j) use ($jamIni) {
+            $jam = (int) ($j->jadwal->jam_ke_mulai ?? 0);
+
+            return [$jam <= $jamIni ? 0 : 1, abs($jam - $jamIni)];
+        })->first();
+
+        return [
+            'map' => $sumber->presensis->pluck('status', 'siswa_id')->all(),
+            'label' => trim(($sumber->jadwal->mataPelajaran->nama ?? 'pertemuan lain').' · JP '.$sumber->jadwal->jpLabel()),
+        ];
     }
 
     /**

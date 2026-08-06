@@ -10,12 +10,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class Jurnal extends Model
 {
     use HasFactory;
+
+    /**
+     * The `diisi_oleh_peran` value the nightly backfill writes for a meeting that
+     * ended with no journal: a system-generated placeholder marking the guru
+     * absent (no assignment) so the record exists and its roster can be estimated.
+     * A human editing it "adopts" the row, flipping the peran to guru/siswa.
+     */
+    public const PERAN_SISTEM = 'sistem';
 
     /**
      * The table associated with the model.
@@ -44,6 +53,7 @@ class Jurnal extends Model
         'guru_id',
         'diisi_oleh_id',
         'diisi_oleh_peran',
+        'diedit_setelah_hari',
     ];
 
     /**
@@ -55,6 +65,16 @@ class Jurnal extends Model
         // sequential primary key.
         static::creating(function (self $jurnal) {
             $jurnal->public_id ??= (string) Str::ulid();
+        });
+
+        // Any edit landing on a later calendar day than the lesson is flagged for
+        // the recap — distinct from "Telat" (filled late), and set here (not in a
+        // controller) so every path, web or API, marks it the same way. Never
+        // reset once true; a fresh backfill INSERT is a create, so it is exempt.
+        static::updating(function (self $jurnal) {
+            if (! $jurnal->diedit_setelah_hari && self::diubahLewatHari($jurnal->tanggal)) {
+                $jurnal->diedit_setelah_hari = true;
+            }
         });
     }
 
@@ -76,6 +96,24 @@ class Jurnal extends Model
     public static function peranPengisi(User $user): string
     {
         return $user->isSiswa() ? 'siswa' : 'guru';
+    }
+
+    /** Whether this journal is an unedited nightly backfill placeholder. */
+    public function dibuatSistem(): bool
+    {
+        return $this->diisi_oleh_peran === self::PERAN_SISTEM;
+    }
+
+    /** Whether this journal was edited on a day after the lesson it records. */
+    public function dieditSetelahHari(): bool
+    {
+        return (bool) $this->diedit_setelah_hari;
+    }
+
+    /** True when now falls on a later calendar day than $tanggal (the lesson date). */
+    public static function diubahLewatHari(mixed $tanggal): bool
+    {
+        return today()->gt(Carbon::parse($tanggal)->startOfDay());
     }
 
     /**
@@ -155,6 +193,7 @@ class Jurnal extends Model
         return [
             'tanggal' => 'date',
             'kehadiran_guru_ada_tugas' => 'boolean',
+            'diedit_setelah_hari' => 'boolean',
         ];
     }
 
@@ -234,6 +273,12 @@ class Jurnal extends Model
      */
     public function statusPengisian(): array
     {
+        // A system-generated backfill is not a real fill: keep it visually distinct
+        // so the dashboard never counts it as a teacher who did their journal.
+        if ($this->dibuatSistem()) {
+            return ['label' => 'Otomatis', 'tone' => 'neutral'];
+        }
+
         if (blank($this->materi)) {
             return ['label' => 'Belum', 'tone' => 'neutral'];
         }

@@ -28,6 +28,14 @@
                 :caption="$ditandai >= $totalSiswa ? 'siap disimpan' : 'perlu dilengkapi'" />
     </div>
 
+    @if (! empty($prefill))
+        <p class="field__hint mb-2">
+            <x-ikon nama="info-circle" /> Kehadiran diisi awal otomatis dari pertemuan
+            <strong>{{ $prefill['label'] }}</strong> di hari yang sama — mohon <strong>periksa</strong>
+            dan sesuaikan sebelum menyimpan.
+        </p>
+    @endif
+
     <div class="filter-bar">
         <label class="filter-bar__search">
             <x-ikon nama="search" />
@@ -61,7 +69,11 @@
                     </thead>
                     <tbody>
                         @foreach ($siswaList as $index => $siswa)
-                            @php $tersimpan = $presensiTersimpan[$siswa->id] ?? null; @endphp
+                            @php
+                                $tersimpan = $presensiTersimpan[$siswa->id] ?? null;
+                                // Saved value wins; otherwise the prefill suggestion; otherwise Hadir.
+                                $default = $tersimpan->status ?? ($prefill['map'][$siswa->id] ?? 'hadir');
+                            @endphp
                             <tr data-nama="{{ Str::lower($siswa->name) }}" data-nis="{{ $siswa->nis }}">
                                 <td class="is-muted">{{ $index + 1 }}</td>
                                 <td class="is-muted">{{ $siswa->nis }}</td>
@@ -77,7 +89,7 @@
                                         @foreach (['hadir' => 'H', 'sakit' => 'S', 'izin' => 'I', 'alpa' => 'A'] as $nilai => $huruf)
                                             <label class="seg__opt seg__opt--{{ substr($nilai, 0, 1) }}">
                                                 <input type="radio" name="presensi[{{ $index }}][status]" value="{{ $nilai }}"
-                                                       @checked(($tersimpan->status ?? 'hadir') === $nilai) required>
+                                                       @checked($default === $nilai) required>
                                                 {{ $huruf }}
                                             </label>
                                         @endforeach

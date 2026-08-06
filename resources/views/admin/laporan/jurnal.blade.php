@@ -5,7 +5,12 @@
 @section('content')
     <x-page-head
         title="Rekap Jurnal Mengajar"
-        :sub="number_format($statistik['terisi'], 0, ',', '.') . ' jurnal tercatat · ' . $statistik['kelengkapan'] . '% kelengkapan · ' . $periode->label()">
+        :sub="collect([
+            number_format($statistik['terisi'], 0, ',', '.') . ' jurnal tercatat',
+            $statistik['kelengkapan'] . '% kelengkapan',
+            $statistik['diedit_lewat_hari'] > 0 ? number_format($statistik['diedit_lewat_hari'], 0, ',', '.') . ' diedit setelah hari-H' : null,
+            $periode->label(),
+        ])->filter()->join(' · ')">
         <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ request()->fullUrlWithQuery(['ekspor' => 'xlsx']) }}">Ekspor Excel</a>
     </x-page-head>
@@ -52,6 +57,11 @@
             <option value="">Semua Status</option>
             <option value="terisi" @selected(($filters['status'] ?? null) === 'terisi')>Terisi</option>
             <option value="telat" @selected(($filters['status'] ?? null) === 'telat')>Telat</option>
+        </select>
+
+        <select class="select-hifi" name="edit_lewat_hari" style="width: 200px" onchange="this.form.submit()">
+            <option value="">Semua Riwayat Edit</option>
+            <option value="1" @selected(($filters['edit_lewat_hari'] ?? null) === '1')>Diedit setelah hari-H</option>
         </select>
 
         <span class="filter-bar__note">
@@ -115,7 +125,7 @@
                                 </span>
                             </td>
                             <td><x-chip :tone="$guruChip['tone']" :label="$guruChip['label']" /></td>
-                            <td class="is-num"><x-chip :tone="$statusChip['tone']" :label="$statusChip['label']" /></td>
+                            <td class="is-num"><x-chip :tone="$statusChip['tone']" :label="$statusChip['label']" /> <x-jurnal-edit-badge :jurnal="$jurnal" /></td>
                             <td class="is-num tbl__aksi">
                                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
                                 {{-- The attendance link the meter bar used to hide. --}}

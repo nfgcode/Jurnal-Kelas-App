@@ -28,6 +28,8 @@
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
+                <x-jurnal-attestasi :aktif="$dariSistem ?? false" />
+
                 <x-jurnal-slot label="Jadwal (Mata Pelajaran · Jam)"
                                :jadwal="$jadwal" :jadwal-list="$jadwalList" :jadwal-terisi="$jadwalTerisi"
                                :tanggal-aktif="$tanggalAktif" :jurnal="$jurnal" :kelas="$kelas" />
