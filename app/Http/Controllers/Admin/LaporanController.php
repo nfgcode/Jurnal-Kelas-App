@@ -27,6 +27,8 @@ class LaporanController extends Controller
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_id' => ['nullable', 'exists:users,id'],
+            'tingkat' => ['nullable', 'in:X,XI,XII'],
+            'jurusan' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'in:terisi,telat'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
@@ -59,10 +61,12 @@ class LaporanController extends Controller
         // Distinct meetings: a lesson may carry a guru and a ketua journal.
         $terisi = Jurnal::hitungPertemuan(Jurnal::whereBetween('tanggal', $rentang));
 
+        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
+
         return view('admin.laporan.jurnal', [
             'periode' => $periode,
             'jurnals' => $jurnals,
-            'kelasList' => Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get(),
+            'kelasList' => $kelasList,
             'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
             'kelengkapan' => $kelengkapan,
             'filters' => $filters,
@@ -89,6 +93,8 @@ class LaporanController extends Controller
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_id' => ['nullable', 'exists:users,id'],
+            'tingkat' => ['nullable', 'in:X,XI,XII'],
+            'jurusan' => ['nullable', 'string', 'max:100'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -136,6 +142,8 @@ class LaporanController extends Controller
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
+            ->when($filters['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
+            ->when($filters['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
             ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? $this->ekspresiTerlambat() : 'NOT ('.$this->ekspresiTerlambat().')'

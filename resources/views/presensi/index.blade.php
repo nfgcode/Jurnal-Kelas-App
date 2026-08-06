@@ -32,12 +32,14 @@
                    placeholder="Cari materi...">
         </label>
 
-        <select class="select-hifi" name="kelas_id" style="width: 160px" onchange="this.form.submit()">
+        <select class="select-hifi" name="kelas_id" style="width: 160px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Kelas</option>
             @foreach ($kelasList as $kelas)
                 <option value="{{ $kelas->id }}" @selected(($filters['kelas_id'] ?? null) == $kelas->id)>{{ $kelas->nama_kelas }}</option>
             @endforeach
         </select>
+
+        <x-filter-tingkat-jurusan :filters="$filters" :kelas-list="$kelasList" />
 
         <span class="filter-bar__note">
             Menampilkan {{ $pertemuan->count() }} dari {{ number_format($pertemuan->total(), 0, ',', '.') }}

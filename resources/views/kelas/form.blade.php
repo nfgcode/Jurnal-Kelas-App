@@ -35,7 +35,7 @@
     </x-field>
 
     <x-field label="Wali Kelas" name="wali_kelas_id">
-        <select class="select-hifi" name="wali_kelas_id" id="wali_kelas_id">
+        <select class="select-hifi" name="wali_kelas_id" id="wali_kelas_id" data-searchable>
             <option value="">Belum ditetapkan</option>
             @foreach ($gurus as $guru)
                 <option value="{{ $guru->id }}" @selected(old('wali_kelas_id', $kelas?->wali_kelas_id) == $guru->id)>{{ $guru->name }}</option>

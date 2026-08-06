@@ -111,6 +111,8 @@ class PresensiController extends Controller
     {
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
+            'tingkat' => ['nullable', 'in:X,XI,XII'],
+            'jurusan' => ['nullable', 'string', 'max:100'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -133,6 +135,8 @@ class PresensiController extends Controller
             ->when($kelasIds !== null, $batasiKelas)
             ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
+            ->when($filters['tingkat'] ?? null, fn ($q, $t) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
+            ->when($filters['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
         $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'kelas', 'mapel', 'siswa', 'hadir', 'sakit', 'izin', 'alpa', 'persen']));
@@ -140,13 +144,15 @@ class PresensiController extends Controller
 
         $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
 
+        // A guru/ketua filters only among classes they can mark; admin all.
+        $kelasList = Kelas::query()
+            ->when($kelasIds !== null, fn ($q) => $q->whereIn('id', $kelasIds))
+            ->orderBy('nama_kelas')->get();
+
         return view('presensi.index', [
             'pertemuan' => $pertemuan,
             'periode' => $periode,
-            // A guru/ketua filters only among classes they can mark; admin all.
-            'kelasList' => Kelas::query()
-                ->when($kelasIds !== null, fn ($q) => $q->whereIn('id', $kelasIds))
-                ->orderBy('nama_kelas')->get(),
+            'kelasList' => $kelasList,
             'filters' => $filters,
             // The recap follows the period too, so the H/S/I/A totals describe the
             // meetings actually listed rather than every meeting ever held.

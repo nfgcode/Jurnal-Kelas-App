@@ -114,6 +114,8 @@ class DashboardController extends Controller
             'tanggal' => ['nullable', 'date'],
             'guru_id' => ['nullable', 'exists:users,id'],
             'kelas_id' => ['nullable', 'exists:kelas,id'],
+            'tingkat' => ['nullable', 'in:X,XI,XII'],
+            'jurusan' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'in:hadir,sakit,izin,alpa'],
         ]);
 
@@ -127,7 +129,7 @@ class DashboardController extends Controller
             case 'belum':
                 return $this->detailBelum($data, $periode);
             case 'kelengkapan':
-                return $this->detailKelengkapan($periode);
+                return $this->detailKelengkapan($periode, $data);
         }
 
         $query = Jurnal::query()
@@ -232,6 +234,10 @@ class DashboardController extends Controller
             ->whereBetween('jurnal.tanggal', $rentang)
             ->when($status, fn ($query) => $query->where('presensi.status', $status))
             ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('jadwal.kelas_id', $id))
+            // tingkat/jurusan live on kelas, which this builder query doesn't join —
+            // narrow by the matching class ids instead.
+            ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereIn('jadwal.kelas_id', Kelas::where('tingkat', $t)->select('id')))
+            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereIn('jadwal.kelas_id', Kelas::where('jurusan', $j)->select('id')))
             ->when($data['guru_id'] ?? null, fn ($query, $id) => $query->where('jurnal.guru_id', $id))
             ->with(['siswa', 'jurnal.jadwal.kelas', 'jurnal.jadwal.mataPelajaran'])
             ->orderByDesc('jurnal.tanggal')
@@ -279,6 +285,8 @@ class DashboardController extends Controller
         $jadwalPerHari = Jadwal::query()
             ->with(['kelas', 'mataPelajaran', 'guru'])
             ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('kelas_id', $id))
+            ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('kelas', fn ($k) => $k->where('tingkat', $t)))
+            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('kelas', fn ($k) => $k->where('jurusan', $j)))
             ->when($data['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
             ->get()
             ->groupBy('hari');
@@ -329,11 +337,14 @@ class DashboardController extends Controller
      * Journal completeness per class over the period — the classes behind the
      * "Kelengkapan" figure, worst first so the ones needing attention lead.
      */
-    private function detailKelengkapan(Periode $periode)
+    private function detailKelengkapan(Periode $periode, array $data)
     {
         $kelengkapan = Ringkasan::kelengkapan('kelas_id', $periode);
 
-        $baris = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get()
+        $baris = Kelas::orderBy('tingkat')->orderBy('nama_kelas')
+            ->when($data['tingkat'] ?? null, fn ($q, $t) => $q->where('tingkat', $t))
+            ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->where('jurusan', $j))
+            ->get()
             ->map(fn ($kelas) => [
                 'kelas' => $kelas->nama_kelas,
                 'persen' => (int) round($kelengkapan[$kelas->id] ?? 0),
@@ -351,13 +362,15 @@ class DashboardController extends Controller
     }
 
     /**
-     * Apply the report's own kelas/guru filters to a journal query, so a card's
-     * drill-down shows the same slice the table is showing.
+     * Apply the report's own kelas/guru/tingkat/jurusan filters to a journal
+     * query, so a card's drill-down shows the same slice the table is showing.
      */
     private function terapkanFilter($query, array $data): void
     {
         $query
             ->when($data['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
+            ->when($data['tingkat'] ?? null, fn ($q, $t) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
+            ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
             ->when($data['guru_id'] ?? null, fn ($q, $id) => $q->where('guru_id', $id));
     }
 }

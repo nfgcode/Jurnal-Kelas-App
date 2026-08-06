@@ -32,6 +32,8 @@ class JurnalController extends Controller
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'mata_pelajaran_id' => ['nullable', 'exists:mata_pelajaran,id'],
+            'tingkat' => ['nullable', 'in:X,XI,XII'],
+            'jurusan' => ['nullable', 'string', 'max:100'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -55,6 +57,12 @@ class JurnalController extends Controller
         if ($user->isGuru()) {
             $query->where('guru_id', $user->id);
         }
+
+        // Grade and jurusan narrow by the meeting's class — applied only on the
+        // guru/admin listing (a siswa sees a single class, so they never reach here).
+        $query
+            ->when($filters['tingkat'] ?? null, fn ($q, $t) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
+            ->when($filters['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)));
 
         // Newest first unless the reader asked for another column.
         $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'kelas', 'mapel', 'materi', 'tugas', 'persen', 'kehadiran_guru', 'status']));

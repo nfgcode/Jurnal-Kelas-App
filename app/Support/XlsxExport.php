@@ -45,6 +45,89 @@ class XlsxExport
     }
 
     /**
+     * A multi-sheet workbook: one worksheet per entry, keyed by sheet name. Used
+     * to put each table on its own tab in a single download. Every part that the
+     * single-sheet path hard-codes (content types, workbook, its rels) is built
+     * dynamically here for N sheets.
+     *
+     * @param  array<string, array{header: array<int, string>, rows: iterable<int, array<int, string|int|float|null>>}>  $sheets
+     */
+    public static function downloadWorkbook(string $filename, array $sheets): BinaryFileResponse
+    {
+        $names = array_keys($sheets);
+        $count = max(1, count($names));
+
+        $contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            .'<Default Extension="xml" ContentType="application/xml"/>'
+            .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+
+        $wbSheets = '';
+        $wbRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
+
+        $i = 0;
+        foreach ($names as $name) {
+            $i++;
+            $contentTypes .= '<Override PartName="/xl/worksheets/sheet'.$i.'.xml" '
+                .'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+            $wbSheets .= '<sheet name="'.self::esc(self::safeSheetName($name, $i)).'" sheetId="'.$i.'" r:id="rId'.$i.'"/>';
+            $wbRels .= '<Relationship Id="rId'.$i.'" '
+                .'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+                .'Target="worksheets/sheet'.$i.'.xml"/>';
+        }
+
+        $contentTypes .= '</Types>';
+        // Styles ride on the relationship id just past the last worksheet.
+        $wbRels .= '<Relationship Id="rId'.($count + 1).'" '
+            .'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            .'</Relationships>';
+
+        $workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            .'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            .'<sheets>'.$wbSheets.'</sheets></workbook>';
+
+        $tmp = tempnam(sys_get_temp_dir(), 'xlsx');
+        $zip = new ZipArchive;
+        $zip->open($tmp, ZipArchive::OVERWRITE);
+
+        $zip->addFromString('[Content_Types].xml', $contentTypes);
+        $zip->addFromString('_rels/.rels', self::RELS);
+        $zip->addFromString('xl/workbook.xml', $workbook);
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $wbRels);
+        $zip->addFromString('xl/styles.xml', self::STYLES);
+
+        $i = 0;
+        foreach ($sheets as $sheet) {
+            $i++;
+            $zip->addFromString('xl/worksheets/sheet'.$i.'.xml', self::sheetXml($sheet['header'], $sheet['rows']));
+        }
+
+        $zip->close();
+
+        return response()
+            ->download($tmp, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])
+            ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Excel sheet names are capped at 31 chars and cannot contain : \ / ? * [ ].
+     * A blank name falls back to "SheetN" so the workbook stays valid.
+     */
+    private static function safeSheetName(string $name, int $index): string
+    {
+        $clean = preg_replace('/[:\\\\\/?*\[\]]/', ' ', $name);
+        $clean = mb_substr(trim((string) $clean), 0, 31);
+
+        return $clean === '' ? 'Sheet'.$index : $clean;
+    }
+
+    /**
      * The worksheet part: the header row (style 1 = bold) then the data rows.
      *
      * @param  array<int, string>  $header

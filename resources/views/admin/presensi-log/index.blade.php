@@ -10,14 +10,14 @@
     <form class="filter-bar" method="GET">
         <x-query-hidden />
 
-        <select class="select-hifi" name="kelas_id" style="width: 160px" onchange="this.form.submit()">
+        <select class="select-hifi" name="kelas_id" style="width: 160px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Kelas</option>
             @foreach ($kelasList as $kelas)
                 <option value="{{ $kelas->id }}" @selected(($filters['kelas_id'] ?? null) == $kelas->id)>{{ $kelas->nama_kelas }}</option>
             @endforeach
         </select>
 
-        <select class="select-hifi" name="diedit_oleh_id" style="width: 200px" onchange="this.form.submit()">
+        <select class="select-hifi" name="diedit_oleh_id" style="width: 200px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Editor</option>
             @foreach ($editorList as $editor)
                 <option value="{{ $editor->id }}" @selected(($filters['diedit_oleh_id'] ?? null) == $editor->id)>{{ $editor->name }}</option>

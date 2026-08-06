@@ -146,7 +146,7 @@ document.addEventListener('click', async (event) => {
     // Carry the active period and any report filter so the detail matches the
     // figures on screen. Explicit data-* attributes below still take priority.
     new URLSearchParams(window.location.search).forEach((value, key) => {
-        if (['preset', 'mulai', 'selesai', 'kelas_id', 'guru_id'].includes(key)) {
+        if (['preset', 'mulai', 'selesai', 'kelas_id', 'guru_id', 'tingkat', 'jurusan'].includes(key)) {
             url.searchParams.set(key, value);
         }
     });

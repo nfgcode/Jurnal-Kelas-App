@@ -130,6 +130,9 @@
                 <a href="{{ route('admin.kelas-qr.index') }}" class="sidebar__link {{ request()->routeIs('admin.kelas-qr.*') ? 'is-active' : '' }}">
                     <x-ikon nama="qr-code" /><span>Cetak QR Kelas</span>
                 </a>
+                <a href="{{ route('admin.cadangan.index') }}" class="sidebar__link {{ request()->routeIs('admin.cadangan.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="shield-lock" /><span>Cadangan Data</span>
+                </a>
                 <a href="{{ route('admin.sistem.index') }}" class="sidebar__link {{ request()->routeIs('admin.sistem.*') ? 'is-active' : '' }}">
                     <x-ikon nama="activity" /><span>Sistem &amp; Log</span>
                 </a>

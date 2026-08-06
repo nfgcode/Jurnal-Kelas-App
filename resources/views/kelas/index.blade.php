@@ -43,7 +43,7 @@
             @endforeach
         </select>
 
-        <select class="select-hifi" name="jurusan" style="width: 160px" onchange="this.form.submit()">
+        <select class="select-hifi" name="jurusan" style="width: 160px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Jurusan</option>
             @foreach ($jurusanList as $jurusan)
                 <option value="{{ $jurusan }}" @selected(($filters['jurusan'] ?? null) === $jurusan)>{{ $jurusan }}</option>

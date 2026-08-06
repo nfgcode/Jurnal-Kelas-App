@@ -25,7 +25,7 @@
         title="Jadwal"
         :sub="$statistik['totalJadwal'] . ' jadwal aktif · Semester Gasal ' . now()->year . '/' . (now()->year + 1)">
         <form method="GET">
-            <select class="select-hifi" name="kelas_id" style="width: 180px" onchange="this.form.submit()">
+            <select class="select-hifi" name="kelas_id" style="width: 180px" data-searchable onchange="this.form.submit()">
                 @foreach ($kelasList as $kelas)
                     <option value="{{ $kelas->id }}" @selected($kelasAktif?->id === $kelas->id)>Kelas {{ $kelas->nama_kelas }}</option>
                 @endforeach
@@ -58,7 +58,7 @@
         </label>
 
         @if ($guruList->isNotEmpty())
-            <select class="select-hifi" name="guru_id" style="width: 170px" onchange="this.form.submit()">
+            <select class="select-hifi" name="guru_id" style="width: 170px" data-searchable onchange="this.form.submit()">
                 <option value="">Semua Guru</option>
                 @foreach ($guruList as $guru)
                     <option value="{{ $guru->id }}" @selected(($filters['guru_id'] ?? null) == $guru->id)>{{ $guru->name }}</option>

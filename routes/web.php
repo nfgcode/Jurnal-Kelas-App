@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CadanganController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\KelasQrController;
 use App\Http\Controllers\Admin\LaporanController;
@@ -128,6 +129,13 @@ Route::middleware('auth')->group(function () {
         // Printable per-room QR codes (one per class) for teachers to scan.
         Route::get('/kelas-qr', [KelasQrController::class, 'index'])->name('kelas-qr.index');
         Route::get('/kelas-qr/pdf', [KelasQrController::class, 'pdf'])->name('kelas-qr.pdf');
+
+        // Backup & restore of the whole dataset — JSON snapshot (also the restore
+        // format) plus a readable XLSX workbook. For server moves / recovery.
+        Route::get('/cadangan', [CadanganController::class, 'index'])->name('cadangan.index');
+        Route::get('/cadangan/json', [CadanganController::class, 'unduhJson'])->name('cadangan.json');
+        Route::get('/cadangan/xlsx', [CadanganController::class, 'unduhXlsx'])->name('cadangan.xlsx');
+        Route::post('/cadangan/pulihkan', [CadanganController::class, 'pulihkan'])->name('cadangan.pulihkan');
 
         /*
         |------------------------------------------------------------------
