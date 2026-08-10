@@ -38,6 +38,15 @@ class CrudPagesTest extends TestCase
         // our own to today's first slot rather than hunting for one.
         $jadwal = Jadwal::first();
 
+        // DemoSeeder also journals *today*, so whenever the suite runs on the
+        // weekday this slot is taught the seeded journal covers the very same
+        // meeting. Two journals for one meeting means the roster belongs to the
+        // other one, and every presensi screen redirects instead of rendering.
+        // Clear the meeting first so the pinned journal below is its only one.
+        Jurnal::where('jadwal_id', $jadwal->id)
+            ->whereDate('tanggal', now()->toDateString())
+            ->delete();
+
         $jurnal = Jurnal::create([
             'jadwal_id' => $jadwal->id,
             'tanggal' => now()->toDateString(),

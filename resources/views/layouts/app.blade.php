@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    {{-- Apply saved appearance prefs before first paint (no flash of light theme).
+         Defaults follow the OS via CSS media queries when no override is stored. --}}
+    <script>
+        (function () {
+            try {
+                var d = document.documentElement, ls = window.localStorage;
+                var t = ls.getItem('pref-theme');
+                if (t === 'dark' || t === 'light') d.setAttribute('data-theme', t);
+                var f = ls.getItem('pref-font');
+                if (f && f !== 'normal') d.setAttribute('data-font', f);
+                if (ls.getItem('pref-contrast') === '1') d.setAttribute('data-contrast', 'more');
+                if (ls.getItem('pref-motion') === '1') d.setAttribute('data-motion', 'reduced');
+            } catch (e) {}
+        })();
+    </script>
+
     <title>@yield('title', 'Dashboard') · Jurnal Kelas</title>
 
 
@@ -169,6 +185,39 @@
             @endif
 
             <div class="dropdown">
+                <button class="user-chip dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside" aria-expanded="false" aria-label="Pengaturan tampilan">
+                    <x-ikon nama="circle-half" />
+                    <span class="d-none d-lg-inline">Tampilan</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end pref-panel">
+                    <div class="pref-group">
+                        <span class="pref-group__label">Tema</span>
+                        <div class="pref-seg" data-pref="theme">
+                            <button type="button" data-value="system">Sistem</button>
+                            <button type="button" data-value="light">Terang</button>
+                            <button type="button" data-value="dark">Gelap</button>
+                        </div>
+                    </div>
+                    <div class="pref-group">
+                        <span class="pref-group__label">Ukuran Font</span>
+                        <div class="pref-seg" data-pref="font">
+                            <button type="button" data-value="kecil">Kecil</button>
+                            <button type="button" data-value="normal">Normal</button>
+                            <button type="button" data-value="besar">Besar</button>
+                            <button type="button" data-value="ekstra">Ekstra</button>
+                        </div>
+                    </div>
+                    <label class="pref-toggle">
+                        <input type="checkbox" data-pref-toggle="contrast"> Kontras tinggi
+                    </label>
+                    <label class="pref-toggle">
+                        <input type="checkbox" data-pref-toggle="motion"> Kurangi gerak (animasi)
+                    </label>
+                </div>
+            </div>
+
+            <div class="dropdown">
             <button class="user-chip dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <span class="avatar">{{ $user?->inisial() }}</span>
                 <span class="d-none d-md-inline">{{ $user?->name }}</span>
@@ -219,6 +268,51 @@
     });
 
     scrim?.addEventListener('click', closeSidebar);
+
+    // Appearance preferences: apply changes live and remember them per device.
+    (function () {
+        const d = document.documentElement;
+        const ls = window.localStorage;
+        const get = (k, def) => { try { return ls.getItem(k) ?? def; } catch (e) { return def; } };
+        const set = (k, v) => { try { v == null ? ls.removeItem(k) : ls.setItem(k, v); } catch (e) {} };
+
+        const syncSeg = (pref, val) =>
+            document.querySelectorAll(`.pref-seg[data-pref="${pref}"] button`).forEach(
+                (b) => b.classList.toggle('is-active', b.dataset.value === val));
+
+        // Reflect the stored state onto the controls.
+        syncSeg('theme', get('pref-theme', 'system'));
+        syncSeg('font', get('pref-font', 'normal'));
+        const cEl = document.querySelector('[data-pref-toggle="contrast"]');
+        const mEl = document.querySelector('[data-pref-toggle="motion"]');
+        if (cEl) cEl.checked = get('pref-contrast', '') === '1';
+        if (mEl) mEl.checked = get('pref-motion', '') === '1';
+
+        document.querySelectorAll('.pref-seg[data-pref="theme"] button').forEach((b) =>
+            b.addEventListener('click', () => {
+                const v = b.dataset.value;
+                v === 'system' ? d.removeAttribute('data-theme') : d.setAttribute('data-theme', v);
+                set('pref-theme', v);
+                syncSeg('theme', v);
+            }));
+
+        document.querySelectorAll('.pref-seg[data-pref="font"] button').forEach((b) =>
+            b.addEventListener('click', () => {
+                const v = b.dataset.value;
+                v === 'normal' ? d.removeAttribute('data-font') : d.setAttribute('data-font', v);
+                set('pref-font', v === 'normal' ? null : v);
+                syncSeg('font', v);
+            }));
+
+        cEl?.addEventListener('change', () => {
+            cEl.checked ? d.setAttribute('data-contrast', 'more') : d.removeAttribute('data-contrast');
+            set('pref-contrast', cEl.checked ? '1' : null);
+        });
+        mEl?.addEventListener('change', () => {
+            mEl.checked ? d.setAttribute('data-motion', 'reduced') : d.removeAttribute('data-motion');
+            set('pref-motion', mEl.checked ? '1' : null);
+        });
+    })();
 </script>
 
 @stack('scripts')

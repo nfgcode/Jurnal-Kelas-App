@@ -184,6 +184,14 @@ class AuthorizationTest extends TestCase
             ->where('is_ketua_kelas', true)
             ->firstOrFail();
 
+        // A meeting carries one roster. DemoSeeder journals today's meetings too,
+        // so on the weekday this slot is taught the guru's seeded journal would
+        // already own it and the hand-off below would redirect there instead.
+        // Clear the meeting so the ketua's journal is the one under test.
+        Jurnal::where('jadwal_id', $this->jadwal->id)
+            ->whereDate('tanggal', now()->toDateString())
+            ->delete();
+
         $simpan = $this->actingAs($ketua)->post('/jurnal', [
             'jadwal_id' => $this->jadwal->id,
             'tanggal' => now()->toDateString(),

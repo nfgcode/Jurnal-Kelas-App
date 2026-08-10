@@ -1548,3 +1548,134 @@ textarea.input-hifi {
         .input-hifi { flex: 1 1 140px; }
     }
 }
+
+/* ============================================================================
+   Appearance preferences — dark theme (system-follow), high-contrast,
+   reduced-motion, and a font-size scale. Driven by data-* on <html>, set before
+   paint from localStorage (layouts/app.blade.php), with the OS preference as the
+   default via media queries.
+   ============================================================================ */
+
+/* --- Dark theme: the app uses --n-100 for surfaces and --n-1000 for text, so
+       inverting the neutral ramp flips the whole UI; accents are nudged to read
+       on a dark ground. --------------------------------------------------- */
+@mixin tokens-gelap {
+    --p-100: #26331f;
+    --p-200: #8fbf81;
+    --p-300: #7cb56c;
+    --p-400: #4d7a41;
+    --p-500: #3f6335;
+
+    --s-100: #34301d;
+    --s-300: #cbad4e;
+    --s-500: #e9ddb7;
+
+    --n-100: #202127;
+    --n-200: #16171b;
+    --n-300: #34363e;
+    --n-500: #8a8d96;
+    --n-600: #9a9da6;
+    --n-700: #b3b6bf;
+    --n-800: #cbced5;
+    --n-900: #e2e4e9;
+    --n-1000: #f4f5f7;
+
+    --green-100: #6ee7a8;
+    --green-200: #2fd47b;
+    --yellow-100: #ffdb43;
+    --yellow-200: #f0c400;
+    --red-100: #ff5a68;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+}
+
+:root[data-theme="dark"] { @include tokens-gelap; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { @include tokens-gelap; }
+}
+
+/* --- High contrast: borders and muted text move to a stronger step, and
+       keyboard focus gets a visible ring. Uses the live token values, so it
+       works in either theme. ---------------------------------------------- */
+@mixin kontras-tinggi {
+    --n-300: var(--n-600);
+    --n-500: var(--n-700);
+    --shadow-card: 0 0 0 1px var(--n-600);
+}
+
+:root[data-contrast="more"] { @include kontras-tinggi; }
+
+@media (prefers-contrast: more) {
+    :root:not([data-contrast="normal"]) { @include kontras-tinggi; }
+}
+
+:root[data-contrast="more"] :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid var(--n-1000);
+    outline-offset: 2px;
+}
+
+/* --- Reduced motion: neutralise transitions/animations. Respect the OS
+       setting, and the explicit override. -------------------------------- */
+@mixin gerak-minim {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) { @include gerak-minim; }
+
+:root[data-motion="reduced"] { @include gerak-minim; }
+
+/* --- Font-size scale: the design is px-based, so a root zoom scales the whole
+       UI proportionally. ------------------------------------------------- */
+:root[data-font="kecil"] body { zoom: 0.92; }
+:root[data-font="besar"] body { zoom: 1.10; }
+:root[data-font="ekstra"] body { zoom: 1.20; }
+
+/* --- The "Tampilan" preferences panel in the topbar. -------------------- */
+.pref-panel { min-width: 246px; padding: 12px 14px; }
+
+.pref-group { margin-bottom: 12px; }
+
+.pref-group__label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--n-600);
+    margin-bottom: 6px;
+}
+
+.pref-seg { display: flex; gap: 4px; }
+
+.pref-seg button {
+    flex: 1;
+    padding: 6px 6px;
+    font-size: 11.5px;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--n-300);
+    background: var(--n-100);
+    color: var(--n-800);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pref-seg button:hover { border-color: var(--p-300); }
+.pref-seg button.is-active { background: var(--p-400); border-color: var(--p-400); color: #fff; }
+
+.pref-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--n-900);
+    cursor: pointer;
+    padding: 5px 0;
+}

@@ -21,6 +21,9 @@
         <env name="APP_ENV" value="testing"/>
         <!-- Throwaway key so the suite runs without a .env file. Not used outside tests. -->
         <env name="APP_KEY" value="base64:6REwdpciBsAV6892yyu2dcgLIgwczcbPa+u48Kq75Ns="/>
+        <!-- Pin the suite's timezone so tests stay deterministic regardless of the
+             deploy's APP_TIMEZONE (Asia/Makassar in production). -->
+        <env name="APP_TIMEZONE" value="UTC"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
