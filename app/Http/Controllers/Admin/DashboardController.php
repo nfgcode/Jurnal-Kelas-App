@@ -32,9 +32,12 @@ class DashboardController extends Controller
         // Stock figures (people, classes, subjects, the timetable) are all-time
         // by nature; only the flow figure — journals written — is scoped to the
         // period, its delta measured against the preceding equal-length window.
-        $jurnalPeriode = Jurnal::whereBetween('tanggal', $rentang)->count();
+        // People-written journals only: a nightly backfill placeholder is the
+        // absence of the teacher's entry, so counting it here would report the
+        // automation's output as teaching activity and hide the shortfall.
+        $jurnalPeriode = Jurnal::manusia()->whereBetween('tanggal', $rentang)->count();
         $sebelumnya = $periode->sebelumnya();
-        $jurnalSebelumnya = Jurnal::whereBetween('tanggal', [$sebelumnya->mulaiString(), $sebelumnya->selesaiString()])->count();
+        $jurnalSebelumnya = Jurnal::manusia()->whereBetween('tanggal', [$sebelumnya->mulaiString(), $sebelumnya->selesaiString()])->count();
         $trenJurnal = $jurnalSebelumnya > 0
             ? round(($jurnalPeriode - $jurnalSebelumnya) / $jurnalSebelumnya * 100, 1)
             : 0;
@@ -49,8 +52,10 @@ class DashboardController extends Controller
         ];
 
         // Teachers whose absence in this period was not covered by an assignment
-        // are the ones the "perlu perhatian" callout points at.
-        $guruPerluPerhatian = Jurnal::query()
+        // are the ones the "perlu perhatian" callout points at. A backfill row
+        // also reads "tidak hadir · tanpa tugas", but nobody verified that — it
+        // only means the journal is missing, so it must not brand a teacher here.
+        $guruPerluPerhatian = Jurnal::manusia()
             ->whereBetween('tanggal', $rentang)
             ->where('kehadiran_guru_status', 'tidak_hadir')
             ->where(fn ($query) => $query->whereNull('kehadiran_guru_ada_tugas')->orWhere('kehadiran_guru_ada_tugas', false))
@@ -85,12 +90,14 @@ class DashboardController extends Controller
             'petaTanggal' => $petaTanggal,
             'kpi' => $kpi,
             'trenJurnal' => $trenJurnal,
-            'pengisian' => Ringkasan::harian(Jurnal::query(), $periode),
+            'pengisian' => Ringkasan::harian(Jurnal::manusia(), $periode),
             'presensi' => Ringkasan::presensi(null, $periode),
             'kehadiranGuru' => Ringkasan::kehadiranGuru(null, $periode),
             'guruPerluPerhatian' => $guruPerluPerhatian,
+            // "Most active" must credit teachers for what they wrote themselves,
+            // never for journals the nightly job filed under their name.
             'guruTeraktif' => User::where('role', 'guru')
-                ->withCount(['jurnals' => fn ($query) => $query->whereBetween('tanggal', $rentang)])
+                ->withCount(['jurnals' => fn ($query) => $query->manusia()->whereBetween('tanggal', $rentang)])
                 ->orderByDesc('jurnals_count')
                 ->take(5)
                 ->get(),
@@ -110,7 +117,7 @@ class DashboardController extends Controller
     public function detail(Request $request)
     {
         $data = $request->validate([
-            'tipe' => ['required', 'in:jurnal,guru,kelas,terisi,telat,presensi,belum,kelengkapan,guru_perhatian'],
+            'tipe' => ['required', 'in:jurnal,guru,kelas,terisi,otomatis,telat,presensi,belum,kelengkapan,guru_perhatian'],
             'tanggal' => ['nullable', 'date'],
             'guru_id' => ['nullable', 'exists:users,id'],
             'kelas_id' => ['nullable', 'exists:kelas,id'],
@@ -175,13 +182,22 @@ class DashboardController extends Controller
 
             case 'terisi':
                 $this->terapkanFilter($query, $data);
-                $query->whereBetween('tanggal', $rentang);
-                $judul = 'Jurnal Terisi';
+                $query->manusia()->whereBetween('tanggal', $rentang);
+                $judul = 'Jurnal Diisi Guru';
+                break;
+
+            case 'otomatis':
+                // The meetings the nightly backfill covered — i.e. the ones whose
+                // teacher still has not written their own journal.
+                $this->terapkanFilter($query, $data);
+                $query->where('jurnal.diisi_oleh_peran', Jurnal::PERAN_SISTEM)
+                    ->whereBetween('tanggal', $rentang);
+                $judul = 'Jurnal Diisi Otomatis';
                 break;
 
             case 'telat':
                 $this->terapkanFilter($query, $data);
-                $query->whereBetween('tanggal', $rentang)->whereRaw(Jurnal::ekspresiTerlambat());
+                $query->manusia()->whereBetween('tanggal', $rentang)->whereRaw(Jurnal::ekspresiTerlambat());
                 $judul = 'Jurnal Terlambat Isi';
                 break;
 

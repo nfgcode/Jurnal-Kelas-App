@@ -69,7 +69,9 @@ class JurnalController extends Controller
         Urutan::terapkan($query, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
 
         $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
-        $milikSaya = $user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query();
+        // The stat cards count journals a person wrote, so the nightly backfill's
+        // placeholders are left out — they mean the opposite of "filled in".
+        $milikSaya = ($user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query())->manusia();
 
         // A guru filters only among the classes/subjects they teach; admin all.
         $kelasList = Kelas::query()
@@ -185,22 +187,13 @@ class JurnalController extends Controller
         // A meeting the nightly backfill already placeholdered is corrected by
         // editing that row (which "adopts" it), never by filing a second journal
         // beside it — so send the writer straight there.
-        if ($jadwal && $sistem = $this->jurnalSistem($jadwal, $tanggal)) {
+        if ($jadwal && $sistem = Jurnal::sudahAda($jadwal->id, $tanggal->toDateString(), Jurnal::PERAN_SISTEM)) {
             return redirect()->route('jurnal.edit', $sistem)
                 ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Silakan periksa dan perbaiki di sini.');
         }
 
         return view($user->isSiswa() ? 'jurnal.mengisi' : 'jurnal.isi',
             $this->konteksForm($user, $jadwal, $tanggal));
-    }
-
-    /** The nightly-backfill placeholder for a meeting, if one is waiting to be adopted. */
-    private function jurnalSistem(Jadwal $jadwal, Carbon $tanggal): ?Jurnal
-    {
-        return Jurnal::where('jadwal_id', $jadwal->id)
-            ->whereDate('tanggal', $tanggal->toDateString())
-            ->where('diisi_oleh_peran', Jurnal::PERAN_SISTEM)
-            ->first();
     }
 
     /**
@@ -222,6 +215,15 @@ class JurnalController extends Controller
         // and caught below because two rapid submits can both pass this check.
         if ($lama = Jurnal::sudahAda($jadwal->id, $validated['tanggal'], $peran)) {
             return $this->tolakGanda($lama, $peran);
+        }
+
+        // The nightly backfill may already hold this meeting. Its peran is
+        // 'sistem', so the unique index would happily accept a second journal
+        // beside it — send the writer to correct that one instead, exactly as
+        // create() does when the form is opened on the slot.
+        if ($sistem = Jurnal::sudahAda($jadwal->id, $validated['tanggal'], Jurnal::PERAN_SISTEM)) {
+            return redirect()->route('jurnal.edit', $sistem)
+                ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Silakan periksa dan perbaiki di sini.');
         }
 
         $data = $this->normalize($validated, $user);

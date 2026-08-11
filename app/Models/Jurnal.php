@@ -104,6 +104,23 @@ class Jurnal extends Model
         return $this->diisi_oleh_peran === self::PERAN_SISTEM;
     }
 
+    /**
+     * Only journals a person actually wrote — the basis of every "how much has
+     * been filled in" figure. A nightly backfill placeholder proves the opposite
+     * (nobody filled it), so counting it would let the automation quietly inflate
+     * completeness and hide the teachers who still owe a journal.
+     *
+     * Written as an explicit null-safe pair because `!= 'sistem'` alone drops
+     * rows whose peran is NULL (SQL three-valued logic) — older rows and any
+     * created without the column would silently vanish from the numbers.
+     */
+    public function scopeManusia($query)
+    {
+        return $query->where(fn ($q) => $q
+            ->whereNull('jurnal.diisi_oleh_peran')
+            ->orWhere('jurnal.diisi_oleh_peran', '!=', self::PERAN_SISTEM));
+    }
+
     /** Whether this journal was edited on a day after the lesson it records. */
     public function dieditSetelahHari(): bool
     {

@@ -8,8 +8,10 @@ use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Presensi;
 use App\Models\User;
+use App\Support\Periode;
 use App\Support\Ringkasan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
@@ -256,6 +258,208 @@ class JurnalOtomatisTest extends TestCase
         $this->actingAs($guru)
             ->get(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $tanggal]))
             ->assertRedirect(route('jurnal.edit', $sistem));
+    }
+
+    public function test_filing_a_journal_beside_a_system_one_is_refused(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+
+        $sistem = $this->jurnal($jadwal, $tanggal, [
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+        ]);
+
+        // The unique index would accept this pair ('sistem' vs 'guru'), so the
+        // controller has to be the one that refuses a second journal.
+        $this->actingAs($guru)->post('/jurnal', [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $tanggal,
+            'materi' => 'Jurnal kedua',
+            'kehadiran_guru' => 'hadir',
+        ])->assertRedirect(route('jurnal.edit', $sistem));
+
+        $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $tanggal)->count());
+    }
+
+    // ---- Metrics stay honest about what the automation filled --------------
+
+    public function test_a_system_journal_never_counts_as_filled_in(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+
+        $jadwalA = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guru, $tanggal, 3);
+
+        $this->jurnal($jadwalA, $tanggal);                                   // written by the guru
+        $this->jurnal($jadwalB, $tanggal, [                                  // filled by the nightly job
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+            'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
+        ]);
+
+        // The window ends today, not on $tanggal: SQLite stores `tanggal` as
+        // "Y-m-d 00:00:00", so a `selesai` on the same day would sort *before* the
+        // row and quietly exclude it (see JurnalOtomatisTest's other ranges).
+        $periode = Periode::dari(Request::create('/', 'GET', [
+            'preset' => 'custom', 'mulai' => $tanggal, 'selesai' => Carbon::today()->toDateString(),
+        ]));
+
+        // Completeness counts the guru's journal only — one of the two meetings.
+        $this->assertSame(50.0, Ringkasan::kelengkapanKelas($kelas->id, $periode));
+        $this->assertSame(50.0, Ringkasan::kelengkapan('kelas_id', $periode)[$kelas->id]);
+
+        // And the automatic one is reported on its own instead of vanishing.
+        $this->assertSame(1, Ringkasan::otomatis($periode));
+
+        // A placeholder's "tidak hadir · tanpa tugas" is not an observed absence,
+        // so it must not brand the teacher in the attendance rollup.
+        $kehadiran = Ringkasan::kehadiranGuru(Jurnal::query(), $periode);
+        $this->assertSame(1, $kehadiran['total']);
+        $this->assertSame(0, $kehadiran['tanpa_tugas']);
+    }
+
+    public function test_the_recap_splits_written_automatic_and_missing(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $hariIni = Carbon::today()->toDateString();
+
+        $jadwalA = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guru, $tanggal, 3);
+        $this->jadwal($kelas, $this->mapel('Kimia'), $guru, $tanggal, 6); // never filled at all
+
+        $this->jurnal($jadwalA, $tanggal);
+        $this->jurnal($jadwalB, $tanggal, ['diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null]);
+
+        $statistik = $this->actingAs($admin)
+            ->get("/admin/laporan/jurnal?preset=custom&mulai={$tanggal}&selesai={$hariIni}")
+            ->assertOk()
+            ->viewData('statistik');
+
+        $this->assertSame(1, $statistik['terisi']);
+        $this->assertSame(1, $statistik['otomatis']);
+        $this->assertSame(1, $statistik['belum']);
+        // The three buckets must account for every scheduled meeting.
+        $this->assertSame(3, $statistik['terisi'] + $statistik['otomatis'] + $statistik['belum']);
+    }
+
+    public function test_a_backfilled_journal_is_not_reported_as_a_late_teacher(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau(10); // long enough ago to be "late" if counted
+        $hariIni = Carbon::today()->toDateString();
+
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+        $this->jurnal($jadwal, $tanggal, ['diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null]);
+
+        $statistik = $this->actingAs($admin)
+            ->get("/admin/laporan/jurnal?preset=custom&mulai={$tanggal}&selesai={$hariIni}")
+            ->assertOk()
+            ->viewData('statistik');
+
+        $this->assertSame(0, $statistik['telat'], 'Jurnal otomatis selalu "telat" secara teknis; itu bukan guru yang telat.');
+    }
+
+    // ---- API parity (same rules as the web flow) --------------------------
+
+    public function test_api_refuses_to_file_a_journal_beside_a_system_one(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+
+        $sistem = $this->jurnal($jadwal, $tanggal, [
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+        ]);
+
+        $this->actingAs($guru)->postJson('/api/jurnal', [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $tanggal,
+            'materi' => 'Lewat API',
+            'kehadiran_guru_status' => 'hadir',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('jurnal_id', $sistem->id)
+            // The pointer must be usable: these routes bind on the public id.
+            ->assertJsonPath('jurnal_public_id', $sistem->public_id);
+
+        $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $tanggal)->count());
+    }
+
+    public function test_api_editing_a_system_journal_requires_the_attestation(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+
+        $sistem = $this->jurnal($jadwal, $tanggal, [
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+            'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
+        ]);
+
+        $this->actingAs($guru)->putJson("/api/jurnal/{$sistem->public_id}", [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $tanggal,
+            'materi' => 'Sebenarnya saya hadir',
+            'kehadiran_guru_status' => 'hadir',
+        ])->assertStatus(422)->assertJsonValidationErrors('pernyataan');
+
+        $this->assertTrue($sistem->fresh()->dibuatSistem());
+    }
+
+    public function test_api_editing_a_system_journal_with_attestation_adopts_it(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+
+        $sistem = $this->jurnal($jadwal, $tanggal, [
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+            'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
+        ]);
+
+        $this->actingAs($guru)->putJson("/api/jurnal/{$sistem->public_id}", [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $tanggal,
+            'materi' => 'Sebenarnya saya hadir dan mengajar',
+            'kehadiran_guru_status' => 'hadir',
+            'pernyataan' => true,
+        ])->assertOk();
+
+        $segar = $sistem->fresh();
+        $this->assertSame('guru', $segar->diisi_oleh_peran);
+        $this->assertSame($guru->id, $segar->diisi_oleh_id);
+        $this->assertFalse($segar->dibuatSistem());
+        // The marker is set by the model event, so the API path carries it too.
+        $this->assertTrue($segar->dieditSetelahHari());
+    }
+
+    public function test_api_editing_an_ordinary_journal_needs_no_attestation(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+        $jurnal = $this->jurnal($jadwal, $tanggal);
+
+        $this->actingAs($guru)->putJson("/api/jurnal/{$jurnal->public_id}", [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $tanggal,
+            'materi' => 'Diperbarui biasa',
+            'kehadiran_guru_status' => 'hadir',
+        ])->assertOk();
+
+        $this->assertSame('Diperbarui biasa', $jurnal->fresh()->materi);
     }
 
     // ---- D. "Diedit setelah hari-H" marker + admin filter -----------------

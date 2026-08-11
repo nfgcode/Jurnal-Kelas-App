@@ -47,6 +47,51 @@ Aplikasi **Jurnal Kelas** adalah sistem manajemen jurnal pembelajaran dan presen
 - Unique constraint mencegah duplikasi presensi
 - Statistik kehadiran via stored function
 
+### Jurnal Otomatis & Presensi Terisi-Awal
+Mengurangi pekerjaan berulang guru, tanpa mengaburkan siapa yang benar-benar mengisi.
+
+- **Presensi terisi awal (prefill)** — saat membuka presensi pertemuan yang belum ditandai,
+  daftar siswa **diisi awal dari pelajaran kelas itu sebelumnya di hari yang sama** (jam ke-
+  terdekat). Guru tinggal memeriksa lalu menyimpan; tidak ada yang tersimpan sebelum ditekan
+  Simpan, dan sumbernya disebutkan di layar
+- **Pengisian otomatis jurnal kosong** — tiap pergantian hari (**00:30**, lewat scheduler),
+  perintah `jurnal:isi-otomatis` mencari pertemuan lampau yang **belum punya jurnal sama
+  sekali** (bawaan: 14 hari ke belakang) lalu membuatkannya: guru tercatat **tidak hadir ·
+  tanpa tugas**, dan presensinya **disalin dari pertemuan lain kelas itu pada hari yang sama**
+  (bila tidak ada sumber, roster dibiarkan kosong — sistem tidak menebak sekelas alpa)
+- **Diproses per gelombang** agar tidak membebani server: 200 pertemuan per gelombang,
+  dijadwalkan berjarak 2 menit lewat antrean (queue). Aman dijalankan berulang (idempoten —
+  pertemuan yang sudah berjurnal tidak akan digandakan)
+- **Ditandai jujur, bukan disamarkan**: jurnal buatan sistem memakai status **"Otomatis"**
+  (bukan "Terisi"), sehingga rekap tetap menunjukkan mana yang belum diisi guru sendiri
+- **Angkanya pun tidak ikut digelembungkan.** Semua ukuran "jurnal terisi" hanya menghitung
+  tulisan manusia, dan Rekap Jurnal memecahnya jadi tiga yang selalu berjumlah sama dengan
+  pertemuan terjadwal: **Diisi Guru + Diisi Otomatis + Belum Diisi**. Kelengkapan mengukur
+  tulisan guru saja, dan **"Terlambat Isi" tidak menghitung jurnal otomatis** (yang secara
+  teknis selalu telat) agar sinyal guru yang benar-benar telat tidak tenggelam
+- **Tidak menuduh guru**: jurnal otomatis tertulis "tidak hadir · tanpa tugas" sebagai
+  *penanda kosong*, bukan hasil pengamatan — karena itu ia **tidak** dihitung pada rekap
+  Kehadiran Guru, "Guru Perlu Perhatian", maupun "Guru Teraktif"
+- **Tetap bisa diubah semua peran** — membuka jurnal otomatis lalu menyuntingnya akan
+  **mengadopsinya** menjadi jurnal asli si pengisi (guru/ketua kelas), jadi tidak ada jurnal
+  ganda untuk satu pertemuan
+- **Pernyataan kejujuran** — mengubah jurnal otomatis wajib mencentang pernyataan bahwa
+  perubahan dilakukan sesuai keadaan sebenarnya; tanpa itu perubahan ditolak
+- **Penanda "Diedit setelah hari-H"** — jurnal yang diubah pada hari **setelah** tanggal
+  pelajarannya diberi lencana yang **terlihat oleh semua peran**, terpisah dari status "Telat"
+  (telat *mengisi*). Admin bisa **memfilter** dan melihat **jumlahnya** di Rekap Jurnal
+  sehingga perubahan belakangan mudah ditelusuri
+
+```bash
+# Dijalankan otomatis oleh scheduler; bisa juga manual (mis. mengisi tunggakan lama)
+php artisan jurnal:isi-otomatis --lookback=60          # antre per gelombang
+php artisan jurnal:isi-otomatis --sekarang --lookback=60  # proses langsung tanpa antrean
+```
+
+> Perintah ini bergantung pada **queue worker** dan **scheduler** yang sudah berjalan di
+> container `app` (supervisord), serta `APP_TIMEZONE` yang benar agar "pergantian hari"
+> sesuai waktu setempat.
+
 ### Master Data
 - **Kelas** — Tingkat (X/XI/XII), jurusan, ruang, kapasitas, wali kelas, tahun ajaran
 - **Mata Pelajaran** — Kelompok kurikulum (Wajib / Peminatan / Muatan Lokal / Kejuruan), JP per minggu
@@ -95,16 +140,23 @@ Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah)
 - Concurrency-safe: transaksi + `lockForUpdate` + unique constraint pada penyimpanan presensi
 - **ID jurnal/presensi diabstraksi** di URL web: route key berupa **ULID** (`jurnal.public_id`,
   unik & `NOT NULL`), bukan id berurutan — anti-enumerasi dan tidak memancing orang mengutak-atik
-  angka di alamat. Otorisasi tetap lapisan utama; ID abstrak hanya pelengkap. REST API sengaja
-  tetap memakai id numerik agar kontraknya tidak berubah
+  angka di alamat. Otorisasi tetap lapisan utama; ID abstrak hanya pelengkap.
+  **Berlaku untuk REST API juga**: alamat seperti `/api/jurnal/{...}` dan
+  `/api/presensi/{...}` di-resolve memakai `public_id`, bukan id angka. Isi payload &
+  respons tetap membawa `id` numerik (mis. `jurnal_id` saat menyimpan presensi) agar
+  kontrak lama tidak berubah, dan respons jurnal ikut membawa `public_id` supaya klien
+  bisa menyusun sendiri alamat untuk membaca/memperbarui
 - **Whitelist untuk seluruh input URL**: `?per=` (25/50/75/100), `?sort=`/`?dir=` (peta kolom per
   layar), dan `?preset=`/rentang periode. Nilai tak dikenal jatuh ke default, bukan error — dan
   tidak ada nilai dari URL yang masuk ke SQL secara langsung
 
 ### UX & Antarmuka
 - **Responsif Perangkat Mobile** (Android/iOS): sidebar off-canvas, grid adaptif, kontrol filter full-width.
-  Tombol kehadiran H/S/I/A menyesuaikan dengan besar layar, serta opsi memilih besar font
-- **Dropdown ber-pencarian** (progressive enhancement, tanpa dependency) untuk daftar panjang
+  Tombol kehadiran H/S/I/A menyesuaikan dengan besar layar (ukuran font bisa dipilih sendiri —
+  lihat **Tampilan & Aksesibilitas** di bawah)
+- **Dropdown ber-pencarian** (progressive enhancement, tanpa dependency) untuk daftar panjang —
+  dipakai di seluruh daftar panjang (kelas, guru, mata pelajaran, jurusan, wali kelas); dropdown
+  pilihan pendek (tingkat, status, hari) sengaja dibiarkan polos karena kotak cari tak menolong di sana
 - **Filter periode** di histori jurnal, riwayat siswa, dan presensi: preset Hari Ini / Minggu Ini /
   Minggu Lalu / Bulan Ini / Bulan Lalu / 30 Hari / Tahun Ini + rentang kustom. Kartu statistik ikut
   periode agar angka bisa konsisten dengan tabel, dan filter yang lain tetap terbawa saat periode diganti
@@ -127,6 +179,26 @@ Guru **scan QR pakai kamera HP** → diarahkan ke website (deploy lokal sekolah)
 - **Dropdown jadwal mengikuti tanggal** yang dipilih (bukan seluruh jadwal), ditandai bila slot
   sudah diisi, dan menampilkan pesan "hubungi admin" bila hari itu memang tidak ada jadwal
 - Performa: Composite indexing, caching KPI landing, Agregate query yang diringkas
+
+### Tampilan & Aksesibilitas
+Tombol **Tampilan** (ikon ◐) di pojok kanan atas membuka panel preferensi. Semua pilihan
+**mengikuti setelan sistem/perangkat secara bawaan**, dan bisa ditimpa manual.
+
+| Pilihan | Isi | Bawaan |
+|---------|-----|--------|
+| **Tema** | Sistem · Terang · **Gelap** | ikut sistem (`prefers-color-scheme`) |
+| **Ukuran Font** | Kecil · Normal · Besar · Ekstra | Normal |
+| **Kontras tinggi** | mempertegas garis, teks samar, dan cincin fokus keyboard | ikut sistem (`prefers-contrast`) |
+| **Kurangi gerak** | mematikan animasi & transisi | ikut sistem (`prefers-reduced-motion`) |
+
+- **Tersimpan di perangkat** (`localStorage`) — tiap guru/siswa punya setelannya sendiri di HP
+  atau komputer masing-masing, tanpa akun dan tanpa menyentuh database
+- **Diterapkan sebelum halaman digambar**, jadi tidak ada kedip putih saat membuka halaman
+  dalam mode gelap
+- **Mode gelap tanpa lembar gaya kedua**: seluruh antarmuka memakai token warna, sehingga mode
+  gelap cukup memetakan ulang token itu — bukan menulis ulang tiap komponen
+- **Ukuran font menskalakan seluruh antarmuka** (bukan hanya teks), sehingga tata letak tetap
+  proporsional — membantu pengguna yang kurang nyaman dengan teks kecil
 
 ### Bobot Aset & Mode Offline
 Sekolah bisa saja menjalankan aplikasi (atau mendeploy project) ini secara intranet atau Local deploy yang hanya terhubung melalui cakupan internet LAN sekolah (tanpa terakses internet keluar) jadi tidak ada satu pun permintaan ke luar saat halaman dibuka — font dan ikon ikut di-bundle, bukan diambil dari CDN.
@@ -216,7 +288,7 @@ Untuk **pindah server** atau **pemulihan** saat server bermasalah, tanpa perlu a
 | [Vite](https://vitejs.dev) | 8.x | Build tool & dev server (HMR) |
 | [laravel-vite-plugin](https://github.com/laravel/vite-plugin) | 3.x | Integrasi Vite ⇄ Laravel |
 | [Bootstrap Icons](https://icons.getbootstrap.com) | 1.13 | **Sumber jalur SVG saja** — bukan dependensi runtime. Ikon di-inline lewat `App\Support\Ikon`; stylesheet & webfont-nya tidak ikut dibundel |
-| Vanilla JS | — | Drill-down AJAX, searchable-select (tanpa framework JS) |
+| Vanilla JS | — | Drill-down AJAX, searchable-select, preferensi tampilan (tema/font/kontras/gerak) — tanpa framework JS |
 
 ### Database & Infrastruktur
 | Teknologi | Versi | Peran |
@@ -390,6 +462,28 @@ php artisan serve
 npm run dev  # di terminal terpisah
 ```
 
+### Checklist Deploy ke Server Sekolah
+
+Yang berbeda antara mesin pengembangan dan server sekolah — dicek satu per satu sebelum dipakai
+mengajar:
+
+- [ ] **`APP_URL` = alamat LAN server** (mis. `http://192.168.1.10:8888`), **bukan** `localhost`.
+      Tanpa ini QR kelas yang tercetak tidak bisa dibuka dari HP guru
+- [ ] **`APP_TIMEZONE` sesuai lokasi sekolah** (WIB/WITA/WIT). Menentukan kapan hari berganti
+      untuk pengisian jurnal otomatis dan penanda keterlambatan
+- [ ] **`APP_DEBUG=false`** dan **`APP_ENV=production`** — menutup detail error untuk semua peran
+- [ ] **Aset produksi dipakai, bukan dev server**: jalankan `bun run build` dan pastikan berkas
+      `public/hot` **tidak ada**. Bila `public/hot` tertinggal, halaman mencari Vite di
+      `localhost:5173` dan tampilan akan rusak di komputer lain
+- [ ] **Queue worker & scheduler hidup** (sudah otomatis lewat supervisord di container `app`) —
+      keduanya wajib untuk pengisian jurnal otomatis tiap malam. Cek dengan
+      `php artisan schedule:list`
+- [ ] **Migrasi dijalankan**: `php artisan migrate --force`
+- [ ] **Unggahan besar diizinkan** bila akan memulihkan cadangan besar: `upload_max_filesize` /
+      `post_max_size` (PHP) dan `client_max_body_size` (nginx)
+- [ ] **Cadangan pertama diunduh & disimpan di luar server** lewat menu *Cadangan Data*
+- [ ] **Ganti kata sandi akun admin bawaan** bila data demo dipakai sebagai titik awal
+
 ---
 
 ## Perintah - Perintah
@@ -447,6 +541,11 @@ GET /api/me
 
 ### Endpoints
 
+> **Soal ID jurnal:** alamat jurnal/presensi memakai **`public_id`** (ULID), bukan id angka —
+> `PUT /api/jurnal/123` akan menghasilkan **404**. Nilainya ada di setiap respons jurnal
+> (`data.public_id`), sehingga klien cukup memakai apa yang dikembalikan API. Isi *body*
+> tetap memakai id numerik (mis. `jurnal_id` pada input presensi).
+
 | Method | Endpoint | Akses | Keterangan |
 |--------|----------|-------|------------|
 | `GET` | `/api/dashboard` | All | KPI summary sesuai role |
@@ -455,12 +554,12 @@ GET /api/me
 | `GET` | `/api/jadwal` | All | Daftar jadwal |
 | `GET` | `/api/jurnal` | All | Daftar jurnal (scoped by role) |
 | `POST` | `/api/jurnal` | Guru | Buat jurnal baru |
-| `PUT` | `/api/jurnal/{id}` | Guru/Admin | Update jurnal |
-| `DELETE` | `/api/jurnal/{id}` | Guru/Admin | Hapus jurnal |
-| `GET` | `/api/jurnal/{id}/audit` | All | Audit trail jurnal |
+| `PUT` | `/api/jurnal/{public_id}` | Guru/Admin | Update jurnal |
+| `DELETE` | `/api/jurnal/{public_id}` | Guru/Admin | Hapus jurnal |
+| `GET` | `/api/jurnal/{public_id}/audit` | All | Audit trail jurnal |
 | `GET` | `/api/presensi` | All | Daftar presensi |
-| `POST` | `/api/presensi` | Guru | Input presensi bulk |
-| `GET` | `/api/presensi/{jurnal}` | All | Presensi per jurnal |
+| `POST` | `/api/presensi` | Guru | Input presensi bulk (body memakai `jurnal_id` **numerik**) |
+| `GET` | `/api/presensi/{public_id}` | All | Presensi per jurnal |
 | `GET` | `/api/statistik/kehadiran` | All | Statistik kehadiran |
 | `POST/PUT/DELETE` | `/api/kelas/*` | Admin | Kelola kelas |
 | `POST/PUT/DELETE` | `/api/mata-pelajaran/*` | Admin | Kelola mata pelajaran |
@@ -497,6 +596,11 @@ GET /api/me
 ```
 Jurnal-Kelas-App/
 ├── app/
+│   ├── Console/
+│   │   └── Commands/
+│   │       └── IsiJurnalOtomatis.php   # Pengisian jurnal kosong tiap malam (dijadwalkan 00:30)
+│   ├── Jobs/
+│   │   └── IsiJurnalGelombang.php      # Satu gelombang pengisian otomatis (lewat antrean)
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── Admin/            # Dashboard, Laporan, User, Sistem, Cadangan (backup/restore),
@@ -536,7 +640,7 @@ Jurnal-Kelas-App/
 │       ├── Urutan.php            # Sortir kolom ber-whitelist (?sort=/?dir=)
 │       └── XlsxExport.php        # Penulis .xlsx (OOXML) via ZipArchive
 ├── database/
-│   ├── migrations/               # 31 migrations (tables, indexes, views, functions, triggers)
+│   ├── migrations/               # 32 migrations (tables, indexes, views, functions, triggers)
 │   └── seeders/
 │       ├── DemoSeeder.php        # Data demo default (dipakai make setup & test suite)
 │       └── SmkSeeder.php         # Simulasi SMK besar (10 jurusan, ~45 rombel) — dev-only, opsional
@@ -558,11 +662,13 @@ Jurnal-Kelas-App/
 │       ├── qr/                   # Halaman konfirmasi setelah scan QR
 │       ├── errors/               # ramah.blade.php + view konvensi 403/404/419/429/500/503
 │       ├── layouts/              # Main layout (sidebar, nav)
-│       └── components/           # 25 komponen Blade — a.l. x-ikon, x-th-sort, x-pager,
-│                                 #   x-periode-filter, x-query-hidden, x-filter-tingkat-jurusan
+│       └── components/           # 27 komponen Blade — a.l. x-ikon, x-th-sort, x-pager,
+│                                 #   x-periode-filter, x-query-hidden, x-filter-tingkat-jurusan,
+│                                 #   x-jurnal-attestasi, x-jurnal-edit-badge
 ├── routes/
 │   ├── web.php                   # Web routes
-│   └── api.php                   # REST API routes
+│   ├── api.php                   # REST API routes
+│   └── console.php               # Penjadwalan (jurnal:isi-otomatis tiap 00:30)
 ├── docker-compose.yml
 ├── Makefile
 ├── setup.sh
@@ -602,6 +708,9 @@ Yang dijaga suite — tiap berkas mengunci satu kelas kesalahan yang pernah bena
 | `PeriodeFilterTest` | Preset periode benar-benar menyaring, tidak melebarkan cakupan peran, dan filter form tidak membuang sortir/periode/ukuran halaman |
 | `PaginationTest` | Whitelist `?per=`; ukuran halaman tidak bisa dipakai memperlebar akses |
 | `QrAksesTest` | QR guru-only, pilih sebagian kelas, unduhan PDF benar-benar PDF & admin-only |
+| `JurnalOtomatisTest` | Presensi terisi awal dari pertemuan sehari itu; pengisian otomatis membuat jurnal "sistem" + menyalin roster, idempoten, dan tidak menyentuh hari ini/masa depan; jurnal otomatis wajib pernyataan kejujuran saat diubah lalu diadopsi; penanda "diedit setelah hari-H" + filternya |
+| `ApiJurnalKontrakTest` | API mengembalikan identitas yang dipakai alamatnya sendiri (`public_id`): bisa baca → perbarui hanya bermodal respons, dan id angka memang bukan kunci URL |
+| `CadanganTest` | Cadangan/pemulihan khusus admin: ekspor memuat seluruh tabel & bisa dipilih sebagian, unduhan ter-gzip dan bisa dipulihkan kembali (gabung/ganti), berkas asing ditolak |
 | `IkonTest` | Setiap ikon yang dipakai ada — mencegah ikon tampil kosong diam-diam |
 | `ErrorHandlingTest` | Guru/siswa tidak pernah melihat stack trace; admin tetap melihat detail |
 | `RolePagesTest`, `CrudPagesTest`, `AdminSectionTest`, `DashboardPeriodeTest`, `LoginTest` | Setiap halaman per peran merender, form CRUD bekerja, login per peran |
@@ -616,6 +725,7 @@ Variabel penting di `.env`:
 |----------|---------|------------|
 | `APP_NAME` | `Jurnal Kelas` | Nama aplikasi |
 | `APP_URL` | `http://localhost:8888` | URL aplikasi — **set ke alamat LAN sekolah** (mis. `http://192.168.1.10:8888`) di deploy nyata agar QR code kelas bisa dibuka dari HP guru |
+| `APP_TIMEZONE` | `Asia/Makassar` | Zona waktu sekolah (`Asia/Jakarta` WIB / `Asia/Makassar` WITA / `Asia/Jayapura` WIT). **Menentukan kapan "hari berganti"** — dipakai pengisian jurnal otomatis 00:30, penanda telat, dan penanda "diedit setelah hari-H" |
 | `APP_LOCALE` | `id` | Bahasa Indonesia |
 | `APP_DEBUG` | `true` | Detail error untuk admin. **Set `false` di produksi** — guru/siswa sudah selalu mendapat halaman ramah, tapi `false` menutup detail untuk semua peran |
 | `DB_CONNECTION` | `mysql` | Driver database |

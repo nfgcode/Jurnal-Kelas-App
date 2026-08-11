@@ -18,6 +18,11 @@ class JurnalResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // The identifier these routes actually bind on: /api/jurnal/{...} and
+            // /api/presensi/{...} resolve a journal by its public id, not by the
+            // numeric one (see Jurnal::getRouteKeyName). Without this a client
+            // could read a journal but never build the URL to update it.
+            'public_id' => $this->public_id,
             'jadwal_id' => $this->jadwal_id,
             'tanggal' => $this->tanggal?->toDateString(),
             'materi' => $this->materi,

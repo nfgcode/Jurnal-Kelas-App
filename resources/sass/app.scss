@@ -1418,6 +1418,7 @@ textarea.input-hifi {
    ladder below steps the column count down as the viewport narrows.
    ========================================================================= */
 .grid-row--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.grid-row--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .grid-row--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-row--2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -1439,12 +1440,14 @@ textarea.input-hifi {
 /* Breakpoint ladder — widest first, so a narrower rule wins on source order. */
 @media (max-width: 1399.98px) {
     .grid-row--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-row--5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid-row--analitik { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid-row--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 
 @media (max-width: 1199.98px) {
     .grid-row--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-row--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid-row--analitik,
     .grid-row--split,
     .grid-row--editor { grid-template-columns: minmax(0, 1fr); }

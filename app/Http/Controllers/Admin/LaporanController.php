@@ -60,7 +60,10 @@ class LaporanController extends Controller
         $rataKelengkapan = $kelengkapan ? round(array_sum($kelengkapan) / count($kelengkapan)) : 0;
         $terjadwal = Ringkasan::terjadwal($periode);
         // Distinct meetings: a lesson may carry a guru and a ketua journal.
-        $terisi = Jurnal::hitungPertemuan(Jurnal::whereBetween('tanggal', $rentang));
+        // Auto-filled placeholders are counted on their own, so the three
+        // buckets (terisi + otomatis + belum) add up to what was scheduled.
+        $terisi = Jurnal::hitungPertemuan(Jurnal::manusia()->whereBetween('tanggal', $rentang));
+        $otomatis = Ringkasan::otomatis($periode);
 
         $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
 
@@ -73,9 +76,13 @@ class LaporanController extends Controller
             'filters' => $filters,
             'statistik' => [
                 'terisi' => $terisi,
-                'belum' => max(0, $terjadwal - $terisi),
+                'otomatis' => $otomatis,
+                'belum' => max(0, $terjadwal - $terisi - $otomatis),
+                // "Late" describes a person filing behind schedule. Every backfill
+                // row is late by construction, so counting them would drown the
+                // real signal in noise.
                 'telat' => Jurnal::hitungPertemuan(
-                    Jurnal::whereBetween('tanggal', $rentang)->whereRaw($this->ekspresiTerlambat())
+                    Jurnal::manusia()->whereBetween('tanggal', $rentang)->whereRaw($this->ekspresiTerlambat())
                 ),
                 // Distinct from "Telat" (filled late): journals changed on a day
                 // after the lesson — where an after-the-fact correction shows up.

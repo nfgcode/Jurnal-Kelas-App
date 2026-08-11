@@ -182,7 +182,10 @@ class Ringkasan
      */
     public static function kehadiranGuru(?Builder $query = null, ?Periode $periode = null): array
     {
-        $query ??= Jurnal::query();
+        // Teacher attendance is what a person reported. A nightly backfill row
+        // reads "tidak hadir · tanpa tugas" as a placeholder, not as an observed
+        // fact, so letting it through would invent absences no one witnessed.
+        $query = ($query ?? Jurnal::query())->manusia();
 
         if ($periode) {
             $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
@@ -241,8 +244,10 @@ class Ringkasan
             ->groupBy('kelas_id')
             ->map(fn ($rows) => $rows->pluck('total', 'hari'));
 
-        // Journals actually written per class per date.
+        // Journals actually written per class per date — auto-filled placeholders
+        // are not "written", so they never colour a cell in.
         $terisi = Jurnal::query()
+            ->manusia()
             ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
             ->selectRaw('jadwal.kelas_id, jurnal.tanggal, COUNT(*) as total')
             ->whereIn('jadwal.kelas_id', $kelasIds)
@@ -331,10 +336,12 @@ class Ringkasan
 
         // Count distinct meetings, not journal rows: one lesson may carry both a
         // guru and a ketua journal, which would otherwise double the numerator
-        // and push completeness past 100%.
+        // and push completeness past 100%. Auto-filled placeholders are excluded
+        // — completeness measures what people wrote, not what the nightly job did.
         $aktual = DB::query()
             ->fromSub(
                 Jurnal::query()
+                    ->manusia()
                     ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
                     ->selectRaw("jadwal.{$kolom} as kunci, jurnal.jadwal_id, jurnal.tanggal")
                     ->whereBetween('jurnal.tanggal', [
@@ -384,9 +391,10 @@ class Ringkasan
             $target += (int) $total * ($bobot[$hari] ?? 0);
         }
 
-        // Distinct meetings — see the note in kelengkapan().
+        // Distinct meetings, people-written only — see the note in kelengkapan().
         $aktual = Jurnal::hitungPertemuan(
             Jurnal::query()
+                ->manusia()
                 ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
                 ->where('jadwal.kelas_id', $kelasId)
                 ->whereBetween('jurnal.tanggal', [
@@ -425,6 +433,22 @@ class Ringkasan
         }
 
         return $total;
+    }
+
+    /**
+     * Meetings whose journal was written by the nightly backfill rather than by
+     * a person — the figure that keeps "terisi" honest. Reported separately so a
+     * school can see how much of the record is automatic, and chase the rest.
+     */
+    public static function otomatis(?Periode $periode = null): int
+    {
+        $query = Jurnal::where('diisi_oleh_peran', Jurnal::PERAN_SISTEM);
+
+        if ($periode) {
+            $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
+        }
+
+        return Jurnal::hitungPertemuan($query);
     }
 
     /**
