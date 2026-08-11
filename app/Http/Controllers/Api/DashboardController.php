@@ -47,7 +47,10 @@ class DashboardController extends Controller
             'select (select count(*) from kelas) as kelas,'
             .' (select count(*) from mata_pelajaran) as mata_pelajaran,'
             .' (select count(*) from jadwal) as jadwal,'
-            .' (select count(*) from jurnal) as jurnal'
+            // People-written journals only, matching the web dashboard's KPI —
+            // otherwise the same named figure differs between web and API. The
+            // NULL arm keeps rows whose peran predates the column.
+            ." (select count(*) from jurnal where diisi_oleh_peran is null or diisi_oleh_peran <> 'sistem') as jurnal"
         );
 
         return [
@@ -80,7 +83,9 @@ class DashboardController extends Controller
 
         $jadwalHariIni = Jadwal::where('guru_id', $user->id)
             ->where('hari', Ringkasan::hariIni())->count();
-        $jurnalHariIni = Jurnal::where('guru_id', $user->id)
+        // What this teacher filled in themselves — a backfill placeholder means
+        // the opposite, so counting it would shrink "belum_diisi" wrongly.
+        $jurnalHariIni = Jurnal::manusia()->where('guru_id', $user->id)
             ->whereDate('tanggal', today())->count();
 
         return [
@@ -89,7 +94,7 @@ class DashboardController extends Controller
                 'jadwal_hari_ini' => $jadwalHariIni,
                 'jurnal_terisi' => $jurnalHariIni,
                 'belum_diisi' => max(0, $jadwalHariIni - $jurnalHariIni),
-                'total_jurnal' => Jurnal::where('guru_id', $user->id)->count(),
+                'total_jurnal' => Jurnal::manusia()->where('guru_id', $user->id)->count(),
                 'rata_kehadiran' => round($presensiSaya['hadir'] / $total * 100),
             ],
             'presensi' => $presensiSaya,

@@ -79,9 +79,11 @@ class Jurnal extends Model
     }
 
     /**
-     * Web routes address a journal by its opaque id, not its primary key. The
-     * API keeps using the numeric id: that contract is documented and already
-     * guarded by token auth plus the same policies.
+     * A journal is addressed by its opaque id, not its primary key — on the web
+     * and on the API alike, since route-model binding reads this for both. The
+     * numeric id still travels in payloads (`jurnal_id` when saving attendance),
+     * so responses expose `public_id` too; without it a client could read a
+     * journal and never build the URL that updates it. See ApiJurnalKontrakTest.
      */
     public function getRouteKeyName(): string
     {

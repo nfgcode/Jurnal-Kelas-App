@@ -222,8 +222,13 @@ class JurnalController extends Controller
         // beside it — send the writer to correct that one instead, exactly as
         // create() does when the form is opened on the slot.
         if ($sistem = Jurnal::sudahAda($jadwal->id, $validated['tanggal'], Jurnal::PERAN_SISTEM)) {
+            // withInput(): the backfill can land on this slot while the form is
+            // open (it runs at 00:30), and the writer must not lose what they
+            // typed. The edit form reads old() first, so their materi/tugas
+            // carry straight over into the journal they are redirected to.
             return redirect()->route('jurnal.edit', $sistem)
-                ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Silakan periksa dan perbaiki di sini.');
+                ->withInput()
+                ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Isian Anda dibawa ke sini — periksa, centang pernyataan, lalu simpan.');
         }
 
         $data = $this->normalize($validated, $user);

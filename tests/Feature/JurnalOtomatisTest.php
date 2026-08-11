@@ -444,6 +444,29 @@ class JurnalOtomatisTest extends TestCase
         $this->assertTrue($segar->dieditSetelahHari());
     }
 
+    public function test_api_update_cannot_move_a_journal_onto_another_gurus_slot(): void
+    {
+        $guruA = $this->guru();
+        $guruB = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+
+        $jadwalA = $this->jadwal($kelas, $this->mapel('Matematika'), $guruA, $tanggal, 1);
+        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guruB, $tanggal, 3);
+        $jurnal = $this->jurnal($jadwalA, $tanggal);
+
+        // jadwal_id is editable, so the destination slot must be re-authorized —
+        // otherwise A's journal lands on B's meeting while still crediting A.
+        $this->actingAs($guruA)->putJson("/api/jurnal/{$jurnal->public_id}", [
+            'jadwal_id' => $jadwalB->id,
+            'tanggal' => $tanggal,
+            'materi' => 'Dipindah diam-diam',
+            'kehadiran_guru_status' => 'hadir',
+        ])->assertForbidden();
+
+        $this->assertSame($jadwalA->id, $jurnal->fresh()->jadwal_id);
+    }
+
     public function test_api_editing_an_ordinary_journal_needs_no_attestation(): void
     {
         $guru = $this->guru();

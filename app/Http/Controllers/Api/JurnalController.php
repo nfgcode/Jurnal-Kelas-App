@@ -138,6 +138,15 @@ class JurnalController extends Controller
         // The attestation is a gate, not a stored column (see JurnalRequest).
         unset($data['pernyataan']);
 
+        // jadwal_id is editable, so the *destination* slot must be re-checked:
+        // the policy only vetted the journal as it stands. Without this a guru
+        // could move their entry onto another teacher's meeting (it would land
+        // in that class's history and completeness while still crediting the
+        // mover). Mirrors pastikanJadwalMilik() on the web path.
+        $jadwalBaru = Jadwal::findOrFail($data['jadwal_id']);
+        abort_if($user->isGuru() && $jadwalBaru->guru_id !== $user->id, 403);
+        abort_if($user->isSiswa() && $jadwalBaru->kelas_id !== $user->kelas_id, 403);
+
         // Correcting a system placeholder "adopts" it as the caller's own entry,
         // so both the collision check and the saved row take the editor's side —
         // the same handover the web form performs.

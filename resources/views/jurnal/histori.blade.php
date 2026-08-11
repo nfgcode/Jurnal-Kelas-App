@@ -13,10 +13,13 @@
     </x-page-head>
 
     <div class="grid-row grid-row--4">
+        {{-- These count what the teacher wrote; the table below also lists any
+             journal the nightly job filled in (chip "Otomatis"), so the captions
+             say whose entries the numbers describe. --}}
         <x-stat label="Jurnal Periode Ini" :value="number_format($statistik['periode'], 0, ',', '.')"
-                :caption="$periode->label()" />
+                :caption="'tulisan sendiri · ' . $periode->label()" />
         <x-stat label="Total Keseluruhan" :value="number_format($statistik['total'], 0, ',', '.')"
-                caption="seluruh jurnal saya" />
+                caption="jurnal yang saya tulis sendiri" />
         <x-stat label="Hadir Mengajar" :value="number_format($kehadiran['hadir'], 0, ',', '.')"
                 :caption="'dari ' . number_format($kehadiran['total'], 0, ',', '.') . ' pertemuan'" />
         <x-stat label="Tanpa Tugas" :value="$kehadiran['tanpa_tugas']" caption="perlu ditindaklanjuti" />

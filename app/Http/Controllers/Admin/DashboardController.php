@@ -152,16 +152,19 @@ class DashboardController extends Controller
         $meta = $periode->label();
 
         switch ($data['tipe']) {
+            // Both of these open from a figure that counts people-written
+            // journals only (the fill chart and "Guru Teraktif"), so they list
+            // the same rows — otherwise a bar reading 4 opens a list of 11.
             case 'jurnal':
                 $tanggal = Carbon::parse($data['tanggal'] ?? $periode->selesaiString());
-                $query->whereDate('tanggal', $tanggal->toDateString());
+                $query->manusia()->whereDate('tanggal', $tanggal->toDateString());
                 $judul = 'Jurnal '.$tanggal->translatedFormat('l, j F Y');
                 $meta = null;
                 break;
 
             case 'guru':
                 $guru = User::findOrFail($data['guru_id']);
-                $query->where('guru_id', $guru->id)->whereBetween('tanggal', $rentang);
+                $query->manusia()->where('guru_id', $guru->id)->whereBetween('tanggal', $rentang);
                 $judul = 'Jurnal '.$guru->name;
                 break;
 
@@ -204,8 +207,12 @@ class DashboardController extends Controller
             case 'guru_perhatian':
                 // The meetings behind the "perlu perhatian" callout: teachers
                 // absent this period without leaving an assignment. Same
-                // predicate the dashboard counts, listed meeting-by-meeting.
-                $query->where('kehadiran_guru_status', 'tidak_hadir')
+                // predicate — and the same manusia() guard — as the count it
+                // opens from: a backfill row matches this predicate verbatim, so
+                // without it the modal would name teachers absent on the strength
+                // of rows nobody verified.
+                $query->manusia()
+                    ->where('kehadiran_guru_status', 'tidak_hadir')
                     ->where(fn ($q) => $q->whereNull('kehadiran_guru_ada_tugas')->orWhere('kehadiran_guru_ada_tugas', false))
                     ->whereBetween('tanggal', $rentang);
                 $judul = 'Guru Perlu Perhatian';

@@ -77,7 +77,10 @@ class DashboardController extends Controller
             'jurnalHariIni' => $jurnalHariIni,
             'kelasDiampu' => $kelasDiampu,
             'kehadiranPerKelas' => $kehadiranPerKelas,
-            'aktivitas' => Ringkasan::harian(Jurnal::where('guru_id', $user->id)),
+            // Journals this teacher wrote — not the ones the nightly backfill
+            // filed under their name, which would draw a full activity chart for
+            // a fortnight they actually skipped.
+            'aktivitas' => Ringkasan::harian(Jurnal::manusia()->where('guru_id', $user->id)),
             'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_id', $user->id)),
             'presensiSaya' => $presensiSaya,
             'kpi' => [
