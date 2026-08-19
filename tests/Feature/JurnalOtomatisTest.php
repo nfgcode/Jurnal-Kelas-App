@@ -6,7 +6,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Periode;
 use App\Support\Ringkasan;
@@ -104,51 +104,16 @@ class JurnalOtomatisTest extends TestCase
         ], $ganti));
     }
 
-    // ---- A. Prefill -------------------------------------------------------
-
-    public function test_presensi_form_prefills_from_an_earlier_meeting_the_same_day(): void
-    {
-        $guru = $this->guru();
-        $kelas = $this->kelas();
-        $tanggal = $this->tanggalLampau();
-
-        $jadwalA = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1); // earlier
-        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guru, $tanggal, 3);      // later, empty roster
-
-        [$s1, $s2] = [$this->siswa($kelas), $this->siswa($kelas)];
-
-        // The earlier lesson recorded s1 present, s2 sick.
-        $jurnalA = $this->jurnal($jadwalA, $tanggal);
-        Presensi::create(['jurnal_id' => $jurnalA->id, 'siswa_id' => $s1->id, 'status' => 'hadir']);
-        Presensi::create(['jurnal_id' => $jurnalA->id, 'siswa_id' => $s2->id, 'status' => 'sakit']);
-
-        // The later lesson has a journal but no roster yet.
-        $jurnalB = $this->jurnal($jadwalB, $tanggal);
-
-        $prefill = $this->actingAs($guru)->get(route('presensi.create', $jurnalB))
-            ->assertOk()
-            ->viewData('prefill');
-
-        $this->assertNotNull($prefill, 'Form seharusnya menawarkan prefill.');
-        $this->assertSame('hadir', $prefill['map'][$s1->id]);
-        $this->assertSame('sakit', $prefill['map'][$s2->id]);
-    }
-
     // ---- B. Nightly backfill ---------------------------------------------
 
-    public function test_backfill_creates_a_system_journal_and_copies_the_roster(): void
+    public function test_backfill_creates_a_system_journal(): void
     {
         $guru = $this->guru();
         $kelas = $this->kelas();
         $tanggal = $this->tanggalLampau();
 
-        $jadwalA = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1); // filled sibling
-        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guru, $tanggal, 3);      // the gap
-
-        [$s1, $s2] = [$this->siswa($kelas), $this->siswa($kelas)];
-        $jurnalA = $this->jurnal($jadwalA, $tanggal);
-        Presensi::create(['jurnal_id' => $jurnalA->id, 'siswa_id' => $s1->id, 'status' => 'hadir']);
-        Presensi::create(['jurnal_id' => $jurnalA->id, 'siswa_id' => $s2->id, 'status' => 'alpa']);
+        $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guru, $tanggal, 3); // the gap
 
         $this->artisan('jurnal:isi-otomatis', ['--sekarang' => true, '--lookback' => 7])->assertSuccessful();
 
@@ -159,11 +124,27 @@ class JurnalOtomatisTest extends TestCase
         $this->assertSame('tidak_hadir', $sistem->kehadiran_guru_status);
         $this->assertFalse((bool) $sistem->kehadiran_guru_ada_tugas);
         $this->assertSame('Otomatis', $sistem->statusPengisian()['label']);
+    }
 
-        // Roster copied from the sibling meeting.
-        $roster = $sistem->presensis()->pluck('status', 'siswa_id');
-        $this->assertSame('hadir', $roster[$s1->id]);
-        $this->assertSame('alpa', $roster[$s2->id]);
+    /**
+     * The backfill fills journals, never attendance. A day either had a roll
+     * call or it did not — estimating one from a neighbouring lesson would
+     * fabricate exactly the record the daily rule exists to make trustworthy.
+     */
+    public function test_backfill_never_invents_student_attendance(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+
+        $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+        $this->jadwal($kelas, $this->mapel('Fisika'), $guru, $tanggal, 3);
+        $this->siswa($kelas);
+
+        $this->artisan('jurnal:isi-otomatis', ['--sekarang' => true, '--lookback' => 7])->assertSuccessful();
+
+        $this->assertSame(0, PresensiHarian::where('kelas_id', $kelas->id)
+            ->whereDate('tanggal', $tanggal)->count());
     }
 
     public function test_backfill_is_idempotent(): void

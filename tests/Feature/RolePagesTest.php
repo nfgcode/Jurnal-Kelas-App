@@ -11,11 +11,11 @@ use Tests\TestCase;
 
 /**
  * Half the screens are chosen by role inside the controller: /jurnal renders
- * histori for a guru and riwayat for a siswa, /presensi renders the meeting
- * list or the student's own recap, and /dashboard forks three ways. The rest
- * of the suite only ever acts as an admin, so none of those branches were
- * being rendered. This covers them, plus the shared journal vocabulary that
- * folds onto the kehadiran_guru columns.
+ * histori for a guru and riwayat for a siswa, /presensi renders the class recap
+ * or the student's own record, and /dashboard forks three ways. The rest of the
+ * suite only ever acts as an admin, so none of those branches were being
+ * rendered. This covers them, plus the shared journal vocabulary that folds onto
+ * the kehadiran_guru columns.
  */
 class RolePagesTest extends TestCase
 {
@@ -58,10 +58,9 @@ class RolePagesTest extends TestCase
             '/jurnal' => 'Histori Jurnal',
             '/jurnal/create' => 'Isi Jurnal Mengajar',
             "/jurnal/{$jurnal->public_id}/edit" => 'Ubah Jurnal Mengajar',
-            '/presensi' => 'Presensi Kelas',
-            "/presensi/create/{$jurnal->public_id}" => 'Presensi Siswa',
-            "/presensi/{$jurnal->public_id}" => 'Presensi Pertemuan',
-            "/jurnal/{$jurnal->public_id}" => 'Daftar Kehadiran Siswa',
+            '/presensi' => 'Rekap Presensi Siswa',
+            route('presensi-harian.show', [$this->jadwal->kelas_id, 'tanggal' => $jurnal->tanggal->toDateString()]) => 'Presensi Harian',
+            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa Hari Itu',
         ];
 
         foreach ($expectations as $url => $penanda) {
@@ -80,10 +79,11 @@ class RolePagesTest extends TestCase
             '/dashboard' => 'Dashboard Siswa',
             '/jurnal' => 'Riwayat Jurnal Kelas',
             '/jurnal/create' => 'Mengisi Jurnal Kelas',
-            // A ketua kelas fills the class roster, so /presensi is the markable
-            // meeting list rather than the personal recap a regular siswa sees.
-            '/presensi' => 'Presensi per Pertemuan',
-            "/jurnal/{$jurnal->public_id}" => 'Daftar Kehadiran Siswa',
+            // A ketua kelas files the class roll call, so /presensi is the class
+            // recap rather than the personal record a regular siswa sees.
+            '/presensi' => 'Rekap Presensi Siswa',
+            route('presensi-harian.edit', $this->jadwal->kelas_id) => 'Presensi Hari Ini',
+            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa Hari Itu',
         ];
 
         foreach ($expectations as $url => $penanda) {
@@ -92,6 +92,60 @@ class RolePagesTest extends TestCase
                 ->assertOk("GET {$url} did not render for a siswa")
                 ->assertSee($penanda);
         }
+    }
+
+    /**
+     * "Mode Wali Kelas" is a whole second set of screens no other test renders,
+     * and its attendance page reads the daily roster rather than the journals.
+     */
+    public function test_wali_kelas_screens_render(): void
+    {
+        $kelas = $this->jadwal->kelas;
+        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $kelas->update(['wali_kelas_id' => $wali->id]);
+
+        $expectations = [
+            '/wali-kelas' => $kelas->nama_kelas,
+            '/wali-kelas/siswa' => $kelas->nama_kelas,
+            '/wali-kelas/jadwal' => $kelas->nama_kelas,
+            '/wali-kelas/jurnal' => $kelas->nama_kelas,
+            '/wali-kelas/presensi' => 'Histori Presensi Harian',
+        ];
+
+        foreach ($expectations as $url => $penanda) {
+            $this->actingAs($wali)
+                ->get($url)
+                ->assertOk("GET {$url} did not render for a wali kelas")
+                ->assertSee($penanda);
+        }
+    }
+
+    /**
+     * A wali kelas oversees attendance but does not file it, so their screen
+     * must not offer a way in.
+     */
+    public function test_the_wali_kelas_attendance_screen_offers_no_way_to_fill_it(): void
+    {
+        $kelas = $this->jadwal->kelas;
+        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $kelas->update(['wali_kelas_id' => $wali->id]);
+
+        $this->actingAs($wali)
+            ->get('/wali-kelas/presensi')
+            ->assertOk()
+            ->assertDontSee(route('presensi-harian.edit', $kelas), false);
+    }
+
+    public function test_the_admin_import_screen_renders(): void
+    {
+        $admin = User::where('role', 'admin')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('admin.impor.index'))
+            ->assertOk()
+            ->assertSee('Impor Data Siswa')
+            ->assertSee('Unduh Template Siswa')
+            ->assertSee('Unduh Template Guru');
     }
 
     public function test_siswa_cannot_access_admin_section(): void

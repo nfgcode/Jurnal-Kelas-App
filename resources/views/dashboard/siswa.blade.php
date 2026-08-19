@@ -17,18 +17,30 @@
         :sub="'Ringkasan kelas dan kehadiran Anda · Semester Gasal ' . now()->year . '/' . (now()->year + 1) . ' · ' . now()->translatedFormat('j F Y')">
         {{-- A label, not a control — see dashboard/guru.blade.php. --}}
         <x-chip tone="neutral" :label="now()->translatedFormat('F Y')" />
-        @if (Auth::user()->isKetuaKelas())
-            <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">Isi Presensi Kelas</a>
-            <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>
+        @if ($isKetua && $kelas)
+            <a class="btn-hifi {{ $sudahIsiHariIni ? 'btn-hifi--ghost' : '' }}"
+               href="{{ route('presensi-harian.edit', $kelas) }}">
+                {{ $sudahIsiHariIni ? 'Perbarui Presensi Hari Ini' : 'Isi Presensi Hari Ini' }}
+            </a>
+            <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>
         @endif
     </x-page-head>
+
+    @if ($isKetua && $kelas && ! $sudahIsiHariIni)
+        {{-- One duty a day, and it is this one. Said plainly at the top rather
+             than left for the ketua to remember. --}}
+        <p class="banner banner--bahaya mb-2">
+            Presensi {{ $kelas->nama_kelas }} untuk {{ now()->translatedFormat('l, j F Y') }} belum diisi.
+            <a class="auth__link" href="{{ route('presensi-harian.edit', $kelas) }}">Isi sekarang →</a>
+        </p>
+    @endif
 
     <div class="grid-row grid-row--6">
         <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar" :caption="now()->translatedFormat('l')" />
         <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$datar" caption="hari ini" />
         <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar" caption="menunggu guru" />
         <x-kpi :label="$kehadiranLabel" :value="$kpi['kehadiran'] . '%'" :spark="$datar" caption="semester berjalan" />
-        <x-kpi label="Hadir" :value="number_format($kpi['hadir'], 0, ',', '.')" :spark="$datar" caption="pertemuan" />
+        <x-kpi label="Hadir" :value="number_format($kpi['hadir'], 0, ',', '.')" :spark="$datar" caption="hari sekolah" />
         <x-kpi label="Alpa" :value="$kpi['alpa']" :spark="$datar" caption="tanpa keterangan" />
     </div>
 
@@ -118,7 +130,7 @@
     </div>
 
     <div class="grid-row grid-row--2">
-        <x-card title="Kehadiran per Mata Pelajaran" :meta="now()->translatedFormat('F Y')">
+        <x-card title="Kehadiran per Bulan" meta="6 bulan terakhir">
             <x-legend class="mb-2" :items="[
                 'Hadir' => 'var(--green-200)',
                 'Sakit' => 'var(--s-300)',
@@ -126,13 +138,13 @@
                 'Alpa' => 'var(--red-100)',
             ]" />
 
-            @forelse ($kehadiranPerMapel as $mapel => $rekap)
+            @forelse ($kehadiranPerBulan as $bulan => $rekap)
                 @php
                     $hadir = (int) ($rekap['hadir'] ?? 0);
                     $total = $rekap->sum() ?: 1;
                 @endphp
                 <div class="breakdown breakdown--wide mb-2">
-                    <span class="breakdown__label">{{ $mapel }}</span>
+                    <span class="breakdown__label">{{ $bulan }}</span>
                     <x-stack-bar :hadir="$hadir" :sakit="$rekap['sakit'] ?? 0"
                                  :izin="$rekap['izin'] ?? 0" :alpa="$rekap['alpa'] ?? 0" />
                     <span class="breakdown__value">{{ round($hadir / $total * 100) }}%</span>

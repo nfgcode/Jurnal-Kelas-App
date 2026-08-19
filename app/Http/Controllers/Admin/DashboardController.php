@@ -7,7 +7,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Periode;
 use App\Support\Ringkasan;
@@ -65,10 +65,7 @@ class DashboardController extends Controller
         // "Latest journals" stays a recency feed, not a period slice — it is the
         // newest activity whatever the filter says.
         $jurnalTerbaru = Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            ->withCount([
-                'presensis as total_presensi',
-                'presensis as hadir_count' => fn ($query) => $query->where('status', 'hadir'),
-            ])
+            ->denganPresensiHarian()
             ->latest('tanggal')
             ->latest('id')
             ->take(7)
@@ -141,10 +138,7 @@ class DashboardController extends Controller
 
         $query = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            ->withCount([
-                'presensis as total_siswa',
-                'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
-            ])
+            ->denganPresensiHarian()
             ->latest('tanggal')
             ->latest('id');
 
@@ -251,28 +245,26 @@ class DashboardController extends Controller
     {
         $status = $data['status'] ?? null;
 
-        $baris = Presensi::query()
-            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->whereBetween('jurnal.tanggal', $rentang)
-            ->when($status, fn ($query) => $query->where('presensi.status', $status))
-            ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('jadwal.kelas_id', $id))
-            // tingkat/jurusan live on kelas, which this builder query doesn't join —
-            // narrow by the matching class ids instead.
-            ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereIn('jadwal.kelas_id', Kelas::where('tingkat', $t)->select('id')))
-            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereIn('jadwal.kelas_id', Kelas::where('jurusan', $j)->select('id')))
-            ->when($data['guru_id'] ?? null, fn ($query, $id) => $query->where('jurnal.guru_id', $id))
-            ->with(['siswa', 'jurnal.jadwal.kelas', 'jurnal.jadwal.mataPelajaran'])
-            ->orderByDesc('jurnal.tanggal')
-            ->orderByDesc('presensi.id')
-            ->select('presensi.*')
+        // One row per student-day. There is no subject column any more: a roll
+        // call belongs to the day, so attributing it to a lesson would be an
+        // invention. The guru filter drops away for the same reason — no teacher
+        // owns the day's attendance.
+        $baris = PresensiHarian::query()
+            ->whereBetween('presensi_harian.tanggal', $rentang)
+            ->when($status, fn ($query) => $query->where('presensi_harian.status', $status))
+            ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('presensi_harian.kelas_id', $id))
+            ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereIn('presensi_harian.kelas_id', Kelas::where('tingkat', $t)->select('id')))
+            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereIn('presensi_harian.kelas_id', Kelas::where('jurusan', $j)->select('id')))
+            ->with(['siswa', 'kelas'])
+            ->orderByDesc('presensi_harian.tanggal')
+            ->orderByDesc('presensi_harian.id')
             ->take(50)
             ->get()
             ->map(fn ($presensi) => [
-                'tanggal' => $presensi->jurnal?->tanggal?->format('d/m/Y'),
+                'tanggal' => $presensi->tanggal?->format('d/m/Y'),
                 'siswa' => $presensi->siswa?->name,
-                'kelas' => $presensi->jurnal?->jadwal?->kelas?->nama_kelas,
-                'mapel' => $presensi->jurnal?->jadwal?->mataPelajaran?->nama,
+                'kelas' => $presensi->kelas?->nama_kelas,
+                'mapel' => null,
                 'keterangan' => $presensi->keterangan,
                 'statusChip' => $this->presensiChip($presensi->status),
             ]);

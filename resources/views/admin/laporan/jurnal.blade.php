@@ -132,7 +132,10 @@
                             <td class="is-num tbl__aksi">
                                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Lihat</a>
                                 {{-- The attendance link the meter bar used to hide. --}}
-                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.show', $jurnal) }}">Presensi</a>
+                                @if ($jurnal->jadwal?->kelas_id)
+                                    <a class="btn-hifi btn-hifi--ghost btn-hifi--sm"
+                                       href="{{ route('presensi-harian.show', [$jurnal->jadwal->kelas_id, 'tanggal' => $jurnal->tanggal->toDateString()]) }}">Presensi</a>
+                                @endif
                             </td>
                         </tr>
                     @empty

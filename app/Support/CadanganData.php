@@ -43,20 +43,31 @@ class CadanganData
         'kelas',
         'jadwal',
         'jurnal',
+        // presensi / presensi_log are the archived per-meeting rosters. They are
+        // no longer written to, but a backup that dropped them would throw away
+        // the school's attendance history before the daily roll call existed.
         'presensi',
         'presensi_log',
+        'presensi_harian',
+        'presensi_harian_log',
         'pengumuman',
         'laporan_error',
         'personal_access_tokens',
     ];
 
-    /** Tables worth reading in a spreadsheet. presensi (100k+ rows) is JSON-only. */
+    /**
+     * Tables worth reading in a spreadsheet. The archived per-meeting presensi
+     * (100k+ rows) stays JSON-only; the daily roster is one row per student per
+     * school day, which is small enough and is what anyone opening the workbook
+     * is actually looking for.
+     */
     private const TABEL_XLSX = [
         'users',
         'kelas',
         'mata_pelajaran',
         'jadwal',
         'jurnal',
+        'presensi_harian',
         'pengumuman',
         'laporan_error',
     ];

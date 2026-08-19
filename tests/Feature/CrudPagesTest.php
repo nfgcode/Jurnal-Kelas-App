@@ -6,7 +6,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,9 +40,7 @@ class CrudPagesTest extends TestCase
 
         // DemoSeeder also journals *today*, so whenever the suite runs on the
         // weekday this slot is taught the seeded journal covers the very same
-        // meeting. Two journals for one meeting means the roster belongs to the
-        // other one, and every presensi screen redirects instead of rendering.
-        // Clear the meeting first so the pinned journal below is its only one.
+        // meeting. Clear it first so the pinned journal below is its only one.
         Jurnal::where('jadwal_id', $jadwal->id)
             ->whereDate('tanggal', now()->toDateString())
             ->delete();
@@ -56,10 +54,14 @@ class CrudPagesTest extends TestCase
             'guru_id' => $jadwal->guru_id,
         ]);
 
+        // The class's roll call for that day — one row per student, which is
+        // what attendance is now (see PresensiHarian).
         foreach ($jadwal->kelas->siswa as $i => $siswa) {
-            Presensi::create([
-                'jurnal_id' => $jurnal->id,
+            PresensiHarian::updateOrCreate([
+                'kelas_id' => $jadwal->kelas_id,
+                'tanggal' => $jurnal->tanggal->toDateString(),
                 'siswa_id' => $siswa->id,
+            ], [
                 'status' => ['hadir', 'sakit', 'izin', 'alpa'][$i % 4],
             ]);
         }
@@ -108,8 +110,8 @@ class CrudPagesTest extends TestCase
             "/jadwal/{$jadwal->id}/edit",
             "/jurnal/{$jurnal->public_id}",
             "/jurnal/{$jurnal->public_id}/edit",
-            "/presensi/{$jurnal->public_id}",
-            "/presensi/create/{$jurnal->public_id}",
+            route('presensi-harian.show', [$kelas, 'tanggal' => $jurnal->tanggal->toDateString()]),
+            route('presensi-harian.edit', [$kelas, 'tanggal' => $jurnal->tanggal->toDateString()]),
             "/admin/users/{$siswa->id}",
             "/admin/users/{$siswa->id}/edit",
         ];
@@ -186,10 +188,11 @@ class CrudPagesTest extends TestCase
 
     public function test_presensi_can_be_submitted_with_the_form_field_names(): void
     {
-        $jurnal = Jurnal::first();
-        $siswa = $jurnal->jadwal->kelas->siswa;
+        $kelas = Kelas::first();
+        $siswa = $kelas->siswa;
+        $tanggal = now()->toDateString();
 
-        $payload = ['jurnal_id' => $jurnal->public_id, 'presensi' => []];
+        $payload = ['tanggal' => $tanggal, 'presensi' => []];
 
         foreach ($siswa as $i => $s) {
             $payload['presensi'][$i] = [
@@ -200,27 +203,55 @@ class CrudPagesTest extends TestCase
         }
 
         $this->actingAs($this->admin)
-            ->post('/presensi', $payload)
-            ->assertRedirect(route('presensi.show', $jurnal))
+            ->post(route('presensi-harian.store', $kelas), $payload)
+            ->assertRedirect(route('presensi-harian.show', [$kelas, 'tanggal' => $tanggal]))
             ->assertSessionHasNoErrors();
 
         $this->assertSame(
             $siswa->count(),
-            Presensi::where('jurnal_id', $jurnal->id)->where('status', 'hadir')->count(),
+            PresensiHarian::where('kelas_id', $kelas->id)
+                ->whereDate('tanggal', $tanggal)
+                ->where('status', 'hadir')
+                ->count(),
         );
     }
 
     public function test_presensi_form_lists_the_students_and_a_submit_button(): void
     {
-        $jurnal = Jurnal::first();
-        $siswa = $jurnal->jadwal->kelas->siswa->first();
+        $kelas = Kelas::first();
+        $siswa = $kelas->siswa->first();
 
         $this->actingAs($this->admin)
-            ->get("/presensi/create/{$jurnal->public_id}")
+            ->get(route('presensi-harian.edit', $kelas))
             ->assertOk()
             ->assertSee($siswa->name)
             ->assertSee($siswa->nis)
             ->assertSee('Simpan Presensi')
             ->assertSee('presensi[0][siswa_id]', false);
+    }
+
+    /**
+     * The two exports a guru actually downloads. Both are real .xlsx, both are
+     * refused to a student.
+     */
+    public function test_the_guru_attendance_export_downloads_for_both_modes(): void
+    {
+        $guru = User::where('role', 'guru')->firstOrFail();
+        $xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+        $this->actingAs($guru)
+            ->get(route('presensi.ekspor', ['mode' => 'harian', 'tanggal' => now()->toDateString()]))
+            ->assertOk()
+            ->assertDownload()
+            ->assertHeader('content-type', $xlsx);
+
+        $this->actingAs($guru)
+            ->get(route('presensi.ekspor', ['mode' => 'bulanan', 'bulan' => now()->format('Y-m')]))
+            ->assertOk()
+            ->assertDownload()
+            ->assertHeader('content-type', $xlsx);
+
+        $siswa = User::where('role', 'siswa')->firstOrFail();
+        $this->actingAs($siswa)->get(route('presensi.ekspor'))->assertForbidden();
     }
 }

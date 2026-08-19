@@ -26,8 +26,8 @@ Aplikasi web untuk mencatat jurnal mengajar dan presensi siswa di sekolah meneng
 | Peran | Isi Dashboard |
 |------|----------------|
 | **Admin** | Statistik sekolah, tren pengisian jurnal, peringatan kehadiran guru, heatmap aktivitas, drill-down, halaman Sistem |
-| **Guru** | Jadwal mengajar hari ini, status pengisian jurnal, kehadiran tiap kelas, heatmap aktivitas |
-| **Siswa** | Jadwal hari ini, persentase kehadiran per mata pelajaran, heatmap kehadiran |
+| **Guru** | Jadwal mengajar hari ini, status pengisian jurnal, kehadiran tiap kelas yang diampu, heatmap aktivitas |
+| **Siswa** | Jadwal hari ini, kehadiran per bulan, kalender kehadiran. Ketua kelas juga dapat pengingat "presensi hari ini belum diisi" |
 
 ### Jurnal Kelas
 - Catat materi, tugas, kegiatan, dan catatan untuk tiap pertemuan
@@ -35,20 +35,48 @@ Aplikasi web untuk mencatat jurnal mengajar dan presensi siswa di sekolah meneng
 - Status kehadiran guru: **Hadir / Tidak Hadir – Ada Tugas / Tidak Hadir – Tanpa Tugas**. Istilahnya sama, mau diisi guru atau ketua kelas
 - Jurnal yang diisi lewat dari 24 jam setelah tanggal pelajaran ditandai terlambat
 - Pencarian teks di materi, tugas, catatan, dan kegiatan
-- **Hapus jurnal** cuma boleh oleh guru yang menulisnya atau admin. Wali kelas boleh *membaca* semua jurnal kelas asuhannya, tapi tidak boleh menghapus jurnal guru lain. Kotak konfirmasinya menyebut berapa siswa yang presensinya ikut kehapus, soalnya `presensi` dan `presensi_log` pakai `ON DELETE CASCADE` ke jurnal, jadi angka kehadiran kelas pasti berubah
+- **Hapus jurnal** cuma boleh oleh guru yang menulisnya atau admin. Wali kelas boleh *membaca* semua jurnal kelas asuhannya, tapi tidak boleh menghapus jurnal guru lain. Presensi harian kelas **tidak** ikut terhapus — presensi milik harinya, bukan milik pertemuan
 - Semua perubahan dan penghapusan tercatat otomatis lewat trigger database (`trg_jurnal_after_delete`)
 
-### Presensi Siswa
-- Isi presensi sekaligus satu kelas per jurnal (Hadir / Sakit / Izin / Alpa)
-- Penyimpanannya lewat stored procedure MySQL supaya sekali jalan, tidak setengah-setengah
-- Ada unique constraint biar presensi tidak dobel
+### Presensi Siswa — sekali sehari, oleh ketua kelas
+Presensi siswa dicatat **satu kali per kelas per hari**, bukan per pertemuan. Satu kelas dengan enam jam pelajaran dulu punya enam daftar hadir sehari — enam kesempatan untuk saling bertentangan soal siapa yang masuk. Sekarang cuma ada satu.
+
+- **Yang mengisi cuma ketua kelas** kelasnya sendiri, dan **cuma untuk hari itu**. Dia yang seharian ada di ruangan; menempelkan pengisian ke hari berjalan bikin catatannya jadi absensi beneran, bukan rekonstruksi
+- **Selama masih hari yang sama** ketua kelas boleh membetulkan isinya. Begitu ganti hari, koreksi cuma bisa lewat **admin**
+- **Guru tidak mengisi presensi sama sekali** — guru hanya mengisi jurnal per kelas, lalu **membaca dan mengekspor** rekapnya. Wali kelas pun begitu: memantau, bukan mengisi
+- Statusnya tetap **Hadir / Sakit / Izin / Alpa** plus keterangan opsional
+- Tabelnya `presensi_harian`, dengan unique index `(kelas_id, tanggal, siswa_id)` — aturan "sekali sehari" dijaga database, bukan cuma formulir
+- Penyimpanannya lewat stored procedure MySQL (`sp_simpan_presensi_harian`) supaya sekali jalan, tidak setengah-setengah. Menyimpan ulang **mengganti** catatan hari itu, bukan menambah
+- Tiap penyimpanan dicatat di `presensi_harian_log` (siapa, kapan, berapa siswa, dan apakah itu pengisian awal atau koreksi) — dibaca admin di **Log Presensi**
 - Statistik kehadiran dihitung lewat stored function
 
-### Jurnal Otomatis & Presensi Terisi Awal
+> Tabel lama `presensi` (per pertemuan) **tidak dihapus**: isinya riwayat sebelum aturan ini berlaku, dan tetap ikut dicadangkan. Migrasi `backfill_presensi_harian` menyalinnya ke tabel harian dengan aturan "pelajaran paling pagi menang", jadi grafik dan laporan tidak mulai dari nol.
+
+### Ekspor Excel Rekap Presensi (Guru)
+Guru punya tombol ekspor sendiri di halaman **Presensi**, dua mode karena keduanya menjawab pertanyaan yang berbeda:
+
+- **Per hari** — pilih tanggalnya, hasilnya satu baris per siswa: Tanggal, Kelas, NIS, Nama, Status, Keterangan. Ini daftar hadir hari itu
+- **Per bulan** — pilih bulannya, hasilnya dua lembar: **Rekap** (satu baris per siswa: H/S/I/A, total hari, persentase) dan **Detail Harian** (tabel siswa × tanggal berisi huruf H/S/I/A, seperti buku absensi)
+- Keduanya bisa dipersempit ke satu kelas, dan **cuma memuat kelas yang boleh dilihat guru itu** (yang dia ampu + kelas perwaliannya). Admin dapat semuanya
+- Filenya `.xlsx` asli (OOXML), ditulis sendiri pakai `ZipArchive` tanpa library tambahan
+
+### Impor Data Siswa & Guru (Admin)
+Buat pendaftaran awal atau siswa baru satu angkatan, admin tidak perlu mengetik satu per satu di formulir.
+
+- **Unduh template `.xlsx`** per jenis (siswa / guru): baris judul, dua baris contoh, dan lembar **Petunjuk** berisi penjelasan tiap kolom plus **daftar nama kelas yang benar-benar terdaftar** — sumber kesalahan nomor satu
+- Kolom siswa: Nama Lengkap, Email, NIS, Kelas, Ketua Kelas, Password, Status. Kolom guru: Nama Lengkap, Email, NIP, Wali Kelas, Password, Status
+- **Unggah lalu ditinjau dulu.** Layar pratinjau menampilkan verdict tiap baris (Baru / Perbarui / Gagal) beserta alasannya, dan **belum menulis apa pun**. Selembar isian seratus siswa itu justru jenis masukan yang percobaan pertamanya pasti ada tiga salah ketik — menemukannya setelah akunnya jadi jauh lebih repot
+- Yang diperiksa: kolom wajib, format email, Status yang sah, nama kelas yang ada (tidak peduli huruf besar-kecil), **email/NIS/NIP kembar di dalam berkasnya sendiri**, dan bentrok dengan akun yang sudah ada
+- **Password bawaan** di formulir dipakai untuk baris yang kolom Password-nya dikosongkan, jadi tidak perlu mengetik string yang sama seratus kali
+- **Menimpa akun lama harus disengaja**: tanpa mencentang "Perbarui data yang sudah ada", email yang sudah terdaftar dianggap salah, bukan diam-diam ditimpa
+- Berkas unggahan dihapus begitu impornya dikonfirmasi, dan pratinjau yang ditinggalkan disapu otomatis setelah 6 jam — biar spreadsheet berisi data pribadi tidak menumpuk di server
+- Menerima `.xlsx` maupun `.csv` (pemisah koma atau titik koma), dibaca sendiri lewat `ZipArchive` + `SimpleXML`, tanpa library tambahan
+
+### Jurnal Otomatis
 Tujuannya mengurangi kerjaan berulang guru, tapi tetap jelas mana yang diisi orang dan mana yang diisi sistem.
 
-- **Presensi terisi awal** — waktu guru membuka presensi pertemuan yang belum ditandai, daftar siswanya sudah diisi duluan berdasarkan pelajaran kelas itu sebelumnya di hari yang sama (jam ke- yang paling dekat). Guru tinggal cek lalu simpan. Tidak ada yang tersimpan sebelum tombol Simpan ditekan, dan sumber datanya ditulis di layar
-- **Pengisian jurnal kosong** — tiap ganti hari (jam **00:30**, lewat scheduler), perintah `jurnal:isi-otomatis` mencari pertemuan lampau yang belum punya jurnal sama sekali (default 14 hari ke belakang), lalu membuatkan jurnalnya: guru tercatat **tidak hadir · tanpa tugas**, presensinya disalin dari pertemuan lain kelas itu di hari yang sama. Kalau tidak ada yang bisa disalin, daftar presensinya dibiarkan kosong; sistem tidak asal menebak sekelas alpa
+- **Pengisian jurnal kosong** — tiap ganti hari (jam **00:30**, lewat scheduler), perintah `jurnal:isi-otomatis` mencari pertemuan lampau yang belum punya jurnal sama sekali (default 14 hari ke belakang), lalu membuatkan jurnalnya: guru tercatat **tidak hadir · tanpa tugas**
+- **Presensi siswa tidak ikut ditebak.** Sejak presensi jadi satu absensi harian yang diisi ketua kelas, satu hari itu entah punya absensi atau tidak. Mengarangnya dari pelajaran sebelah justru memalsukan catatan yang aturan harian ini bikin bisa dipercaya. Hari tanpa absensi terbaca "belum diisi", dan itu memang benar
 - **Diproses bertahap** biar server tidak berat: 200 pertemuan sekali gelombang, dijadwalkan tiap 2 menit lewat queue. Aman dijalankan berulang, pertemuan yang sudah punya jurnal tidak akan dobel
 - **Statusnya ditulis "Otomatis", bukan "Terisi"**, jadi di rekap tetap kelihatan mana yang belum diisi guru sendiri
 - **Angkanya juga tidak ikut digelembungkan.** Semua hitungan "jurnal terisi" cuma menghitung yang ditulis orang, dan Rekap Jurnal memecahnya jadi tiga yang totalnya selalu pas sama jumlah pertemuan terjadwal: **Diisi Guru + Diisi Otomatis + Belum Diisi**. Angka kelengkapan cuma menghitung tulisan guru, dan **"Terlambat Isi" tidak menghitung jurnal otomatis** (yang secara teknis memang selalu telat) supaya guru yang benar-benar telat tetap kelihatan
@@ -74,6 +102,7 @@ php artisan jurnal:isi-otomatis --sekarang --lookback=60  # langsung diproses, t
 ### Laporan Admin
 - Laporan jurnal dengan filter periode
 - Laporan presensi per kelas
+- **Impor data siswa/guru dari Excel** (lihat bagian di atas)
 - Rekap kelas (lewat API)
 - Drill-down dari kartu di dashboard
 - **Ekspor Excel (.xlsx)** — file spreadsheet asli (OOXML), ditulis sendiri pakai `ZipArchive` tanpa library tambahan. Khusus admin
@@ -82,10 +111,11 @@ php artisan jurnal:isi-otomatis --sekarang --lookback=60  # langsung diproses, t
 - Tombol "Mode Wali Kelas" di topbar buat guru yang jadi wali kelas (cara pakainya mirip tombol tema)
 - Isinya khusus kelas perwaliannya: **Data Kelas, Jadwal Kelas, Jurnal Kelas, Presensi Kelas**
 - Ada rekap kehadiran per siswa, siswa dengan kehadiran paling rendah disorot
+- Presensinya **baca saja** — wali kelas memantau dan mengekspor, yang mengisi tetap ketua kelas
 
-### Isi Jurnal & Presensi lewat QR Code
+### Isi Jurnal lewat QR Code
 - Tiap kelas punya **QR code sendiri** (isinya token acak, bukan id berurutan) buat ditempel di ruangannya
-- Alurnya: guru **scan QR pakai kamera HP** → diarahkan ke website (server lokal sekolah) → login → halaman konfirmasi kelas → langsung isi **jurnal + presensi** kelas itu
+- Alurnya: guru **scan QR pakai kamera HP** → diarahkan ke website (server lokal sekolah) → login → halaman konfirmasi kelas → langsung isi **jurnal** kelas itu (presensi siswa diisi terpisah oleh ketua kelas)
 - **Cuma buat guru.** Siswa atau admin yang membuka URL QR bakal ditolak (403). Kalau belum login, diarahkan ke halaman login dulu terus balik lagi (`redirect()->intended()`)
 - Ada halaman **cetak QR** buat admin (`/admin/kelas-qr`), tinggal potong dan tempel. QR-nya SVG (pakai `endroid/qr-code`, jalan offline)
 - **Bisa pilih kelas mana yang dicetak.** Defaultnya semua kelas, tapi bisa dipersempit lewat daftar centang. Berguna kalau cuma satu ruang yang pindah, satu QR sobek, atau ada rombel baru, jadi tidak perlu cetak ulang semuanya. Pilihannya ikut masuk URL, jadi bisa di-bookmark atau dikirim ke yang mau mencetak
@@ -96,11 +126,12 @@ php artisan jurnal:isi-otomatis --sekarang --lookback=60  # langsung diproses, t
 > **Buat deploy di sekolah:** supaya QR bisa dibuka dari HP, isi `APP_URL` dengan alamat LAN server (misal `http://192.168.1.10:8888`), **jangan** `localhost`.
 
 ### Keamanan & Hak Akses
-- Pengamanannya dua lapis: **middleware peran** (`CheckRole`) di route, plus **policy per data** (`KelasPolicy`, `MataPelajaranPolicy`, `JadwalPolicy`, `JurnalPolicy`). Presensi tidak punya policy sendiri, hak aksesnya nempel ke pertemuannya lewat `JurnalPolicy::markRoster()` / `viewRoster()`, jadi aturan "siapa boleh menandai kehadiran" cuma ditulis di satu tempat
+- Pengamanannya dua lapis: **middleware peran** (`CheckRole`) di route, plus **policy per data** (`KelasPolicy`, `MataPelajaranPolicy`, `JadwalPolicy`, `JurnalPolicy`). Hak akses presensi nempel ke **kelasnya**, bukan ke pertemuan: `KelasPolicy::isiPresensiHarian()` (ketua kelas + admin) dan `KelasPolicy::lihatPresensiHarian()` (admin, ketua, guru pengampu/wali, siswa kelas itu). Jadi aturan "siapa boleh mengisi kehadiran" cuma ditulis di satu tempat
 - **Data disaring per peran**: guru cuma lihat kelas/mapel yang dia ampu, siswa cuma kelasnya sendiri
 - Presensi dicek dulu ke daftar siswa rombelnya, biar `siswa_id` asing tidak bisa diselipkan
-- Aman dari tabrakan data: transaksi + `lockForUpdate` + unique constraint waktu menyimpan presensi
-- **ID jurnal/presensi disamarkan di URL.** Route key-nya **ULID** (`jurnal.public_id`, unik & `NOT NULL`), bukan id berurutan, jadi orang tidak bisa jalan-jalan ke data lain dengan ganti-ganti angka di alamat. Pengaman utamanya tetap otorisasi, ID ini cuma pelengkap. **Berlaku juga di REST API**: alamat seperti `/api/jurnal/{...}` dan `/api/presensi/{...}` di-resolve pakai `public_id`. Isi body dan responsnya tetap bawa `id` angka (misal `jurnal_id` waktu menyimpan presensi) supaya kontrak lama tidak berubah, dan respons jurnal ikut bawa `public_id` biar klien bisa menyusun alamatnya sendiri
+- Aman dari tabrakan data: transaksi + unique constraint `(kelas_id, tanggal, siswa_id)` waktu menyimpan presensi
+- **Berkas impor divalidasi ketat**: hanya `.xlsx`/`.csv` maksimal 10 MB, XML-nya dibaca tanpa entity eksternal (biar spreadsheet tidak bisa mengintip berkas server), dan nama berkas yang dipakai di langkah konfirmasi harus berpola ULID — bukan nama dari browser
+- **ID jurnal/presensi disamarkan di URL.** Route key-nya **ULID** (`jurnal.public_id`, unik & `NOT NULL`), bukan id berurutan, jadi orang tidak bisa jalan-jalan ke data lain dengan ganti-ganti angka di alamat. Pengaman utamanya tetap otorisasi, ID ini cuma pelengkap. **Berlaku juga di REST API**: alamat seperti `/api/jurnal/{...}` di-resolve pakai `public_id`. Isi body dan responsnya tetap bawa `id` angka supaya kontrak lama tidak berubah, dan respons jurnal ikut bawa `public_id` biar klien bisa menyusun alamatnya sendiri. Presensi dialamatkan lewat **kelas + tanggal**, bukan lewat jurnal
 - **Semua input dari URL pakai whitelist**: `?per=` (25/50/75/100), `?sort=`/`?dir=` (daftar kolom per halaman), dan `?preset=`/rentang periode. Nilai yang tidak dikenal jatuh ke default, bukan error, dan tidak ada nilai dari URL yang langsung masuk ke SQL
 
 ### Tampilan & Cara Pakai
@@ -165,8 +196,8 @@ Angka di atas diambil dari berkas asli di `public/build/assets/` setelah `bun ru
 ### Cadangan & Pemulihan Data (admin)
 Buat **pindah server** atau **memulihkan data** waktu server bermasalah, tanpa perlu akses shell ke database (`/admin/cadangan`, khusus admin).
 
-- **Ekspor JSON** (format buat restore) — semua tabel beserta id & relasinya, **ditulis tabel per tabel** lalu **di-gzip** (`.json.gz`, sekitar 20× lebih kecil), jadi tabel presensi yang ratusan ribu baris tidak pernah dimuat sekaligus ke memori
-- **Ekspor XLSX** yang bisa dibaca/diedit (satu sheet per tabel master; presensi dan kolom sensitif seperti password dibuang) buat sekadar melihat atau mengolah data di spreadsheet
+- **Ekspor JSON** (format buat restore) — semua tabel beserta id & relasinya, **ditulis tabel per tabel** lalu **di-gzip** (`.json.gz`, sekitar 20× lebih kecil), jadi arsip presensi yang ratusan ribu baris tidak pernah dimuat sekaligus ke memori
+- **Ekspor XLSX** yang bisa dibaca/diedit (satu sheet per tabel master, termasuk `presensi_harian`; arsip `presensi` per pertemuan dan kolom sensitif seperti password dibuang) buat sekadar melihat atau mengolah data di spreadsheet
 - **Pilih tabel** yang mau dicadangkan lewat centang, kalau cuma mau backup sebagian
 - **Restore** dari berkas JSON atau `.json.gz` (gzip dideteksi dari *magic byte*, bukan dari ekstensinya), ada dua mode: **Gabung** (upsert per id, tidak menghapus apa pun) atau **Ganti total** (dikosongkan dulu baru diisi persis isi backup). Mode ganti total wajib centang konfirmasi
 - Seluruh restore jalan **dalam satu transaksi dengan FK dimatikan sementara** (biar siklus FK `users` ↔ `kelas` bisa ditangani). Kalau gagal di tengah jalan, tidak ada perubahan yang tersimpan
@@ -251,10 +282,11 @@ Buat **pindah server** atau **memulihkan data** waktu server bermasalah, tanpa p
 | Tipe | Nama | Keterangan |
 |------|------|------------|
 | View | `v_jurnal_lengkap` | Gabungan jurnal + jadwal + kelas + mapel + guru |
-| View | `v_rekap_presensi_kelas` | Rekap kehadiran per kelas |
+| View | `v_rekap_presensi_kelas` | Rekap kehadiran per kelas (dari `presensi_harian`) |
 | Function | `fn_persentase_kehadiran_siswa` | Persentase kehadiran siswa |
 | Function | `fn_persentase_kehadiran_kelas` | Persentase kehadiran kelas |
-| Procedure | `sp_simpan_presensi` | Simpan presensi sekelas sekaligus lewat JSON |
+| Procedure | `sp_simpan_presensi_harian` | Simpan presensi sekelas untuk satu hari lewat JSON |
+| Procedure | `sp_simpan_presensi` | *(lama)* Simpan presensi per pertemuan — tidak dipakai lagi |
 | Trigger | `trg_jurnal_after_update` | Catat perubahan jurnal |
 | Trigger | `trg_jurnal_after_delete` | Catat penghapusan jurnal |
 
@@ -267,11 +299,13 @@ User (admin/guru/siswa)
  ├── belongsTo → Kelas (siswa saja, via kelas_id)
  ├── hasMany   → Jadwal (guru saja, via guru_id)
  ├── hasMany   → Jurnal (guru saja, via guru_id)
- └── hasMany   → Presensi (siswa saja, via siswa_id)
+ ├── hasMany   → PresensiHarian (siswa saja, via siswa_id)
+ └── hasMany   → Presensi (arsip per pertemuan, via siswa_id)
 
 Kelas
  ├── belongsTo → User (wali_kelas_id)
  ├── hasMany   → User (siswa)
+ ├── hasMany   → PresensiHarian
  └── hasMany   → Jadwal
 
 MataPelajaran
@@ -287,10 +321,15 @@ Jurnal
  ├── belongsTo → Jadwal
  ├── belongsTo → User (guru)
  ├── belongsTo → User (diisi_oleh / ketua kelas)
- ├── hasMany   → Presensi
+ ├── hasMany   → Presensi (arsip; presensi sekarang per hari, bukan per jurnal)
  └── hasMany   → JurnalAudit
 
-Presensi
+PresensiHarian                       ← satu baris per siswa per hari sekolah
+ ├── belongsTo → Kelas               unique (kelas_id, tanggal, siswa_id)
+ ├── belongsTo → User (siswa)
+ └── belongsTo → User (diisi_oleh / ketua kelas)
+
+Presensi (arsip, tidak ditulis lagi)
  ├── belongsTo → Jurnal
  └── belongsTo → User (siswa)
 ```
@@ -441,7 +480,9 @@ GET /api/me
 
 ### Endpoint
 
-> **Soal ID jurnal:** alamat jurnal/presensi pakai **`public_id`** (ULID), bukan id angka. Jadi `PUT /api/jurnal/123` bakal balas **404**. Nilainya ada di tiap respons jurnal (`data.public_id`), jadi klien tinggal pakai apa yang dikembalikan API. Isi *body*-nya tetap pakai id angka (misal `jurnal_id` waktu input presensi).
+> **Soal ID jurnal:** alamat jurnal pakai **`public_id`** (ULID), bukan id angka. Jadi `PUT /api/jurnal/123` bakal balas **404**. Nilainya ada di tiap respons jurnal (`data.public_id`), jadi klien tinggal pakai apa yang dikembalikan API.
+>
+> **Soal presensi:** presensi bukan milik jurnal lagi, jadi alamatnya pakai **id kelas + `?tanggal=`** (default hari ini). Yang boleh menulis cuma **ketua kelas** kelas itu (hari ini saja) dan **admin**.
 
 | Method | Endpoint | Akses | Keterangan |
 |--------|----------|-------|------------|
@@ -454,9 +495,9 @@ GET /api/me
 | `PUT` | `/api/jurnal/{public_id}` | Guru/Admin | Ubah jurnal |
 | `DELETE` | `/api/jurnal/{public_id}` | Guru/Admin | Hapus jurnal |
 | `GET` | `/api/jurnal/{public_id}/audit` | Semua | Riwayat perubahan jurnal |
-| `GET` | `/api/presensi` | Semua | Daftar presensi |
-| `POST` | `/api/presensi` | Guru | Input presensi sekelas (body pakai `jurnal_id` **angka**) |
-| `GET` | `/api/presensi/{public_id}` | Semua | Presensi per jurnal |
+| `GET` | `/api/presensi` | Semua | Daftar presensi harian (disaring per peran; filter `kelas_id`, `tanggal`, `mulai`, `selesai`) |
+| `GET` | `/api/presensi/{kelas}` | Semua | Presensi satu kelas pada satu hari (`?tanggal=`, default hari ini) |
+| `POST` | `/api/presensi/{kelas}` | Ketua kelas / Admin | Isi presensi sekelas untuk satu hari |
 | `GET` | `/api/statistik/kehadiran` | Semua | Statistik kehadiran |
 | `POST/PUT/DELETE` | `/api/kelas/*` | Admin | Kelola kelas |
 | `POST/PUT/DELETE` | `/api/mata-pelajaran/*` | Admin | Kelola mata pelajaran |
@@ -500,8 +541,8 @@ Jurnal-Kelas-App/
 │   │   └── IsiJurnalGelombang.php      # Satu gelombang pengisian otomatis (lewat antrean)
 │   ├── Http/
 │   │   ├── Controllers/
-│   │   │   ├── Admin/            # Dashboard, Laporan, User, Sistem, Cadangan (backup/restore),
-│   │   │   │                     #   KelasQr (cetak/PDF), PresensiLog
+│   │   │   ├── Admin/            # Dashboard, Laporan, User, Impor (siswa/guru dari Excel),
+│   │   │   │                     #   Sistem, Cadangan (backup/restore), KelasQr (cetak/PDF), PresensiLog
 │   │   │   ├── Api/              # Controller REST API (mirip controller web)
 │   │   │   ├── Auth/             # LoginController
 │   │   │   ├── DashboardController.php
@@ -511,7 +552,8 @@ Jurnal-Kelas-App/
 │   │   │   ├── LandingController.php
 │   │   │   ├── LaporanErrorController.php   # Laporan error dari guru/siswa
 │   │   │   ├── MataPelajaranController.php
-│   │   │   ├── PresensiController.php
+│   │   │   ├── PresensiController.php       # Baca rekap presensi + ekspor Excel harian/bulanan
+│   │   │   ├── PresensiHarianController.php # Isi presensi sekali sehari (ketua kelas / admin)
 │   │   │   ├── QrController.php             # Halaman tujuan setelah scan QR ruang kelas
 │   │   │   └── WaliKelasController.php      # Mode Wali Kelas
 │   │   ├── Middleware/
@@ -521,7 +563,7 @@ Jurnal-Kelas-App/
 │   │   └── Resources/            # Transformer respons API
 │   ├── Models/                   # 10 model Eloquent
 │   ├── Policies/                 # KelasPolicy, MataPelajaranPolicy, JadwalPolicy, JurnalPolicy
-│   │                             #   (presensi diatur lewat JurnalPolicy::markRoster)
+│   │                             #   (presensi harian diatur lewat KelasPolicy)
 │   └── Support/
 │       ├── CadanganData.php      # Ekspor/impor seluruh data (backup JSON gzip + restore, XLSX)
 │       ├── DbDriver.php          # Deteksi driver (MySQL vs SQLite)
@@ -531,13 +573,16 @@ Jurnal-Kelas-App/
 │       ├── PembacaLog.php        # Baca bagian akhir berkas log (aman buat log besar)
 │       ├── Periode.php           # Object rentang tanggal
 │       ├── PesanError.php        # Teks halaman error per peran
+│       ├── ImporPengguna.php     # Template impor + validasi & simpan siswa/guru dari spreadsheet
+│       ├── RekapPresensi.php     # Bentuk kueri rekap presensi harian (per kelas-hari / siswa / matriks)
 │       ├── Ringkasan.php         # Penghitung statistik
-│       ├── SimpanPresensi.php    # Satu jalur simpan presensi (procedure/transaksi)
+│       ├── SimpanPresensiHarian.php # Satu jalur simpan presensi harian (procedure/transaksi)
 │       ├── SistemStatus.php      # Healthcheck buat halaman Sistem & Log
 │       ├── Urutan.php            # Sortir kolom ber-whitelist (?sort=/?dir=)
-│       └── XlsxExport.php        # Penulis .xlsx (OOXML) lewat ZipArchive
+│       ├── XlsxExport.php        # Penulis .xlsx (OOXML) lewat ZipArchive
+│       └── XlsxReader.php        # Pembaca .xlsx/.csv buat impor (ZipArchive + SimpleXML)
 ├── database/
-│   ├── migrations/               # 32 migrasi (tabel, index, view, function, trigger)
+│   ├── migrations/               # 36 migrasi (tabel, index, view, function, trigger)
 │   └── seeders/
 │       ├── DemoSeeder.php        # Data demo default (dipakai make setup & test suite)
 │       └── SmkSeeder.php         # Simulasi SMK besar (10 jurusan, ~45 rombel), opsional, dev-only
@@ -548,11 +593,12 @@ Jurnal-Kelas-App/
 │   ├── sass/                     # SCSS (lapisan Bootstrap terpilih + custom + breakpoint mobile)
 │   ├── js/                       # JS (dropdown/modal Bootstrap, drill-down AJAX, searchable-select)
 │   └── views/                    # Template Blade
-│       ├── admin/                # Halaman admin (users, laporan, sistem, kelas-qr, presensi-log, cadangan)
+│       ├── admin/                # Halaman admin (users, impor, laporan, sistem, kelas-qr, presensi-log, cadangan)
 │       ├── dashboard/            # Dashboard per peran
 │       ├── wali-kelas/           # Mode Wali Kelas (dashboard, data, jadwal, jurnal, presensi)
 │       ├── jurnal/               # Halaman jurnal
-│       ├── presensi/             # Halaman presensi
+│       ├── presensi/             # Rekap presensi (guru/admin) & rekap pribadi siswa
+│       ├── presensi-harian/      # Isi & lihat presensi satu kelas satu hari
 │       ├── kelas/                # Halaman kelas
 │       ├── mata-pelajaran/       # Halaman mata pelajaran
 │       ├── jadwal/               # Halaman jadwal
@@ -598,12 +644,13 @@ Tiap berkas test menjaga satu jenis kesalahan yang pernah benar-benar kejadian:
 |--------|--------------|
 | `AuthorizationTest` | Batas peran: master data tertutup buat siswa, guru tidak bisa nyentuh kelas/jurnal orang lain, wali kelas boleh **baca** tapi tidak boleh **hapus**, ekspor khusus admin, id angka lama sudah tidak resolve |
 | `JurnalGandaTest` | Satu jurnal per sisi per pertemuan (guru + ketua), termasuk waktu unique index-nya menolak |
-| `PresensiRosterTest` | Satu daftar presensi per pertemuan biar kehadiran tidak kehitung dua kali, plus audit log |
+| `PresensiRosterTest` | Presensi sekali sehari per kelas: cuma ketua kelas yang mengisi (guru & wali cuma baca), cuma untuk hari ini, simpan ulang mengganti bukan menambah, siswa kelas lain ditolak, plus audit log |
+| `ImporPenggunaTest` | Impor siswa/guru dari spreadsheet: template yang diunduh bisa dibaca balik, pratinjau tidak menulis apa pun, baris bermasalah dilewati, menimpa akun harus disengaja, dan nama berkas hasil karangan ditolak |
 | `JadwalFormTest` | Dropdown jadwal ikut tanggal, slot terisi ditandai, hari kosong kasih penjelasan |
 | `PeriodeFilterTest` | Preset periode beneran menyaring, tidak melebarkan akses peran, dan filter form tidak membuang sortir/periode/ukuran halaman |
 | `PaginationTest` | Whitelist `?per=`; ukuran halaman tidak bisa dipakai buat melebarkan akses |
 | `QrAksesTest` | QR cuma buat guru, bisa pilih sebagian kelas, unduhan PDF beneran PDF & khusus admin |
-| `JurnalOtomatisTest` | Presensi terisi awal dari pertemuan hari itu; pengisian otomatis bikin jurnal "sistem" + nyalin roster, bisa diulang tanpa dobel, dan tidak nyentuh hari ini/masa depan; jurnal otomatis wajib centang pernyataan waktu diubah lalu diadopsi; label "diedit setelah hari-H" + filternya |
+| `JurnalOtomatisTest` | Pengisian otomatis bikin jurnal "sistem", bisa diulang tanpa dobel, dan tidak nyentuh hari ini/masa depan; jurnal otomatis wajib centang pernyataan waktu diubah lalu diadopsi; label "diedit setelah hari-H" + filternya |
 | `ApiJurnalKontrakTest` | API mengembalikan identitas yang dipakai alamatnya sendiri (`public_id`): bisa baca → update cuma bermodal respons, dan id angka memang bukan kunci URL |
 | `CadanganTest` | Backup/restore khusus admin: ekspor memuat semua tabel & bisa dipilih sebagian, unduhan ter-gzip dan bisa dipulihkan lagi (gabung/ganti), berkas asing ditolak |
 | `IkonTest` | Semua ikon yang dipakai memang ada, biar ikon tidak kosong diam-diam |

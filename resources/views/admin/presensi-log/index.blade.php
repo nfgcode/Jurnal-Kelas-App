@@ -4,8 +4,8 @@
 
 @section('content')
     <x-page-head
-        title="Log Edit Presensi"
-        :sub="'Jejak audit siapa menyimpan presensi tiap kelas · ' . number_format($log->total(), 0, ',', '.') . ' entri'" />
+        title="Log Pengisian Presensi"
+        :sub="'Jejak audit siapa mengisi presensi harian tiap kelas · ' . number_format($log->total(), 0, ',', '.') . ' entri'" />
 
     <form class="filter-bar" method="GET">
         <x-query-hidden />
@@ -18,10 +18,15 @@
         </select>
 
         <select class="select-hifi" name="diedit_oleh_id" style="width: 200px" data-searchable onchange="this.form.submit()">
-            <option value="">Semua Editor</option>
+            <option value="">Semua Pengisi</option>
             @foreach ($editorList as $editor)
                 <option value="{{ $editor->id }}" @selected(($filters['diedit_oleh_id'] ?? null) == $editor->id)>{{ $editor->name }}</option>
             @endforeach
+        </select>
+
+        <select class="select-hifi" name="koreksi" style="width: 170px" onchange="this.form.submit()">
+            <option value="">Semua Jenis</option>
+            <option value="1" @selected(($filters['koreksi'] ?? null) === '1')>Hanya Koreksi</option>
         </select>
 
         <span class="filter-bar__note">
@@ -29,18 +34,18 @@
         </span>
     </form>
 
-    <x-card title="Riwayat Penyimpanan Presensi" flush>
+    <x-card title="Riwayat Pengisian Presensi Harian" flush>
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Waktu Edit</th>
-                        <th>Editor</th>
+                        <th>Waktu Simpan</th>
+                        <th>Pengisi</th>
                         <th>Peran</th>
                         <th>Kelas</th>
-                        <th>Mata Pelajaran</th>
-                        <th>Tgl Pertemuan</th>
+                        <th>Tanggal Presensi</th>
                         <th class="is-num">Jml Siswa</th>
+                        <th class="is-num">Jenis</th>
                         <th class="is-num">Aksi</th>
                     </tr>
                 </thead>
@@ -67,18 +72,22 @@
                                 @endif
                             </td>
                             <td><x-chip :tone="$peranTone" :label="$peranLabel" /></td>
-                            <td class="is-nowrap">{{ $entri->jurnal?->jadwal?->kelas?->nama_kelas ?? '—' }}</td>
-                            <td>{{ $entri->jurnal?->jadwal?->mataPelajaran?->nama ?? '—' }}</td>
-                            <td class="is-muted is-nowrap">{{ $entri->jurnal?->tanggal?->format('d/m/Y') ?? '—' }}</td>
+                            <td class="is-nowrap">{{ $entri->kelas?->nama_kelas ?? '—' }}</td>
+                            <td class="is-muted is-nowrap">{{ $entri->tanggal?->format('d/m/Y') ?? '—' }}</td>
                             <td class="is-num">{{ $entri->jumlah_siswa }}</td>
                             <td class="is-num">
-                                @if ($entri->jurnal)
-                                    <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.show', $entri->jurnal->id) }}">Lihat</a>
+                                <x-chip :tone="$entri->koreksi ? 'yellow' : 'green'"
+                                        :label="$entri->koreksi ? 'Koreksi' : 'Awal'" />
+                            </td>
+                            <td class="is-num">
+                                @if ($entri->kelas)
+                                    <a class="btn-hifi btn-hifi--ghost btn-hifi--sm"
+                                       href="{{ route('presensi-harian.show', [$entri->kelas_id, 'tanggal' => $entri->tanggal?->toDateString()]) }}">Lihat</a>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="empty-state">Belum ada catatan edit presensi.</td></tr>
+                        <tr><td colspan="8" class="empty-state">Belum ada catatan pengisian presensi.</td></tr>
                     @endforelse
                 </tbody>
             </table>

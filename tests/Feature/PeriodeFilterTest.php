@@ -6,6 +6,7 @@ use App\Models\Jadwal;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
@@ -113,11 +114,13 @@ class PeriodeFilterTest extends TestCase
 
     public function test_attendance_screens_follow_the_period_too(): void
     {
+        // One row per class-day now, so the period is checked on the row's own
+        // date rather than on a journal it used to hang off.
         $this->actingAs($this->guru)
             ->get('/presensi?preset=hari_ini&per=100')
             ->assertOk()
-            ->assertViewHas('pertemuan', fn ($pertemuan) => $pertemuan
-                ->every(fn ($jurnal) => $jurnal->tanggal->isToday()));
+            ->assertViewHas('baris', fn ($baris) => collect($baris->items())
+                ->every(fn ($hari) => Carbon::parse($hari->tanggal)->isToday()));
 
         // The student's personal recap is a different screen; it must carry the
         // period as well, otherwise its cards contradict the table.

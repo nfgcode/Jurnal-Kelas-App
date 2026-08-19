@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use Carbon\Carbon;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -114,19 +114,24 @@ class Ringkasan
     /**
      * Attendance totals keyed hadir/sakit/izin/alpa, always all four present.
      *
+     * Counts daily rosters ({@see PresensiHarian}), so a student contributes at
+     * most one row per school day. The old per-meeting table counted them once
+     * per lesson, which quietly weighted a class with eight periods twice as
+     * heavily as one with four.
+     *
      * @return array<string, int>
      */
     public static function presensi(?Builder $query = null, ?Periode $periode = null): array
     {
-        $query ??= Presensi::query();
+        $query ??= PresensiHarian::query();
 
         if ($periode) {
-            $query->whereHas('jurnal', fn ($jurnal) => $jurnal->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]));
+            $query->whereBetween('presensi_harian.tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
         }
 
         $rows = $query
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
+            ->selectRaw('presensi_harian.status, COUNT(*) as total')
+            ->groupBy('presensi_harian.status')
             ->pluck('total', 'status');
 
         return [
@@ -147,15 +152,15 @@ class Ringkasan
             return (float) DB::selectOne('SELECT fn_persentase_kehadiran_siswa(?) AS p', [$siswaId])->p;
         }
 
-        $r = Presensi::where('siswa_id', $siswaId)
-            ->selectRaw("COUNT(*) t, SUM(status = 'hadir') h")
+        $r = PresensiHarian::where('siswa_id', $siswaId)
+            ->selectRaw("COUNT(*) t, SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) h")
             ->first();
 
         return $r->t ? round($r->h / $r->t * 100, 2) : 0.0;
     }
 
     /**
-     * A class's attendance percentage across every meeting — the
+     * A class's attendance percentage across every school day — the
      * fn_persentase_kehadiran_kelas stored function on MySQL, the equivalent
      * aggregate elsewhere.
      */
@@ -165,11 +170,8 @@ class Ringkasan
             return (float) DB::selectOne('SELECT fn_persentase_kehadiran_kelas(?) AS p', [$kelasId])->p;
         }
 
-        $r = Presensi::query()
-            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->where('jadwal.kelas_id', $kelasId)
-            ->selectRaw("COUNT(*) t, SUM(presensi.status = 'hadir') h")
+        $r = PresensiHarian::where('kelas_id', $kelasId)
+            ->selectRaw("COUNT(*) t, SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) h")
             ->first();
 
         return $r->t ? round($r->h / $r->t * 100, 2) : 0.0;
@@ -288,17 +290,15 @@ class Ringkasan
      */
     public static function presensiPerKelas(?Periode $periode = null): array
     {
-        $query = Presensi::query()
-            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->selectRaw('jadwal.kelas_id, presensi.status, COUNT(*) as total');
+        $query = PresensiHarian::query()
+            ->selectRaw('kelas_id, status, COUNT(*) as total');
 
         if ($periode) {
-            $query->whereBetween('jurnal.tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
+            $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]);
         }
 
         return $query
-            ->groupBy('jadwal.kelas_id', 'presensi.status')
+            ->groupBy('kelas_id', 'status')
             ->get()
             ->groupBy('kelas_id')
             ->map(fn ($rows) => $rows->pluck('total', 'status'))

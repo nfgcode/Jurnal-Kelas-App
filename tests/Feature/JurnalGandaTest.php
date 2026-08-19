@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Database\Seeders\DemoSeeder;
@@ -134,36 +134,37 @@ class JurnalGandaTest extends TestCase
         $this->assertSame(1, $this->jumlahJurnal());
     }
 
-    public function test_only_one_attendance_roster_exists_per_meeting(): void
+    /**
+     * A meeting may still carry two journals (the guru's and the ketua's), but
+     * attendance is no longer attached to either: it is one roll call for the
+     * class's whole day. Filing it twice must land on the same single record,
+     * whichever journal the day happens to hold.
+     */
+    public function test_only_one_attendance_roster_exists_per_class_day(): void
     {
         $this->kirim($this->guru);
         $this->kirim($this->ketua, ['materi' => 'Versi ketua']);
 
-        $jurnalGuru = Jurnal::where('jadwal_id', $this->jadwal->id)->whereDate('tanggal', $this->tanggal)
-            ->where('diisi_oleh_peran', 'guru')->firstOrFail();
-        $jurnalKetua = Jurnal::where('jadwal_id', $this->jadwal->id)->whereDate('tanggal', $this->tanggal)
-            ->where('diisi_oleh_peran', 'siswa')->firstOrFail();
+        $kelas = $this->jadwal->kelas;
+        $roster = $kelas->siswa()->pluck('id');
+        // The journals above sit a month ahead to stay clear of seeded data, but
+        // a ketua may only ever file today's roll call.
+        $hariIni = now()->toDateString();
 
-        $roster = $this->jadwal->kelas->siswa()->pluck('id');
-        $payload = ['jurnal_id' => $jurnalGuru->public_id, 'presensi' => []];
+        $payload = ['tanggal' => $hariIni, 'presensi' => []];
         foreach ($roster as $i => $id) {
             $payload['presensi'][$i] = ['siswa_id' => $id, 'status' => 'hadir'];
         }
 
-        $this->actingAs($this->guru)->post('/presensi', $payload)
-            ->assertRedirect(route('presensi.show', $jurnalGuru));
+        $this->actingAs($this->ketua)
+            ->post(route('presensi-harian.store', $kelas), $payload)
+            ->assertRedirect(route('presensi-harian.show', [$kelas, 'tanggal' => $hariIni]));
 
-        // The ketua's copy must not start a second roster — that would double
-        // every attendance figure for this lesson.
-        $this->actingAs($this->guru)->get("/presensi/create/{$jurnalKetua->public_id}")
-            ->assertRedirect(route('presensi.create', $jurnalGuru));
+        // A second save replaces the day rather than adding a parallel set.
+        $this->actingAs($this->ketua)->post(route('presensi-harian.store', $kelas), $payload);
 
-        $this->actingAs($this->guru)
-            ->post('/presensi', ['jurnal_id' => $jurnalKetua->public_id] + $payload)
-            ->assertRedirect(route('presensi.create', $jurnalGuru));
-
-        $this->assertSame($roster->count(), Presensi::where('jurnal_id', $jurnalGuru->id)->count());
-        $this->assertSame(0, Presensi::where('jurnal_id', $jurnalKetua->id)->count());
+        $this->assertSame($roster->count(), PresensiHarian::where('kelas_id', $kelas->id)
+            ->whereDate('tanggal', $hariIni)->count());
     }
 
     public function test_a_doubled_meeting_is_counted_once(): void

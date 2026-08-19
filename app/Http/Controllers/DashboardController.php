@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Ringkasan;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class DashboardController extends Controller
 {
@@ -43,10 +43,7 @@ class DashboardController extends Controller
             ->get();
 
         // Today's journals, indexed by schedule so each row knows its status.
-        $jurnalHariIni = Jurnal::withCount([
-            'presensis as total_siswa',
-            'presensis as hadir_count' => fn ($query) => $query->where('status', 'hadir'),
-        ])
+        $jurnalHariIni = Jurnal::denganPresensiHarian()
             ->where('guru_id', $user->id)
             ->whereDate('tanggal', today())
             ->get()
@@ -56,18 +53,19 @@ class DashboardController extends Controller
             ->orderBy('nama_kelas')
             ->get();
 
-        $presensiSaya = Ringkasan::presensi(
-            Presensi::whereHas('jurnal', fn ($query) => $query->where('guru_id', $user->id))
-        );
+        // Attendance across the classes this teacher takes, not "their" roster:
+        // the roll call belongs to the class's day, and several teachers share
+        // the same one. It is oversight, which is all a guru needs of it now.
+        $kelasIds = $kelasDiampu->pluck('id');
+
+        $presensiSaya = Ringkasan::presensi(PresensiHarian::whereIn('kelas_id', $kelasIds));
         $totalPresensi = array_sum($presensiSaya) ?: 1;
 
         // Attendance per class taught, so a struggling class stands out.
-        $kehadiranPerKelas = Presensi::query()
-            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->selectRaw('jadwal.kelas_id, presensi.status, COUNT(*) as total')
-            ->where('jurnal.guru_id', $user->id)
-            ->groupBy('jadwal.kelas_id', 'presensi.status')
+        $kehadiranPerKelas = PresensiHarian::query()
+            ->selectRaw('kelas_id, status, COUNT(*) as total')
+            ->whereIn('kelas_id', $kelasIds)
+            ->groupBy('kelas_id', 'status')
             ->get()
             ->groupBy('kelas_id')
             ->map(fn ($rows) => $rows->pluck('total', 'status'));
@@ -128,8 +126,8 @@ class DashboardController extends Controller
         // is the class's, not just their own; a regular siswa sees their own.
         $isKetua = $user->isKetuaKelas();
         $kehadiran = $isKetua
-            ? Ringkasan::presensi(Presensi::whereHas('jurnal.jadwal', fn ($q) => $q->where('kelas_id', $kelasId)))
-            : Ringkasan::presensi(Presensi::where('siswa_id', $user->id));
+            ? Ringkasan::presensi(PresensiHarian::where('kelas_id', $kelasId))
+            : Ringkasan::presensi(PresensiHarian::where('siswa_id', $user->id));
         $kehadiranLabel = $isKetua ? 'Kehadiran Kelas' : 'Kehadiran Saya';
         $totalKehadiran = array_sum($kehadiran) ?: 1;
 
@@ -153,19 +151,10 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Attendance broken down per subject, busiest subjects first.
-        $kehadiranPerMapel = Presensi::query()
-            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->join('mata_pelajaran', 'jadwal.mata_pelajaran_id', '=', 'mata_pelajaran.id')
-            ->selectRaw('mata_pelajaran.nama as mapel, presensi.status, COUNT(*) as total')
-            ->where('presensi.siswa_id', $user->id)
-            ->groupBy('mata_pelajaran.nama', 'presensi.status')
-            ->get()
-            ->groupBy('mapel')
-            ->map(fn ($rows) => $rows->pluck('total', 'status'))
-            ->sortByDesc(fn ($rows) => $rows->sum())
-            ->take(5);
+        // Attendance broken down per month, most recent first. It used to be per
+        // subject; a roll call is taken once for the whole day, so it belongs to
+        // no subject in particular and splitting it by one would be a fiction.
+        $kehadiranPerBulan = $this->kehadiranPerBulan($user);
 
         return view('dashboard.siswa', [
             'kelas' => $kelas,
@@ -174,7 +163,11 @@ class DashboardController extends Controller
             'isKetua' => $isKetua,
             'kehadiran' => $kehadiran,
             'kehadiranLabel' => $kehadiranLabel,
-            'kehadiranPerMapel' => $kehadiranPerMapel,
+            'kehadiranPerBulan' => $kehadiranPerBulan,
+            // The one action a ketua kelas owes the school each day.
+            'sudahIsiHariIni' => $isKetua && $kelas
+                ? PresensiHarian::sudahDiisi($kelas->id, today()->toDateString())
+                : false,
             'kpi' => [
                 'jadwalHariIni' => $jadwalHariIni->count(),
                 'jurnalTerisi' => $jurnalHariIni->count(),
@@ -195,39 +188,61 @@ class DashboardController extends Controller
     }
 
     /**
-     * The student's own attendance: one row per subject, one cell per school
-     * day, shaded by the status recorded that day.
+     * The student's own attendance as an attendance book: one row per month, one
+     * cell per day of that month, shaded by the status recorded.
+     *
+     * A calendar is the natural shape now that the roll call is daily — the old
+     * per-subject grid could only exist while every lesson took its own roster.
      *
      * @return array<string, array<string, string|int>>
      */
-    private function heatmapKehadiran(User $user, int $days = 20): array
+    private function heatmapKehadiran(User $user, int $bulan = 3): array
     {
-        $tanggalList = Ringkasan::hariSekolah($days);
+        $awal = today()->copy()->startOfMonth()->subMonthsNoOverflow($bulan - 1);
 
-        $catatan = Presensi::query()
-            ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->join('mata_pelajaran', 'jadwal.mata_pelajaran_id', '=', 'mata_pelajaran.id')
-            ->selectRaw('mata_pelajaran.nama as mapel, jurnal.tanggal, presensi.status')
-            ->where('presensi.siswa_id', $user->id)
-            ->whereIn('jurnal.tanggal', array_map(fn ($t) => $t->toDateString(), $tanggalList))
+        $catatan = PresensiHarian::query()
+            ->where('siswa_id', $user->id)
+            ->where('tanggal', '>=', $awal->toDateString())
             ->get()
-            ->groupBy('mapel');
+            ->keyBy(fn ($p) => $p->tanggal->toDateString());
 
         $rows = [];
 
-        foreach ($catatan->take(5) as $mapel => $entries) {
-            $perTanggal = $entries->keyBy(fn ($e) => Carbon::parse($e->tanggal)->toDateString());
+        for ($i = 0; $i < $bulan; $i++) {
+            $kursor = $awal->copy()->addMonthsNoOverflow($i);
             $cells = [];
 
-            foreach ($tanggalList as $tanggal) {
-                // No lesson that day reads as an empty cell, not as an absence.
-                $cells[$tanggal->format('j')] = $perTanggal[$tanggal->toDateString()]->status ?? 0;
+            // Every row spans 1-31 so the grid's columns stay aligned; days a
+            // month does not have, and days with no record, read as empty.
+            for ($hari = 1; $hari <= 31; $hari++) {
+                $tanggal = $kursor->copy()->startOfMonth()->addDays($hari - 1);
+
+                $cells[(string) $hari] = $tanggal->month === $kursor->month
+                    ? ($catatan[$tanggal->toDateString()]->status ?? 0)
+                    : 0;
             }
 
-            $rows[$mapel] = $cells;
+            $rows[$kursor->translatedFormat('F Y')] = $cells;
         }
 
         return $rows;
+    }
+
+    /**
+     * The student's attendance rolled up per month, newest first.
+     *
+     * @return Collection<string, Collection<string, int>>
+     */
+    private function kehadiranPerBulan(User $user, int $bulan = 6)
+    {
+        $awal = today()->copy()->startOfMonth()->subMonthsNoOverflow($bulan - 1);
+
+        return PresensiHarian::query()
+            ->where('siswa_id', $user->id)
+            ->where('tanggal', '>=', $awal->toDateString())
+            ->get()
+            ->groupBy(fn ($p) => $p->tanggal->translatedFormat('F Y'))
+            ->map(fn ($rows) => $rows->groupBy('status')->map->count())
+            ->reverse();
     }
 }

@@ -7,9 +7,19 @@
 
     <x-page-head
         title="Presensi Kelas {{ $kelas->nama_kelas }}"
-        :sub="number_format($totalPertemuan, 0, ',', '.') . ' pertemuan · rata-rata ' . round($rekap['hadir'] / $total * 100) . '% hadir'">
+        :sub="number_format($totalHari, 0, ',', '.') . ' hari tercatat · rata-rata ' . round($rekap['hadir'] / $total * 100) . '% hadir · ' . $periode->label()">
         <x-kelas-switch :kelas-wali="$kelasWali" :kelas="$kelas" />
+        <x-periode-filter :periode="$periode" />
+        <a class="btn-hifi btn-hifi--ghost"
+           href="{{ route('presensi.ekspor', ['mode' => 'bulanan', 'bulan' => now()->format('Y-m'), 'kelas_id' => $kelas->id]) }}">
+            <x-ikon nama="download" /> Ekspor Bulan Ini
+        </a>
     </x-page-head>
+
+    <p class="field__hint mb-2">
+        <x-ikon nama="info-circle" /> Presensi siswa diisi sekali sehari oleh ketua kelas.
+        Halaman ini untuk memantau; koreksi tanggal yang sudah lewat dilakukan oleh admin.
+    </p>
 
     <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="number_format($rekap['hadir'], 0, ',', '.')"
@@ -40,7 +50,7 @@
                         <th>No</th>
                         <th>NIS</th>
                         <th>Nama Siswa</th>
-                        <th class="is-num">Total</th>
+                        <th class="is-num">Total Hari</th>
                         <th class="is-num">H</th>
                         <th class="is-num">S</th>
                         <th class="is-num">I</th>
@@ -84,38 +94,13 @@
         </div>
     </x-card>
 
-    <form class="filter-bar" method="GET">
-        <x-query-hidden />
-
-        <input type="hidden" name="kelas_id" value="{{ $kelas->id }}">
-
-        <label class="filter-bar__search">
-            <x-ikon nama="search" />
-            <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
-                   placeholder="Cari materi, mapel atau guru...">
-        </label>
-
-        <select class="select-hifi" name="mata_pelajaran_id" style="width: 190px" data-searchable onchange="this.form.submit()">
-            <option value="">Semua Mapel</option>
-            @foreach ($mapelList as $mapel)
-                <option value="{{ $mapel->id }}" @selected(($filters['mata_pelajaran_id'] ?? null) == $mapel->id)>{{ $mapel->nama }}</option>
-            @endforeach
-        </select>
-
-        <span class="filter-bar__note">
-            Menampilkan {{ $pertemuan->count() }} dari {{ number_format($pertemuan->total(), 0, ',', '.') }}
-        </span>
-    </form>
-
-    <x-card title="Histori Presensi per Pertemuan" flush>
+    <x-card title="Histori Presensi Harian" flush>
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
                         <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
-                        <th><x-th-sort kolom="jam" label="Jam Ke" /></th>
-                        <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
-                        <th><x-th-sort kolom="guru" label="Guru" /></th>
+                        <th>Hari</th>
                         <th class="is-num"><x-th-sort kolom="siswa" label="Total" /></th>
                         <th class="is-num"><x-th-sort kolom="hadir" label="H" /></th>
                         <th class="is-num"><x-th-sort kolom="sakit" label="S" /></th>
@@ -126,34 +111,35 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($pertemuan as $jurnal)
-                        @php $persen = $jurnal->total_siswa ? round($jurnal->hadir_count / $jurnal->total_siswa * 100) : 0; @endphp
+                    @forelse ($hari as $baris)
+                        @php
+                            $tanggal = \Illuminate\Support\Carbon::parse($baris->tanggal);
+                            $persen = $baris->total_siswa ? round($baris->hadir / $baris->total_siswa * 100) : 0;
+                        @endphp
                         <tr>
-                            <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
-                            <td class="is-muted">{{ $jurnal->jadwal?->jpLabel() }}</td>
-                            <td class="is-strong">{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                            <td class="is-nowrap is-muted">{{ $jurnal->guru?->name ?? '—' }}</td>
-                            <td class="is-num">{{ $jurnal->total_siswa }}</td>
-                            <td class="is-num">{{ $jurnal->hadir_count }}</td>
-                            <td class="is-num">{{ $jurnal->sakit_count }}</td>
-                            <td class="is-num">{{ $jurnal->izin_count }}</td>
-                            <td class="is-num">{{ $jurnal->alpa_count }}</td>
+                            <td class="is-strong is-nowrap">{{ $tanggal->format('d/m/Y') }}</td>
+                            <td class="is-muted">{{ $tanggal->translatedFormat('l') }}</td>
+                            <td class="is-num">{{ $baris->total_siswa }}</td>
+                            <td class="is-num">{{ $baris->hadir }}</td>
+                            <td class="is-num">{{ $baris->sakit }}</td>
+                            <td class="is-num">{{ $baris->izin }}</td>
+                            <td class="is-num">{{ $baris->alpa }}</td>
                             <td>
                                 <span class="meter-cell">
-                                    <x-stack-bar :hadir="$jurnal->hadir_count" :sakit="$jurnal->sakit_count"
-                                                 :izin="$jurnal->izin_count" :alpa="$jurnal->alpa_count" />
+                                    <x-stack-bar :hadir="$baris->hadir" :sakit="$baris->sakit"
+                                                 :izin="$baris->izin" :alpa="$baris->alpa" />
                                     <span class="is-strong">{{ $persen }}%</span>
                                 </span>
                             </td>
                             <td class="is-num tbl__aksi">
-                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('jurnal.show', $jurnal) }}">Jurnal</a>
-                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('presensi.create', $jurnal) }}">
-                                    {{ $jurnal->total_siswa ? 'Ubah' : 'Tandai' }}
+                                <a class="btn-hifi btn-hifi--ghost btn-hifi--sm"
+                                   href="{{ route('presensi-harian.show', [$kelas, 'tanggal' => $tanggal->toDateString()]) }}">
+                                    Lihat
                                 </a>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="11" class="empty-state">Belum ada pertemuan yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="9" class="empty-state">Belum ada presensi tercatat pada periode ini.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -161,10 +147,10 @@
 
         <x-slot:foot>
             <span>
-                Menampilkan {{ $pertemuan->firstItem() ?? 0 }}–{{ $pertemuan->lastItem() ?? 0 }}
-                dari {{ number_format($pertemuan->total(), 0, ',', '.') }} pertemuan
+                Menampilkan {{ $hari->firstItem() ?? 0 }}–{{ $hari->lastItem() ?? 0 }}
+                dari {{ number_format($hari->total(), 0, ',', '.') }} hari
             </span>
-            <x-pager :paginator="$pertemuan" />
+            <x-pager :paginator="$hari" />
         </x-slot:foot>
     </x-card>
 @endsection

@@ -134,7 +134,7 @@ class UserController extends Controller
         }
 
         $rekapPresensi = $user->isSiswa()
-            ? $user->presensis()
+            ? $user->presensiHarian()
                 ->selectRaw('status, COUNT(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status')

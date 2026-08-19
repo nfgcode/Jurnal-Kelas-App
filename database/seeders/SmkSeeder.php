@@ -537,21 +537,35 @@ class SmkSeeder extends Seeder
     }
 
     /**
+     * One roll call per class per school day — the shape attendance actually has
+     * (see the presensi_harian table). The days come from the journals already
+     * seeded, so a class only has attendance on days it had lessons.
+     *
      * @param  array<int, array<int, User>>  $siswaPerKelas
      */
     private function seedPresensi(array $siswaPerKelas): void
     {
         $keterangan = ['sakit' => 'Surat dokter', 'izin' => 'Izin keluarga', 'alpa' => 'Tanpa keterangan'];
         $now = now();
+
+        // The ketua kelas files it; fall back to whoever is first in the class so
+        // demo data still names a plausible author.
+        $pengisi = [];
+        foreach ($siswaPerKelas as $kelasId => $daftar) {
+            $ketua = collect($daftar)->firstWhere('is_ketua_kelas', true) ?? ($daftar[0] ?? null);
+            $pengisi[$kelasId] = $ketua?->id;
+        }
+
         $buffer = [];
 
         DB::table('jurnal')
             ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->select('jurnal.id', 'jadwal.kelas_id')
-            ->orderBy('jurnal.id')
-            ->chunk(500, function ($jurnals) use ($siswaPerKelas, $keterangan, $now, &$buffer) {
-                foreach ($jurnals as $jurnal) {
-                    foreach ($siswaPerKelas[$jurnal->kelas_id] ?? [] as $siswa) {
+            ->selectRaw('DISTINCT jadwal.kelas_id, jurnal.tanggal')
+            ->orderBy('jadwal.kelas_id')
+            ->orderBy('jurnal.tanggal')
+            ->chunk(500, function ($hari) use ($siswaPerKelas, $keterangan, $pengisi, $now, &$buffer) {
+                foreach ($hari as $baris) {
+                    foreach ($siswaPerKelas[$baris->kelas_id] ?? [] as $siswa) {
                         $roll = mt_rand(1, 100);
 
                         $status = match (true) {
@@ -562,10 +576,12 @@ class SmkSeeder extends Seeder
                         };
 
                         $buffer[] = [
-                            'jurnal_id' => $jurnal->id,
+                            'kelas_id' => $baris->kelas_id,
+                            'tanggal' => substr((string) $baris->tanggal, 0, 10),
                             'siswa_id' => $siswa->id,
                             'status' => $status,
                             'keterangan' => $keterangan[$status] ?? null,
+                            'diisi_oleh_id' => $pengisi[$baris->kelas_id] ?? null,
                             'created_at' => $now,
                             'updated_at' => $now,
                         ];
@@ -573,7 +589,7 @@ class SmkSeeder extends Seeder
                 }
 
                 foreach (array_chunk($buffer, 1000) as $chunk) {
-                    DB::table('presensi')->insert($chunk);
+                    DB::table('presensi_harian')->insertOrIgnore($chunk);
                 }
 
                 $buffer = [];

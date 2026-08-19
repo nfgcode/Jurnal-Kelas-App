@@ -183,4 +183,13 @@ class User extends Authenticatable
     {
         return $this->hasMany(Presensi::class, 'siswa_id');
     }
+
+    /**
+     * This student's daily attendance — the live record. {@see presensis()}
+     * above is the archived per-meeting one, kept for history only.
+     */
+    public function presensiHarian(): HasMany
+    {
+        return $this->hasMany(PresensiHarian::class, 'siswa_id');
+    }
 }

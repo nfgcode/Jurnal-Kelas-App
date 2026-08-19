@@ -2,14 +2,16 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @mixin Presensi
+ * One student's attendance for one school day.
+ *
+ * @mixin PresensiHarian
  */
-class PresensiResource extends JsonResource
+class PresensiHarianResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -18,12 +20,14 @@ class PresensiResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'jurnal_id' => $this->jurnal_id,
+            'kelas_id' => $this->kelas_id,
+            'tanggal' => $this->tanggal?->toDateString(),
             'siswa_id' => $this->siswa_id,
             'status' => $this->status,
             'keterangan' => $this->keterangan,
+            'diisi_oleh_id' => $this->diisi_oleh_id,
             'siswa' => new UserResource($this->whenLoaded('siswa')),
-            'jurnal' => new JurnalResource($this->whenLoaded('jurnal')),
+            'kelas' => new KelasResource($this->whenLoaded('kelas')),
         ];
     }
 }

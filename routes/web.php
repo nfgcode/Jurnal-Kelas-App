@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CadanganController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\ImporController;
 use App\Http\Controllers\Admin\KelasQrController;
 use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\PresensiLogController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LaporanErrorController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\PresensiController;
+use App\Http\Controllers\PresensiHarianController;
 use App\Http\Controllers\QrController;
 use App\Http\Controllers\WaliKelasController;
 use Illuminate\Support\Facades\Route;
@@ -85,13 +87,28 @@ Route::middleware('auth')->group(function () {
     // are gated per-record by JurnalPolicy inside the controller actions.
     Route::resource('jurnal', JurnalController::class);
 
-    // Presensi management — marking is authorized against the journal's policy.
-    // The journal is addressed by its opaque public_id (Jurnal::getRouteKeyName),
-    // so these URLs never expose the sequential primary key.
+    /*
+    |----------------------------------------------------------------------
+    | Presensi. Reading and writing are two different screens now, because
+    | they are two different jobs: a roster is filed once a day for a whole
+    | class by its ketua kelas, and everyone else reads the recap.
+    |----------------------------------------------------------------------
+    */
+
+    // Read side — scoped per role in the controller. The export is guru/admin
+    // only; a student has nothing to export but their own visible record.
     Route::get('/presensi', [PresensiController::class, 'index'])->name('presensi.index');
-    Route::get('/presensi/create/{jurnal}', [PresensiController::class, 'create'])->name('presensi.create');
-    Route::post('/presensi', [PresensiController::class, 'store'])->name('presensi.store');
-    Route::get('/presensi/{jurnal}', [PresensiController::class, 'show'])->name('presensi.show');
+    Route::get('/presensi/ekspor', [PresensiController::class, 'ekspor'])
+        ->middleware('role:guru,admin')->name('presensi.ekspor');
+
+    // Write side — one roster per class per day, gated by
+    // KelasPolicy::isiPresensiHarian (ketua kelas of that class, or admin).
+    // `isi` is registered before the bare show route so it is never read as a date.
+    Route::prefix('presensi-harian/{kelas}')->name('presensi-harian.')->group(function () {
+        Route::get('/isi', [PresensiHarianController::class, 'edit'])->name('edit');
+        Route::post('/', [PresensiHarianController::class, 'store'])->name('store');
+        Route::get('/', [PresensiHarianController::class, 'show'])->name('show');
+    });
 
     // Error report a guru/siswa submits from the friendly error page. Throttled
     // and deduped in the controller; technical details come from the session.
@@ -118,6 +135,13 @@ Route::middleware('auth')->group(function () {
 
         // User management (admin, guru, siswa accounts)
         Route::resource('users', UserController::class);
+
+        // Bulk account creation from a spreadsheet: template out, filled file
+        // in, preview, then commit.
+        Route::get('/impor', [ImporController::class, 'index'])->name('impor.index');
+        Route::get('/impor/template', [ImporController::class, 'template'])->name('impor.template');
+        Route::post('/impor/pratinjau', [ImporController::class, 'pratinjau'])->name('impor.pratinjau');
+        Route::post('/impor', [ImporController::class, 'simpan'])->name('impor.simpan');
 
         // Read-only reports
         Route::get('/laporan/jurnal', [LaporanController::class, 'jurnal'])->name('laporan.jurnal');

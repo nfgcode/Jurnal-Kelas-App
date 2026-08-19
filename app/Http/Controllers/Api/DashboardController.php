@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
@@ -76,8 +76,10 @@ class DashboardController extends Controller
      */
     private function guru(User $user): array
     {
+        // The classes this teacher takes, not a roster they own: attendance is
+        // one daily roll call per class, filed by its ketua kelas.
         $presensiSaya = Ringkasan::presensi(
-            Presensi::whereHas('jurnal', fn ($q) => $q->where('guru_id', $user->id))
+            PresensiHarian::whereIn('kelas_id', Jadwal::where('guru_id', $user->id)->select('kelas_id'))
         );
         $total = array_sum($presensiSaya) ?: 1;
 
@@ -107,7 +109,7 @@ class DashboardController extends Controller
      */
     private function siswa(User $user): array
     {
-        $presensiSaya = Ringkasan::presensi(Presensi::where('siswa_id', $user->id));
+        $presensiSaya = Ringkasan::presensi(PresensiHarian::where('siswa_id', $user->id));
         $total = array_sum($presensiSaya) ?: 1;
 
         $jadwalHariIni = Jadwal::when($user->kelas_id, fn ($q) => $q->where('kelas_id', $user->kelas_id))

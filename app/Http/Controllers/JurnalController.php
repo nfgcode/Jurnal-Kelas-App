@@ -6,7 +6,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Halaman;
 use App\Support\Periode;
@@ -41,10 +41,9 @@ class JurnalController extends Controller
 
         $query = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            ->withCount([
-                'presensis as total_siswa',
-                'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
-            ])
+            // Attendance beside a journal row is the class's roll call for that
+            // day, shared by every lesson it held — see the scope's note.
+            ->denganPresensiHarian()
             ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
@@ -144,11 +143,13 @@ class JurnalController extends Controller
             ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
-        // The student's own attendance for the rows on this page.
-        $presensiSaya = Presensi::where('siswa_id', $user->id)
-            ->whereIn('jurnal_id', $jurnals->pluck('id'))
+        // The student's own attendance for the days the rows on this page fall
+        // on — keyed by date, because the roll call is taken once a day and not
+        // once per lesson.
+        $presensiSaya = PresensiHarian::where('siswa_id', $user->id)
+            ->whereIn('tanggal', $jurnals->pluck('tanggal')->map(fn ($t) => $t->toDateString())->unique()->all())
             ->get()
-            ->keyBy('jurnal_id');
+            ->keyBy(fn ($p) => $p->tanggal->toDateString());
 
         // Total and how many carried a task, in one grouped pass over the class —
         // within the selected period, so the cards match the table.
@@ -250,8 +251,11 @@ class JurnalController extends Controller
             );
         }
 
-        return redirect()->route('presensi.create', $jurnal)
-            ->with('success', 'Jurnal tersimpan. Lengkapi presensi siswa berikut ini.');
+        // Saving a journal used to hand the teacher an attendance roster next.
+        // It no longer does: student attendance is one daily roll call taken by
+        // the ketua kelas, not something each lesson collects again.
+        return redirect()->route('jurnal.show', $jurnal)
+            ->with('success', 'Jurnal tersimpan.');
     }
 
     /**
@@ -261,9 +265,30 @@ class JurnalController extends Controller
     {
         Gate::authorize('view', $jurnal);
 
-        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh', 'presensis.siswa']);
+        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh']);
 
-        return view('jurnal.show', compact('jurnal'));
+        // The attendance shown beside a journal is the class's roll call for
+        // that day — the one record the whole day shares — not a roster owned
+        // by this meeting.
+        $kelasId = $jurnal->jadwal?->kelas_id;
+        $tanggal = $jurnal->tanggal->toDateString();
+
+        $presensiHarian = $kelasId
+            ? PresensiHarian::with('siswa')
+                ->where('kelas_id', $kelasId)
+                ->whereDate('tanggal', $tanggal)
+                ->get()
+                ->sortBy(fn ($p) => $p->siswa?->name ?? '')
+                ->values()
+            : collect();
+
+        return view('jurnal.show', [
+            'jurnal' => $jurnal,
+            'presensiHarian' => $presensiHarian,
+            'rekapHarian' => Ringkasan::presensi(
+                PresensiHarian::where('kelas_id', $kelasId ?? 0)->whereDate('tanggal', $tanggal)
+            ),
+        ]);
     }
 
     /**
@@ -470,8 +495,12 @@ class JurnalController extends Controller
             ->orderBy('jam_ke_mulai')
             ->get();
 
-        $presensi = $jurnal
-            ? Ringkasan::presensi(Presensi::where('jurnal_id', $jurnal->id))
+        // The class's roll call for the date being filed against — context for
+        // whoever is writing the journal, never something they edit from here.
+        $presensi = $kelas
+            ? Ringkasan::presensi(
+                PresensiHarian::where('kelas_id', $kelas->id)->whereDate('tanggal', $tanggal->toDateString())
+            )
             : ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpa' => 0];
 
         // The teacher's own attendance record, or the class's view of their

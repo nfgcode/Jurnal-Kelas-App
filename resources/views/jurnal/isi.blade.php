@@ -93,15 +93,16 @@
                         @endforeach
                     </div>
 
-                    @if ($jurnal)
-                        <a class="auth__link d-inline-block mt-2" href="{{ route('presensi.create', $jurnal) }}">
-                            Tandai presensi per siswa →
+                    @if ($kelas)
+                        <a class="auth__link d-inline-block mt-2"
+                           href="{{ route('presensi-harian.show', [$kelas, 'tanggal' => $tanggalAktif->toDateString()]) }}">
+                            Lihat presensi harian kelas →
                         </a>
-                    @else
-                        <span class="field__hint d-block mt-2">
-                            Presensi per siswa ditandai setelah jurnal disimpan.
-                        </span>
                     @endif
+
+                    <span class="field__hint d-block mt-2">
+                        Presensi siswa diisi sekali sehari oleh ketua kelas, bukan per pertemuan.
+                    </span>
                 </div>
 
                 @if ($pertemuanTerakhir->isNotEmpty())

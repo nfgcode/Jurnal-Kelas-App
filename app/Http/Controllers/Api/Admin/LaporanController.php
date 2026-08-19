@@ -33,10 +33,7 @@ class LaporanController extends Controller
         ]);
 
         $jurnals = $this->kueriJurnal($filters, $periode)
-            ->withCount([
-                'presensis as total_siswa',
-                'presensis as hadir_count' => fn ($query) => $query->where('status', 'hadir'),
-            ])
+            ->denganPresensiHarian()
             ->latest('tanggal')
             ->latest('jurnal.id')
             ->paginate(18);
@@ -77,13 +74,7 @@ class LaporanController extends Controller
         ]);
 
         $pertemuan = $this->kueriJurnal($filters, $periode)
-            ->withCount([
-                'presensis as total_siswa',
-                'presensis as hadir_count' => fn ($query) => $query->where('status', 'hadir'),
-                'presensis as sakit_count' => fn ($query) => $query->where('status', 'sakit'),
-                'presensis as izin_count' => fn ($query) => $query->where('status', 'izin'),
-                'presensis as alpa_count' => fn ($query) => $query->where('status', 'alpa'),
-            ])
+            ->denganPresensiHarian()
             ->latest('tanggal')
             ->latest('jurnal.id')
             ->paginate(18);

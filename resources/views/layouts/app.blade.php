@@ -91,8 +91,9 @@
             <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.*') ? 'is-active' : '' }}">
                 <x-ikon nama="journal-text" /><span>Jurnal Kelas</span>
             </a>
-            <a href="{{ route('presensi.index') }}" class="sidebar__link {{ request()->routeIs('presensi.*') ? 'is-active' : '' }}">
-                <x-ikon nama="person-check" /><span>Presensi Saya</span>
+            <a href="{{ route('presensi.index') }}"
+               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*') ? 'is-active' : '' }}">
+                <x-ikon nama="person-check" /><span>{{ Auth::user()->isKetuaKelas() ? 'Presensi Kelas' : 'Presensi Saya' }}</span>
             </a>
         @else
             <a href="{{ $isAdmin ? route('admin.dashboard') : route('dashboard') }}"
@@ -106,6 +107,10 @@
                 <a href="{{ route('admin.users.index') }}"
                    class="sidebar__link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
                     <x-ikon nama="people" /><span>Pengguna</span>
+                </a>
+                <a href="{{ route('admin.impor.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.impor.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="file-earmark-arrow-up" /><span>Impor Data</span>
                 </a>
             @endif
 
@@ -124,7 +129,8 @@
             <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.*') ? 'is-active' : '' }}">
                 <x-ikon nama="journal-text" /><span>Jurnal</span>
             </a>
-            <a href="{{ route('presensi.index') }}" class="sidebar__link {{ request()->routeIs('presensi.*') ? 'is-active' : '' }}">
+            <a href="{{ route('presensi.index') }}"
+               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*') ? 'is-active' : '' }}">
                 <x-ikon nama="person-check" /><span>Presensi</span>
             </a>
 

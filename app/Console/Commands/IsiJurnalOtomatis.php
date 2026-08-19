@@ -23,7 +23,7 @@ class IsiJurnalOtomatis extends Command
         {--jeda=2 : Jeda antar gelombang (menit)}
         {--sekarang : Proses langsung tanpa antrean (uji / jalan manual)}';
 
-    protected $description = 'Isi otomatis jurnal pertemuan lampau yang kosong (guru tidak hadir · tanpa tugas) + salin presensinya, per gelombang.';
+    protected $description = 'Isi otomatis jurnal pertemuan lampau yang kosong (guru tidak hadir · tanpa tugas), per gelombang. Presensi siswa tidak ikut diisi — itu tugas ketua kelas.';
 
     public function handle(): int
     {

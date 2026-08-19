@@ -34,10 +34,9 @@ class LaporanController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $terisiCount = fn ($query) => $query->withCount([
-            'presensis as total_siswa',
-            'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
-        ]);
+        // The class's roll call for the journal's date — attendance is taken
+        // once a day now, so every lesson of that class reports the same figures.
+        $terisiCount = fn ($query) => $query->denganPresensiHarian();
 
         // Same filtered rows the table shows, as an Excel workbook.
         if ($request->query('ekspor') === 'xlsx') {
@@ -110,13 +109,7 @@ class LaporanController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $rekapCount = fn ($query) => $query->withCount([
-            'presensis as total_siswa',
-            'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
-            'presensis as sakit_count' => fn ($q) => $q->where('status', 'sakit'),
-            'presensis as izin_count' => fn ($q) => $q->where('status', 'izin'),
-            'presensis as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
-        ]);
+        $rekapCount = fn ($query) => $query->denganPresensiHarian();
 
         if ($request->query('ekspor') === 'xlsx') {
             return $this->eksporPresensi($rekapCount($this->kueriJurnal($filters, $periode)), $periode);

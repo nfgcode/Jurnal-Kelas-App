@@ -157,24 +157,6 @@ class Jurnal extends Model
         )->count();
     }
 
-    /**
-     * Another journal for the same meeting that already holds the attendance
-     * roster, if any.
-     *
-     * A meeting may carry two journals (the guru's and the ketua's), but the class
-     * was only taught once — so the roster belongs to exactly one of them.
-     * Allowing a second set would double every attendance figure derived from
-     * presensi rows.
-     */
-    public function pemegangPresensi(): ?self
-    {
-        return self::where('jadwal_id', $this->jadwal_id)
-            ->whereDate('tanggal', $this->tanggal)
-            ->whereKeyNot($this->getKey())
-            ->whereHas('presensis')
-            ->first();
-    }
-
     /** Whether a failed write was the unique index rejecting a duplicate. */
     public static function pelanggaranGanda(QueryException $e): bool
     {
@@ -223,6 +205,42 @@ class Jurnal extends Model
     public function scopeUntukKelas($query, int $kelasId)
     {
         return $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelasId));
+    }
+
+    /**
+     * Attach the class's attendance for the journal's own date as the
+     * total_siswa / hadir_count / sakit_count / izin_count / alpa_count aliases
+     * every journal table and export already reads.
+     *
+     * These used to be withCount() over the journal's own presensi rows. A
+     * roster is no longer per meeting, so the figures are pulled from the day's
+     * roll call instead — every lesson a class had on a date reports the same
+     * attendance, which is exactly what taking it once a day means.
+     *
+     * DATE() on both sides because MySQL stores `tanggal` as a DATE while SQLite
+     * keeps "Y-m-d H:i:s"; a bare column comparison would silently match nothing
+     * on the test database. No bindings are used, so paginate()'s count query
+     * cannot trip over them.
+     */
+    public function scopeDenganPresensiHarian($query)
+    {
+        $hitung = function (?string $status) {
+            $filter = $status ? " AND ph.status = '{$status}'" : '';
+
+            return '(SELECT COUNT(*) FROM presensi_harian ph'
+                .' JOIN jadwal jd ON jd.id = jurnal.jadwal_id'
+                .' WHERE ph.kelas_id = jd.kelas_id'
+                .' AND DATE(ph.tanggal) = DATE(jurnal.tanggal)'.$filter.')';
+        };
+
+        return $query->selectRaw(
+            'jurnal.*, '
+            .$hitung(null).' as total_siswa, '
+            .$hitung('hadir').' as hadir_count, '
+            .$hitung('sakit').' as sakit_count, '
+            .$hitung('izin').' as izin_count, '
+            .$hitung('alpa').' as alpa_count'
+        );
     }
 
     /**
@@ -380,12 +398,13 @@ class Jurnal extends Model
             // "Tepat/Telat" is a SQL predicate, so the chip can be sorted on too.
             'status' => fn ($q, $dir) => $q->orderByRaw(self::ekspresiTerlambat()." {$dir}"),
         ] + ($siswa === null ? [] : [
-            // How this particular student was marked at each meeting. Per-reader,
-            // so it only exists when a student is the one looking.
+            // How this particular student was marked on the lesson's day — the
+            // one roll call the whole day shares. Per-reader, so it only exists
+            // when a student is the one looking.
             'presensi_saya' => fn ($q, $dir) => $q->orderBy(
-                Presensi::select('status')
-                    ->whereColumn('presensi.jurnal_id', 'jurnal.id')
-                    ->where('presensi.siswa_id', $siswa->id)
+                PresensiHarian::select('status')
+                    ->whereRaw('DATE(presensi_harian.tanggal) = DATE(jurnal.tanggal)')
+                    ->where('presensi_harian.siswa_id', $siswa->id)
                     ->limit(1),
                 $dir
             ),
@@ -418,7 +437,11 @@ class Jurnal extends Model
     }
 
     /**
-     * Get the presensi (attendance) records for this journal entry.
+     * The archived per-meeting attendance rows this journal used to own.
+     *
+     * Nothing writes them any more — a roster is a class-day, not a lesson (see
+     * {@see PresensiHarian}). Kept so the history recorded before that change is
+     * still reachable, and so deleting a journal still cascades it away.
      */
     public function presensis(): HasMany
     {

@@ -104,7 +104,8 @@
             @else
                 <p class="field__hint mb-3">
                     Anda memindai QR kelas <strong>{{ $kelas->nama_kelas }}</strong>. Ketuk mata
-                    pelajaran yang Anda ajar di kelas ini, lalu lanjut mengisi jurnal dan presensi.
+                    pelajaran yang Anda ajar di kelas ini, lalu lanjut mengisi jurnal. Presensi siswa
+                    diisi terpisah, sekali sehari, oleh ketua kelas.
                 </p>
 
                 <form method="GET" action="{{ route('jurnal.create') }}">

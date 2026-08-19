@@ -4,45 +4,60 @@
 
 @section('content')
     @php
-        $total = array_sum($rekap) ?: 1;
+        $jumlah = array_sum($rekap);
+        $total = $jumlah ?: 1;
         $user = Auth::user();
+        $persen = round($rekap['hadir'] / $total * 100);
+        $predikat = match (true) {
+            $persen >= 95 => ['Sangat Baik', 'green'],
+            $persen >= 90 => ['Baik', 'green'],
+            $persen >= 80 => ['Cukup', 'khaki'],
+            default => ['Perhatian', 'yellow'],
+        };
     @endphp
 
     <x-page-head
         title="Rekap Kehadiran Saya"
-        :sub="collect([$user->name, $user->kelas?->nama_kelas, number_format(array_sum($rekap), 0, ',', '.') . ' pertemuan tercatat', $periode->label()])->filter()->join(' · ')">
+        :sub="collect([$user->name, $user->kelas?->nama_kelas, number_format($jumlah, 0, ',', '.') . ' hari tercatat', $periode->label()])->filter()->join(' · ')">
         <x-periode-filter :periode="$periode" />
-        {{-- Exporting a recap is an admin job; a student only reads their own. --}}
+        {{-- Exporting a recap is a guru/admin job; a student only reads their own. --}}
     </x-page-head>
 
     <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="number_format($rekap['hadir'], 0, ',', '.')"
-                :caption="'dari ' . number_format(array_sum($rekap), 0, ',', '.') . ' pertemuan'" />
+                :caption="'dari ' . number_format($jumlah, 0, ',', '.') . ' hari sekolah'" />
         <x-stat label="Sakit" :value="$rekap['sakit']" :caption="round($rekap['sakit'] / $total * 100) . '% dari total'" />
         <x-stat label="Izin" :value="$rekap['izin']" :caption="round($rekap['izin'] / $total * 100) . '% dari total'" />
         <x-stat label="Alpa" :value="$rekap['alpa']" caption="batas maksimal 10%" />
     </div>
 
+    <div class="grid-row">
+        <x-card title="Persentase Kehadiran" :meta="$periode->label()">
+            <span class="meter-cell">
+                <x-stack-bar :hadir="$rekap['hadir']" :sakit="$rekap['sakit']"
+                             :izin="$rekap['izin']" :alpa="$rekap['alpa']" />
+                <span class="is-strong">{{ $persen }}%</span>
+                <x-chip :tone="$predikat[1]" :label="$predikat[0]" />
+            </span>
+        </x-card>
+    </div>
+
     <form class="filter-bar" method="GET">
         <x-query-hidden />
 
-        <label class="filter-bar__search">
-            <x-ikon nama="search" />
-            <input class="input-hifi" type="search" name="q" value="{{ $filters['q'] ?? '' }}"
-                   placeholder="Cari mata pelajaran...">
-        </label>
-
-        <select class="select-hifi" name="mata_pelajaran_id" style="width: 180px" data-searchable onchange="this.form.submit()">
-            <option value="">Semua Mapel</option>
-            @foreach ($mapelList as $mapel)
-                <option value="{{ $mapel->id }}" @selected(($filters['mata_pelajaran_id'] ?? null) == $mapel->id)>{{ $mapel->nama }}</option>
+        <select class="select-hifi" name="status" style="width: 180px" onchange="this.form.submit()">
+            <option value="">Semua Status</option>
+            @foreach (['hadir' => 'Hadir', 'sakit' => 'Sakit', 'izin' => 'Izin', 'alpa' => 'Alpa'] as $nilai => $label)
+                <option value="{{ $nilai }}" @selected(($filters['status'] ?? null) === $nilai)>{{ $label }}</option>
             @endforeach
         </select>
 
-        <span class="filter-bar__note">Menampilkan {{ $perMapel->count() }} mata pelajaran</span>
+        <span class="filter-bar__note">
+            Menampilkan {{ $riwayat->count() }} dari {{ number_format($riwayat->total(), 0, ',', '.') }} hari
+        </span>
     </form>
 
-    <x-card title="Kehadiran per Mata Pelajaran" flush>
+    <x-card title="Riwayat Kehadiran Harian" flush>
         <x-slot:actions>
             <x-legend :items="[
                 'Hadir' => 'var(--green-200)',
@@ -55,57 +70,38 @@
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
-                    <tr>
-                        <th>Mata Pelajaran</th>
-                        <th>Guru</th>
-                        <th class="is-num">Total</th>
-                        <th class="is-num">H</th>
-                        <th class="is-num">S</th>
-                        <th class="is-num">I</th>
-                        <th class="is-num">A</th>
-                        <th>Persentase Kehadiran</th>
-                        <th class="is-num">Predikat</th>
-                    </tr>
+                    <tr><th>Tanggal</th><th>Hari</th><th>Kelas</th><th>Status</th><th class="is-num">Keterangan</th></tr>
                 </thead>
                 <tbody>
-                    @forelse ($perMapel as $nama => $baris)
+                    @forelse ($riwayat as $baris)
                         @php
-                            $status = $baris['status'];
-                            $hadir = (int) ($status['hadir'] ?? 0);
-                            $persen = round($hadir / max(1, $baris['total']) * 100);
-                            $predikat = match (true) {
-                                $persen >= 95 => ['Sangat Baik', 'green'],
-                                $persen >= 90 => ['Baik', 'green'],
-                                $persen >= 80 => ['Cukup', 'khaki'],
-                                default => ['Perhatian', 'yellow'],
+                            $tone = match ($baris->status) {
+                                'hadir' => 'green',
+                                'sakit' => 'khaki',
+                                'izin' => 'yellow',
+                                default => 'red',
                             };
                         @endphp
                         <tr>
-                            <td class="is-strong is-nowrap">{{ $nama }}</td>
-                            <td class="is-muted is-nowrap">{{ $baris['guru'] }}</td>
-                            <td class="is-num">{{ $baris['total'] }}</td>
-                            <td class="is-num">{{ $hadir }}</td>
-                            <td class="is-num">{{ $status['sakit'] ?? 0 }}</td>
-                            <td class="is-num">{{ $status['izin'] ?? 0 }}</td>
-                            <td class="is-num">{{ $status['alpa'] ?? 0 }}</td>
-                            <td>
-                                <span class="meter-cell">
-                                    <x-stack-bar :hadir="$hadir" :sakit="$status['sakit'] ?? 0"
-                                                 :izin="$status['izin'] ?? 0" :alpa="$status['alpa'] ?? 0" />
-                                    <span class="is-strong">{{ $persen }}%</span>
-                                </span>
-                            </td>
-                            <td class="is-num"><x-chip :tone="$predikat[1]" :label="$predikat[0]" /></td>
+                            <td class="is-strong is-nowrap">{{ $baris->tanggal->format('d/m/Y') }}</td>
+                            <td class="is-muted">{{ $baris->tanggal->translatedFormat('l') }}</td>
+                            <td class="is-muted">{{ $baris->kelas?->nama_kelas }}</td>
+                            <td><x-chip :tone="$tone" :label="ucfirst($baris->status)" /></td>
+                            <td class="is-num is-muted">{{ $baris->keterangan ?: '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="empty-state">Belum ada catatan kehadiran.</td></tr>
+                        <tr><td colspan="5" class="empty-state">Belum ada catatan kehadiran pada periode ini.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
         <x-slot:foot>
-            <span>Menampilkan {{ $perMapel->count() }} mata pelajaran</span>
+            <span>
+                Menampilkan {{ $riwayat->firstItem() ?? 0 }}–{{ $riwayat->lastItem() ?? 0 }}
+                dari {{ number_format($riwayat->total(), 0, ',', '.') }} hari
+            </span>
+            <x-pager :paginator="$riwayat" />
         </x-slot:foot>
     </x-card>
 @endsection

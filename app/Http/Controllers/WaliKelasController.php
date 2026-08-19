@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Support\Halaman;
+use App\Support\Periode;
+use App\Support\RekapPresensi;
 use App\Support\Ringkasan;
 use App\Support\Urutan;
 use Illuminate\Http\Request;
@@ -124,10 +126,7 @@ class WaliKelasController extends Controller
 
         $jurnals = $this->jurnalKelas($kelas)
             ->with(['jadwal.mataPelajaran', 'guru'])
-            ->withCount([
-                'presensis as total_siswa',
-                'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
-            ])
+            ->denganPresensiHarian()
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
@@ -162,50 +161,36 @@ class WaliKelasController extends Controller
 
     /**
      * Attendance for the class two ways: the standing per-student recap a wali
-     * actually acts on, and the meeting-by-meeting history behind it.
+     * actually acts on, and the day-by-day roll calls behind it.
+     *
+     * Read-only. A wali kelas is a guru, and a guru no longer marks attendance:
+     * the class's ketua files it once a day. What a wali gets here is oversight
+     * - who is slipping, and which days were never filed at all.
      */
     public function presensi(Request $request)
     {
         [$kelasWali, $kelas] = $this->konteks($request);
 
-        $filters = $request->validate([
-            'mata_pelajaran_id' => ['nullable', 'exists:mata_pelajaran,id'],
-            'q' => ['nullable', 'string', 'max:255'],
-        ]);
+        $periode = Periode::dari($request);
 
-        $pertemuan = $this->jurnalKelas($kelas)
-            ->with(['jadwal.mataPelajaran', 'guru'])
-            ->withCount([
-                'presensis as total_siswa',
-                'presensis as hadir_count' => fn ($q) => $q->where('status', 'hadir'),
-                'presensis as sakit_count' => fn ($q) => $q->where('status', 'sakit'),
-                'presensis as izin_count' => fn ($q) => $q->where('status', 'izin'),
-                'presensis as alpa_count' => fn ($q) => $q->where('status', 'alpa'),
-            ])
-            ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
-            ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
+        $hari = RekapPresensi::perKelasHari([$kelas->id], $periode->mulaiString(), $periode->selesaiString());
 
-        $peta = array_intersect_key(Jurnal::petaUrutan(), array_flip(['tanggal', 'jam', 'mapel', 'guru', 'siswa', 'hadir', 'sakit', 'izin', 'alpa', 'persen']));
-        Urutan::terapkan($pertemuan, $request, $peta, fn ($q) => $q->latest('tanggal')->latest('id'));
+        Urutan::terapkan($hari, $request, PresensiHarian::petaUrutan(), fn ($q) => $q
+            ->orderByDesc('presensi_harian.tanggal'));
 
-        $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
+        $hari = $hari->paginate(Halaman::perHalaman())->withQueryString();
 
         $siswa = $kelas->siswa()->orderBy('name')->get();
 
         return view('wali-kelas.presensi', [
             'kelasWali' => $kelasWali,
             'kelas' => $kelas,
-            'pertemuan' => $pertemuan,
+            'periode' => $periode,
+            'hari' => $hari,
             'siswa' => $siswa,
             'rekapSiswa' => $this->rekapPerSiswa($siswa->pluck('id')->all()),
             'rekap' => $this->presensiKelas($kelas),
-            'mapelList' => $this->mapelKelas($kelas),
-            'filters' => $filters,
-            // With no filter active the paginator's own total is the same
-            // number — no need for a second COUNT over the class.
-            'totalPertemuan' => ($filters['mata_pelajaran_id'] ?? null) || ($filters['q'] ?? null)
-                ? $this->jurnalKelas($kelas)->count()
-                : $pertemuan->total(),
+            'totalHari' => $hari->total(),
         ]);
     }
 
@@ -239,20 +224,15 @@ class WaliKelasController extends Controller
     }
 
     /**
-     * Attendance totals across every meeting of this class. Explicit joins so
-     * the optimizer drives from the class's few dozen jadwal rows instead of
-     * scanning all ~110k presensi rows through a nested EXISTS.
+     * Attendance totals across every school day of this class - one indexed
+     * lookup on presensi_harian, where the old per-meeting shape needed two
+     * joins to reach the class through the journal.
      *
      * @return array<string, int>
      */
     private function presensiKelas(Kelas $kelas): array
     {
-        return Ringkasan::presensi(
-            Presensi::query()
-                ->join('jurnal', 'presensi.jurnal_id', '=', 'jurnal.id')
-                ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-                ->where('jadwal.kelas_id', $kelas->id)
-        );
+        return Ringkasan::presensi(PresensiHarian::where('kelas_id', $kelas->id));
     }
 
     /**
@@ -280,7 +260,7 @@ class WaliKelasController extends Controller
             return [];
         }
 
-        return Presensi::whereIn('siswa_id', $siswaIds)
+        return PresensiHarian::whereIn('siswa_id', $siswaIds)
             ->selectRaw('siswa_id, status, COUNT(*) as total')
             ->groupBy('siswa_id', 'status')
             ->get()

@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Presensi;
+use App\Models\PresensiHarian;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,7 +71,11 @@ class AuthorizationTest extends TestCase
             ->firstOrFail();
 
         $this->actingAs($this->siswa)->get("/jurnal/{$lain->public_id}")->assertForbidden();
-        $this->actingAs($this->siswa)->get("/presensi/{$lain->public_id}")->assertForbidden();
+
+        $kelasLain = $lain->jadwal->kelas_id;
+        $this->actingAs($this->siswa)
+            ->get(route('presensi-harian.show', $kelasLain))
+            ->assertForbidden();
     }
 
     public function test_a_student_with_no_class_sees_no_journals(): void
@@ -100,29 +104,31 @@ class AuthorizationTest extends TestCase
         $this->actingAs($lepas)->get("/kelas/{$this->jadwal->kelas_id}")->assertForbidden();
     }
 
-    public function test_attendance_rejects_a_student_outside_the_roster(): void
+    /**
+     * A guru does not file attendance at all any more: the class's ketua kelas
+     * takes one roll call a day. A guru reading the recap is fine; a guru
+     * writing one must be refused even for a class they teach.
+     */
+    public function test_a_guru_cannot_file_attendance_even_for_a_class_they_teach(): void
     {
-        $jurnal = Jurnal::where('jadwal_id', $this->jadwal->id)->firstOrFail();
-
-        // A student who belongs to a different class than this journal's.
-        $luar = User::where('role', 'siswa')->where('kelas_id', '!=', $this->jadwal->kelas_id)->firstOrFail();
+        $kelas = $this->jadwal->kelas;
 
         $this->actingAs($this->guru)
-            ->post('/presensi', [
-                'jurnal_id' => $jurnal->public_id,
-                'presensi' => [['siswa_id' => $luar->id, 'status' => 'hadir', 'keterangan' => null]],
-            ])
-            ->assertSessionHasErrors('presensi.0.siswa_id');
+            ->get(route('presensi-harian.edit', $kelas))
+            ->assertForbidden();
 
-        $this->assertDatabaseMissing('presensi', ['jurnal_id' => $jurnal->id, 'siswa_id' => $luar->id]);
+        $this->actingAs($this->guru)
+            ->post(route('presensi-harian.store', $kelas), [
+                'tanggal' => now()->toDateString(),
+                'presensi' => [['siswa_id' => $kelas->siswa()->value('id'), 'status' => 'hadir']],
+            ])
+            ->assertForbidden();
     }
 
-    public function test_a_guru_who_does_not_teach_the_class_cannot_mark_its_meeting(): void
+    public function test_a_guru_outside_the_class_cannot_even_read_its_attendance(): void
     {
-        // Marking is class-scoped (JurnalPolicy::markRoster): a guru who teaches
-        // the class or is its wali may mark any of its meetings, but an outsider
-        // may not. A freshly created guru teaches nothing, so they are the
-        // reliable "outsider" no matter how the demo timetable is wired.
+        // A freshly created guru teaches nothing, so they are the reliable
+        // "outsider" no matter how the demo timetable is wired.
         $luar = User::create([
             'name' => 'Guru Tak Mengajar',
             'email' => 'guru.tak.mengajar@test.app',
@@ -130,9 +136,10 @@ class AuthorizationTest extends TestCase
             'role' => 'guru',
             'nip' => '900900',
         ]);
-        $jurnal = Jurnal::where('guru_id', $this->jadwal->guru_id)->firstOrFail();
 
-        $this->actingAs($luar)->get("/presensi/create/{$jurnal->public_id}")->assertForbidden();
+        $this->actingAs($luar)
+            ->get(route('presensi-harian.show', $this->jadwal->kelas_id))
+            ->assertForbidden();
     }
 
     public function test_a_regular_siswa_cannot_author_a_journal(): void
@@ -184,10 +191,8 @@ class AuthorizationTest extends TestCase
             ->where('is_ketua_kelas', true)
             ->firstOrFail();
 
-        // A meeting carries one roster. DemoSeeder journals today's meetings too,
-        // so on the weekday this slot is taught the guru's seeded journal would
-        // already own it and the hand-off below would redirect there instead.
-        // Clear the meeting so the ketua's journal is the one under test.
+        // DemoSeeder journals today's meetings too; clear this slot so the
+        // ketua's journal is the one under test rather than a duplicate.
         Jurnal::where('jadwal_id', $this->jadwal->id)
             ->whereDate('tanggal', now()->toDateString())
             ->delete();
@@ -201,11 +206,10 @@ class AuthorizationTest extends TestCase
 
         $jurnal = Jurnal::latest('id')->firstOrFail();
 
-        // The save must hand off to the roster screen, and the ketua must be
-        // allowed to open it — this exact chain 403'd when presensi gained its
-        // update gate before the policy knew about the ketua.
-        $simpan->assertRedirect(route('presensi.create', $jurnal));
-        $this->actingAs($ketua)->get("/presensi/create/{$jurnal->public_id}")->assertOk();
+        // Saving a journal no longer hands off to a roster screen — attendance
+        // is a separate, once-daily job — so it lands on the journal itself.
+        $simpan->assertRedirect(route('jurnal.show', $jurnal));
+        $this->actingAs($ketua)->get("/jurnal/{$jurnal->public_id}")->assertOk();
     }
 
     public function test_a_guru_cannot_write_against_another_gurus_schedule(): void
@@ -235,10 +239,9 @@ class AuthorizationTest extends TestCase
     }
 
     /**
-     * markRoster already lets a wali kelas mark any meeting of their homeroom
-     * class, so refusing them a read of that same meeting was inconsistent —
-     * their own screens list its contents. Read only: editing stays with the
-     * teacher who wrote it.
+     * A wali kelas reads every meeting of their homeroom class — their own
+     * screens list its contents, so refusing the read was inconsistent. Read
+     * only: editing stays with the teacher who wrote it.
      */
     public function test_a_wali_kelas_reads_but_cannot_edit_another_gurus_journal_in_their_class(): void
     {
@@ -263,7 +266,6 @@ class AuthorizationTest extends TestCase
         $jurnal = Jurnal::firstOrFail();
 
         $this->actingAs($luar)->get("/jurnal/{$jurnal->public_id}")->assertForbidden();
-        $this->actingAs($luar)->get("/presensi/{$jurnal->public_id}")->assertForbidden();
     }
 
     /**
@@ -275,8 +277,7 @@ class AuthorizationTest extends TestCase
         $jurnal = Jurnal::where('guru_id', $this->guru->id)->firstOrFail();
 
         $this->actingAs($this->guru)->get("/jurnal/{$jurnal->id}")->assertNotFound();
-        $this->actingAs($this->guru)->get("/presensi/{$jurnal->id}")->assertNotFound();
-        $this->actingAs($this->guru)->get('/presensi/01ANGKASANGAWURXXXXXXXXXXXX')->assertNotFound();
+        $this->actingAs($this->guru)->get('/jurnal/01ANGKASANGAWURXXXXXXXXXXXX')->assertNotFound();
 
         $this->actingAs($this->guru)->get("/jurnal/{$jurnal->public_id}")->assertOk();
     }
@@ -313,24 +314,25 @@ class AuthorizationTest extends TestCase
     }
 
     /**
-     * presensi and presensi_log both cascade off this row, so a deletion takes
-     * the lesson's whole roster with it. The modal warns about that; this pins
-     * that the warning is accurate.
+     * Attendance belongs to the class's day, not to a lesson, so deleting a
+     * journal must leave the roll call standing. The delete modal says so; this
+     * pins that the promise is true.
      */
-    public function test_deleting_a_journal_takes_its_attendance_with_it(): void
+    public function test_deleting_a_journal_leaves_the_daily_attendance_intact(): void
     {
-        $jurnal = Jurnal::where('guru_id', $this->guru->id)
-            ->whereHas('presensis')
-            ->firstOrFail();
+        $jurnal = Jurnal::where('guru_id', $this->guru->id)->firstOrFail();
+        $kelasId = $jurnal->jadwal->kelas_id;
+        $tanggal = $jurnal->tanggal->toDateString();
 
-        $jumlah = $jurnal->presensis()->count();
-        $this->assertGreaterThan(0, $jumlah);
+        $sebelum = PresensiHarian::where('kelas_id', $kelasId)->whereDate('tanggal', $tanggal)->count();
+        $this->assertGreaterThan(0, $sebelum);
 
         $this->actingAs($this->guru)
             ->delete("/jurnal/{$jurnal->public_id}")
             ->assertRedirect(route('jurnal.index'));
 
         $this->assertDatabaseMissing('jurnal', ['id' => $jurnal->id]);
-        $this->assertDatabaseMissing('presensi', ['jurnal_id' => $jurnal->id]);
+        $this->assertSame($sebelum, PresensiHarian::where('kelas_id', $kelasId)
+            ->whereDate('tanggal', $tanggal)->count());
     }
 }

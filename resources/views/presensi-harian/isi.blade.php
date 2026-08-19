@@ -1,38 +1,28 @@
 @extends('layouts.app')
 
-@section('title', 'Presensi')
+@section('title', 'Isi Presensi Harian')
 
 @section('content')
     @php
-        $kelas = $jurnal->jadwal?->kelas;
-        $ditandai = array_sum($rekap);
-        $tidakHadir = $rekap['sakit'] + $rekap['izin'] + $rekap['alpa'];
         $totalSiswa = $siswaList->count();
     @endphp
 
     <x-page-head
-        title="Presensi Siswa"
-        :sub="collect([$kelas?->nama_kelas, $jurnal->jadwal?->mataPelajaran?->nama, 'JP ' . $jurnal->jadwal?->jpLabel(), $jurnal->tanggal->translatedFormat('l, j F Y')])->filter()->join(' · ')">
-        <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">← Daftar Presensi</a>
-        <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.show', $jurnal) }}">Lihat Jurnal</a>
-        <button class="btn-hifi" type="submit" form="formPresensi">Simpan Presensi</button>
+        :title="$sudahDiisi ? 'Perbarui Presensi Hari Ini' : 'Isi Presensi Hari Ini'"
+        :sub="collect([$kelas->nama_kelas, $tanggal->translatedFormat('l, j F Y'), 'satu kali untuk seluruh hari'])->filter()->join(' · ')">
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">← Rekap Presensi</a>
+        <button class="btn-hifi" type="submit" form="formPresensiHarian">Simpan Presensi</button>
     </x-page-head>
 
-    <div class="grid-row grid-row--4">
-        <x-stat label="Total Siswa" :value="$totalSiswa" caption="terdaftar di rombel" />
-        <x-stat label="Hadir" :value="$rekap['hadir']"
-                :caption="$ditandai ? round($rekap['hadir'] / $ditandai * 100) . '% sudah ditandai' : 'belum ditandai'" />
-        <x-stat label="Tidak Hadir" :value="$tidakHadir"
-                :caption="$rekap['sakit'] . ' sakit · ' . $rekap['izin'] . ' izin · ' . $rekap['alpa'] . ' alpa'" />
-        <x-stat label="Belum Ditandai" :value="max(0, $totalSiswa - $ditandai)"
-                :caption="$ditandai >= $totalSiswa ? 'siap disimpan' : 'perlu dilengkapi'" />
-    </div>
-
-    @if (! empty($prefill))
+    @if ($sudahDiisi)
         <p class="field__hint mb-2">
-            <x-ikon nama="info-circle" /> Kehadiran diisi awal otomatis dari pertemuan
-            <strong>{{ $prefill['label'] }}</strong> di hari yang sama — mohon <strong>periksa</strong>
-            dan sesuaikan sebelum menyimpan.
+            <x-ikon nama="info-circle" /> Presensi kelas ini untuk <strong>{{ $tanggal->translatedFormat('j F Y') }}</strong>
+            sudah tercatat. Menyimpan lagi akan <strong>menggantikan</strong> catatan hari ini, bukan menambah catatan baru.
+        </p>
+    @else
+        <p class="field__hint mb-2">
+            <x-ikon nama="info-circle" /> Presensi diisi <strong>satu kali sehari</strong> untuk seluruh kelas.
+            Setelah hari ini berganti, koreksi hanya dapat dilakukan oleh admin.
         </p>
     @endif
 
@@ -47,13 +37,13 @@
         <span class="filter-bar__note">{{ $totalSiswa }} siswa terdaftar</span>
     </div>
 
-    <form method="POST" action="{{ route('presensi.store') }}" id="formPresensi">
+    <form method="POST" action="{{ route('presensi-harian.store', $kelas) }}" id="formPresensiHarian">
         @csrf
-        <input type="hidden" name="jurnal_id" value="{{ $jurnal->public_id }}">
+        <input type="hidden" name="tanggal" value="{{ $tanggal->toDateString() }}">
 
-        <x-card :title="'Daftar Siswa — ' . ($kelas?->nama_kelas ?? '')" flush>
+        <x-card :title="'Daftar Siswa — ' . $kelas->nama_kelas" flush>
             <x-slot:actions>
-                <span class="card-hifi__meta">{{ $totalSiswa }} siswa terdaftar</span>
+                <span class="card-hifi__meta">{{ $tanggal->translatedFormat('j F Y') }}</span>
             </x-slot:actions>
 
             <div class="tbl-wrap">
@@ -68,11 +58,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($siswaList as $index => $siswa)
+                        @forelse ($siswaList as $index => $siswa)
                             @php
-                                $tersimpan = $presensiTersimpan[$siswa->id] ?? null;
-                                // Saved value wins; otherwise the prefill suggestion; otherwise Hadir.
-                                $default = $tersimpan->status ?? ($prefill['map'][$siswa->id] ?? 'hadir');
+                                $baris = $tersimpan[$siswa->id] ?? null;
+                                $default = $baris->status ?? 'hadir';
                             @endphp
                             <tr data-nama="{{ Str::lower($siswa->name) }}" data-nis="{{ $siswa->nis }}">
                                 <td class="is-muted">{{ $index + 1 }}</td>
@@ -98,17 +87,21 @@
                                 <td>
                                     <input class="input-hifi" type="text" style="height: 28px; font-size: 11px"
                                            name="presensi[{{ $index }}][keterangan]"
-                                           value="{{ $tersimpan->keterangan ?? '' }}" placeholder="—">
+                                           value="{{ $baris->keterangan ?? '' }}" placeholder="—">
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr><td colspan="5" class="empty-state">Belum ada siswa terdaftar di kelas ini.</td></tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
             <x-slot:foot>
                 <span>Menampilkan {{ $totalSiswa }} siswa</span>
-                <button class="btn-hifi" type="submit">Simpan Presensi</button>
+                @if ($totalSiswa)
+                    <button class="btn-hifi" type="submit">Simpan Presensi</button>
+                @endif
             </x-slot:foot>
         </x-card>
     </form>
@@ -120,7 +113,7 @@
             document.getElementById('cariSiswa')?.addEventListener('input', (event) => {
                 const kata = event.target.value.toLowerCase().trim();
                 baris.forEach((tr) => {
-                    const cocok = tr.dataset.nama.includes(kata) || tr.dataset.nis.includes(kata);
+                    const cocok = (tr.dataset.nama ?? '').includes(kata) || (tr.dataset.nis ?? '').includes(kata);
                     tr.style.display = cocok ? '' : 'none';
                 });
             });

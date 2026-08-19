@@ -48,7 +48,10 @@ class JurnalResource extends JsonResource
             'jadwal' => new JadwalResource($this->whenLoaded('jadwal')),
             'guru' => new UserResource($this->whenLoaded('guru')),
             'diisi_oleh' => new UserResource($this->whenLoaded('diisiOleh')),
-            'presensi' => PresensiResource::collection($this->whenLoaded('presensis')),
+            // Attendance is no longer carried by a journal: it is one roll call
+            // per class per day, read from /api/presensi. The per-meeting counts
+            // below still describe the class's attendance on the lesson's date.
+            'presensi' => null,
         ];
     }
 }
