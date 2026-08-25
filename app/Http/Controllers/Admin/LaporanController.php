@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Guru;
 use App\Models\Jurnal;
 use App\Models\Kelas;
-use App\Models\User;
 use App\Support\Halaman;
 use App\Support\Periode;
 use App\Support\Ringkasan;
@@ -26,7 +26,7 @@ class LaporanController extends Controller
 
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
             'jurusan' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'in:terisi,telat'],
@@ -70,7 +70,7 @@ class LaporanController extends Controller
             'periode' => $periode,
             'jurnals' => $jurnals,
             'kelasList' => $kelasList,
-            'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
+            'guruList' => Guru::aktif()->orderBy('nama')->get(),
             'kelengkapan' => $kelengkapan,
             'filters' => $filters,
             'statistik' => [
@@ -103,7 +103,7 @@ class LaporanController extends Controller
 
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
             'jurusan' => ['nullable', 'string', 'max:100'],
             'q' => ['nullable', 'string', 'max:255'],
@@ -129,7 +129,7 @@ class LaporanController extends Controller
             'periode' => $periode,
             'pertemuan' => $pertemuan,
             'kelasList' => $kelasList,
-            'guruList' => User::where('role', 'guru')->orderBy('name')->get(),
+            'guruList' => Guru::aktif()->orderBy('nama')->get(),
             'kehadiranPerKelas' => Ringkasan::presensiPerKelas($periode),
             'filters' => $filters,
             'rekap' => $rekap,
@@ -150,7 +150,7 @@ class LaporanController extends Controller
             ->when($filters['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
             ->when($filters['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
             ->when($filters['edit_lewat_hari'] ?? null, fn ($query) => $query->where('jurnal.diedit_setelah_hari', true))
-            ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
+            ->when($filters['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? $this->ekspresiTerlambat() : 'NOT ('.$this->ekspresiTerlambat().')'
             ))
@@ -182,7 +182,7 @@ class LaporanController extends Controller
                     $j->tanggal->format('Y-m-d'),
                     $j->jadwal?->kelas?->nama_kelas,
                     $j->jadwal?->mataPelajaran?->nama,
-                    $j->guru?->name,
+                    $j->guru?->nama,
                     $j->materi,
                     $j->tugas,
                     (int) $j->total_siswa,
@@ -208,7 +208,7 @@ class LaporanController extends Controller
                     $j->tanggal->format('Y-m-d'),
                     $j->jadwal?->kelas?->nama_kelas,
                     $j->jadwal?->mataPelajaran?->nama,
-                    $j->guru?->name,
+                    $j->guru?->nama,
                     (int) $j->total_siswa,
                     (int) $j->hadir_count,
                     (int) $j->sakit_count,

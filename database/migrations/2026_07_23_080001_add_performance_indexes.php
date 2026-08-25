@@ -17,17 +17,17 @@ return new class extends Migration
     {
         Schema::table('jurnal', function (Blueprint $table) {
             $table->index('tanggal', 'jurnal_tanggal_index');
-            $table->index(['guru_id', 'tanggal'], 'jurnal_guru_tanggal_index');
+            $table->index(['guru_nip', 'tanggal'], 'jurnal_guru_tanggal_index');
         });
 
         Schema::table('presensi', function (Blueprint $table) {
-            $table->index(['siswa_id', 'status'], 'presensi_siswa_status_index');
+            $table->index(['siswa_nis', 'status'], 'presensi_siswa_status_index');
             $table->index(['jurnal_id', 'status'], 'presensi_jurnal_status_index');
         });
 
         Schema::table('jadwal', function (Blueprint $table) {
             $table->index(['kelas_id', 'hari'], 'jadwal_kelas_hari_index');
-            $table->index(['guru_id', 'hari'], 'jadwal_guru_hari_index');
+            $table->index(['guru_nip', 'hari'], 'jadwal_guru_hari_index');
         });
     }
 

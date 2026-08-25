@@ -38,11 +38,8 @@ class JurnalGandaTest extends TestCase
         $this->seed(DemoSeeder::class);
 
         $this->jadwal = Jadwal::with('kelas')->firstOrFail();
-        $this->guru = User::findOrFail($this->jadwal->guru_id);
-        $this->ketua = User::where('role', 'siswa')
-            ->where('kelas_id', $this->jadwal->kelas_id)
-            ->where('is_ketua_kelas', true)
-            ->firstOrFail();
+        $this->guru = $this->akunGuru($this->jadwal->guru_nip);
+        $this->ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
 
         $this->tanggal = now()->addMonth()->toDateString();
         Jurnal::where('jadwal_id', $this->jadwal->id)->whereDate('tanggal', $this->tanggal)->delete();
@@ -111,7 +108,7 @@ class JurnalGandaTest extends TestCase
             'jadwal_id' => $this->jadwal->id,
             'tanggal' => $this->tanggal,
             'materi' => 'Tembus langsung',
-            'guru_id' => $this->guru->id,
+            'guru_nip' => $this->guru->nip,
             'diisi_oleh_id' => $this->guru->id,
             'diisi_oleh_peran' => 'guru',
         ]);
@@ -146,14 +143,14 @@ class JurnalGandaTest extends TestCase
         $this->kirim($this->ketua, ['materi' => 'Versi ketua']);
 
         $kelas = $this->jadwal->kelas;
-        $roster = $kelas->siswa()->pluck('id');
+        $roster = $kelas->siswa()->pluck('nis');
         // The journals above sit a month ahead to stay clear of seeded data, but
         // a ketua may only ever file today's roll call.
         $hariIni = now()->toDateString();
 
         $payload = ['tanggal' => $hariIni, 'presensi' => []];
         foreach ($roster as $i => $id) {
-            $payload['presensi'][$i] = ['siswa_id' => $id, 'status' => 'hadir'];
+            $payload['presensi'][$i] = ['siswa_nis' => $id, 'status' => 'hadir'];
         }
 
         $this->actingAs($this->ketua)

@@ -116,7 +116,7 @@ class ErrorHandlingTest extends TestCase
     public function test_a_validation_failure_still_returns_to_the_form_with_errors(): void
     {
         $jadwal = Jadwal::firstOrFail();
-        $guru = User::findOrFail($jadwal->guru_id);
+        $guru = $this->akunGuru($jadwal->guru_nip);
 
         $this->actingAs($guru)
             ->from('/jurnal/create')

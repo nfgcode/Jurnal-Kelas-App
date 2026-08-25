@@ -81,19 +81,19 @@ class PresensiController extends Controller
         $header = ['Tanggal', 'Kelas', 'NIS', 'Nama Siswa', 'Status', 'Keterangan'];
 
         $baris = PresensiHarian::query()
-            ->join('users', 'presensi_harian.siswa_id', '=', 'users.id')
+            ->join('siswa', 'presensi_harian.siswa_nis', '=', 'siswa.nis')
             ->join('kelas', 'presensi_harian.kelas_id', '=', 'kelas.id')
             ->select([
                 'kelas.nama_kelas',
-                'users.nis',
-                'users.name',
+                'siswa.nis',
+                'siswa.nama',
                 'presensi_harian.status',
                 'presensi_harian.keterangan',
             ])
             ->whereDate('presensi_harian.tanggal', $hari)
             ->when($kelasIds !== null, fn ($q) => $q->whereIn('presensi_harian.kelas_id', $kelasIds))
             ->orderBy('kelas.nama_kelas')
-            ->orderBy('users.name');
+            ->orderBy('siswa.nama');
 
         $rows = function () use ($baris, $hari) {
             foreach ($baris->lazy() as $row) {
@@ -101,7 +101,7 @@ class PresensiController extends Controller
                     $hari,
                     $row->nama_kelas,
                     $row->nis,
-                    $row->name,
+                    $row->nama,
                     ucfirst($row->status),
                     $row->keterangan,
                 ];
@@ -156,7 +156,7 @@ class PresensiController extends Controller
         );
 
         $gridRows = $siswa->map(function ($r) use ($tanggalList, $matriks) {
-            $harian = $matriks[$r->siswa_id] ?? [];
+            $harian = $matriks[$r->siswa_nis] ?? [];
 
             return array_merge(
                 [$r->nama_kelas, $r->nis, $r->nama],
@@ -212,8 +212,8 @@ class PresensiController extends Controller
             return array_values(array_filter([$user->kelas_id]));
         }
 
-        return Jadwal::where('guru_id', $user->id)->pluck('kelas_id')
-            ->merge(Kelas::where('wali_kelas_id', $user->id)->pluck('id'))
+        return Jadwal::where('guru_nip', $user->nip)->pluck('kelas_id')
+            ->merge(Kelas::where('wali_kelas_nip', $user->nip)->pluck('id'))
             ->unique()->values()->all();
     }
 
@@ -230,7 +230,7 @@ class PresensiController extends Controller
         $periode = Periode::dari($request);
 
         $riwayat = PresensiHarian::with('kelas')
-            ->where('siswa_id', $user->id)
+            ->where('siswa_nis', $user->nis)
             ->dalamPeriode($periode->mulaiString(), $periode->selesaiString())
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->orderByDesc('tanggal')
@@ -241,7 +241,7 @@ class PresensiController extends Controller
             'periode' => $periode,
             'riwayat' => $riwayat,
             'rekap' => Ringkasan::presensi(
-                PresensiHarian::where('siswa_id', $user->id), $periode
+                PresensiHarian::where('siswa_nis', $user->nis), $periode
             ),
             'filters' => $filters,
         ]);

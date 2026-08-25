@@ -62,7 +62,7 @@
                         <span class="matrix__slot matrix__slot--{{ $sel->mataPelajaran?->kelompok ?? 'wajib' }}"
                               style="grid-column: {{ $kolom + 2 }}; grid-row: {{ $jp + 1 }} / {{ $sel->jam_ke_selesai + 2 }}">
                             <span class="matrix__mapel">{{ $sel->mataPelajaran?->nama }}</span>
-                            <span class="matrix__guru">{{ $sel->guru?->name }}</span>
+                            <span class="matrix__guru">{{ $sel->guru?->nama }}</span>
                             <span class="matrix__ruang">{{ $sel->ruang ?? $kelas->ruang }}</span>
                         </span>
                     @elseif ($sel === null && $jp === $jpIstirahat)

@@ -8,7 +8,7 @@
     <x-page-head
         title="Impor Data Siswa & Guru"
         sub="Unduh template Excel, isi, lalu unggah untuk membuat banyak akun sekaligus">
-        <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.users.index') }}">← Daftar Pengguna</a>
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.akun.index') }}">← Daftar Akun</a>
     </x-page-head>
 
     @if ($jumlahKelas === 0)

@@ -7,11 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
-     *
-     * Creates kelas table first (before adding kelas_id FK to users).
-     * wali_kelas_id uses unsignedBigInteger without foreign constraint here
-     * to avoid circular dependency with users table.
+     * Created before `guru`, so `wali_kelas_nip` is declared here as a plain
+     * column and picks up its foreign key in the migration that creates the
+     * teacher table. Same dance as before the split — only the referenced key
+     * changed, from a surrogate id to the teacher's NIP.
      */
     public function up(): void
     {
@@ -21,14 +20,11 @@ return new class extends Migration
             $table->enum('tingkat', ['X', 'XI', 'XII']);
             $table->string('jurusan')->nullable();
             $table->string('tahun_ajaran');
-            $table->unsignedBigInteger('wali_kelas_id')->nullable();
+            $table->string('wali_kelas_nip', 20)->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('kelas');

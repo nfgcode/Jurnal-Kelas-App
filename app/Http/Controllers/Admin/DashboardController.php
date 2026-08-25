@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\PresensiHarian;
-use App\Models\User;
+use App\Models\Siswa;
 use App\Support\Periode;
 use App\Support\Ringkasan;
 use Carbon\Carbon;
@@ -43,8 +44,8 @@ class DashboardController extends Controller
             : 0;
 
         $kpi = [
-            'siswa' => User::where('role', 'siswa')->count(),
-            'guru' => User::where('role', 'guru')->count(),
+            'siswa' => Siswa::count(),
+            'guru' => Guru::count(),
             'kelas' => $kelasList->count(),
             'mapel' => MataPelajaran::count(),
             'jadwal' => Jadwal::count(),
@@ -60,7 +61,7 @@ class DashboardController extends Controller
             ->where('kehadiran_guru_status', 'tidak_hadir')
             ->where(fn ($query) => $query->whereNull('kehadiran_guru_ada_tugas')->orWhere('kehadiran_guru_ada_tugas', false))
             ->distinct()
-            ->count('guru_id');
+            ->count('guru_nip');
 
         // "Latest journals" stays a recency feed, not a period slice — it is the
         // newest activity whatever the filter says.
@@ -93,7 +94,7 @@ class DashboardController extends Controller
             'guruPerluPerhatian' => $guruPerluPerhatian,
             // "Most active" must credit teachers for what they wrote themselves,
             // never for journals the nightly job filed under their name.
-            'guruTeraktif' => User::where('role', 'guru')
+            'guruTeraktif' => Guru::query()
                 ->withCount(['jurnals' => fn ($query) => $query->manusia()->whereBetween('tanggal', $rentang)])
                 ->orderByDesc('jurnals_count')
                 ->take(5)
@@ -116,7 +117,7 @@ class DashboardController extends Controller
         $data = $request->validate([
             'tipe' => ['required', 'in:jurnal,guru,kelas,terisi,otomatis,telat,presensi,belum,kelengkapan,guru_perhatian'],
             'tanggal' => ['nullable', 'date'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
             'jurusan' => ['nullable', 'string', 'max:100'],
@@ -157,9 +158,9 @@ class DashboardController extends Controller
                 break;
 
             case 'guru':
-                $guru = User::findOrFail($data['guru_id']);
-                $query->manusia()->where('guru_id', $guru->id)->whereBetween('tanggal', $rentang);
-                $judul = 'Jurnal '.$guru->name;
+                $guru = Guru::findOrFail($data['guru_nip']);
+                $query->manusia()->where('guru_nip', $guru->nip)->whereBetween('tanggal', $rentang);
+                $judul = 'Jurnal '.$guru->nama;
                 break;
 
             case 'kelas':
@@ -217,10 +218,10 @@ class DashboardController extends Controller
             'tanggal' => $jurnal->tanggal->format('d/m/Y'),
             'kelas' => $jurnal->jadwal?->kelas?->nama_kelas,
             'mapel' => $jurnal->jadwal?->mataPelajaran?->nama,
-            'guru' => $jurnal->guru?->name,
+            'guru' => $jurnal->guru?->nama,
             // Let the modal link a teacher through to their profile, mirroring
             // x-guru-link elsewhere. Null keeps the cell plain text.
-            'guruUrl' => $jurnal->guru ? route('admin.users.show', $jurnal->guru) : null,
+            'guruUrl' => $jurnal->guru ? route('admin.guru.show', $jurnal->guru) : null,
             'materi' => $jurnal->materi,
             'guruChip' => $jurnal->kehadiranGuruChip(),
             'statusChip' => $jurnal->statusPengisian(),
@@ -262,7 +263,7 @@ class DashboardController extends Controller
             ->get()
             ->map(fn ($presensi) => [
                 'tanggal' => $presensi->tanggal?->format('d/m/Y'),
-                'siswa' => $presensi->siswa?->name,
+                'siswa' => $presensi->siswa?->nama,
                 'kelas' => $presensi->kelas?->nama_kelas,
                 'mapel' => null,
                 'keterangan' => $presensi->keterangan,
@@ -302,7 +303,7 @@ class DashboardController extends Controller
             ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('kelas_id', $id))
             ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('kelas', fn ($k) => $k->where('tingkat', $t)))
             ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('kelas', fn ($k) => $k->where('jurusan', $j)))
-            ->when($data['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
+            ->when($data['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
             ->get()
             ->groupBy('hari');
 
@@ -330,7 +331,7 @@ class DashboardController extends Controller
                     'tanggal' => $tanggal->format('d/m/Y'),
                     'kelas' => $jadwal->kelas?->nama_kelas,
                     'mapel' => $jadwal->mataPelajaran?->nama,
-                    'guru' => $jadwal->guru?->name,
+                    'guru' => $jadwal->guru?->nama,
                 ];
 
                 if (count($baris) >= 50) {
@@ -386,6 +387,6 @@ class DashboardController extends Controller
             ->when($data['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($data['tingkat'] ?? null, fn ($q, $t) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
             ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
-            ->when($data['guru_id'] ?? null, fn ($q, $id) => $q->where('guru_id', $id));
+            ->when($data['guru_nip'] ?? null, fn ($q, $id) => $q->where('guru_nip', $id));
     }
 }

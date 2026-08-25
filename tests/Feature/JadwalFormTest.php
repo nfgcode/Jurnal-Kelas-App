@@ -31,17 +31,14 @@ class JadwalFormTest extends TestCase
         $this->seed(DemoSeeder::class);
 
         $jadwal = Jadwal::firstOrFail();
-        $this->guru = $jadwal->guru;
-        $this->ketua = User::where('role', 'siswa')
-            ->where('kelas_id', $jadwal->kelas_id)
-            ->where('is_ketua_kelas', true)
-            ->firstOrFail();
+        $this->guru = $this->akunGuru($jadwal->guru_nip);
+        $this->ketua = $this->akunSiswaKelas($jadwal->kelas_id, true);
     }
 
     /** The next weekday on which this teacher actually has a lesson. */
     private function tanggalDenganJadwal(User $user): Carbon
     {
-        $hari = Jadwal::where('guru_id', $user->id)->value('hari');
+        $hari = Jadwal::where('guru_nip', $user->nip)->value('hari');
         $tanggal = today();
 
         for ($i = 0; $i < 7; $i++) {
@@ -98,7 +95,7 @@ class JadwalFormTest extends TestCase
     public function test_slots_already_written_up_are_marked(): void
     {
         $tanggal = $this->tanggalDenganJadwal($this->guru);
-        $jadwal = Jadwal::where('guru_id', $this->guru->id)
+        $jadwal = Jadwal::where('guru_nip', $this->guru->nip)
             ->where('hari', Ringkasan::HARI[$tanggal->dayOfWeekIso - 1])
             ->firstOrFail();
 
@@ -106,7 +103,7 @@ class JadwalFormTest extends TestCase
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal->toDateString(),
             'materi' => 'Sudah ditulis',
-            'guru_id' => $this->guru->id,
+            'guru_nip' => $this->guru->nip,
             'diisi_oleh_id' => $this->guru->id,
             'diisi_oleh_peran' => 'guru',
         ]);
@@ -126,7 +123,7 @@ class JadwalFormTest extends TestCase
             ->get('/jurnal/create?tanggal='.$tanggal->toDateString())
             ->assertOk()
             ->assertViewHas('jadwalList', fn ($list) => $list
-                ->every(fn ($j) => $j->guru_id === $this->guru->id));
+                ->every(fn ($j) => $j->guru_nip === $this->guru->nip));
     }
 
     public function test_a_ketua_is_only_offered_their_own_class(): void
@@ -149,7 +146,7 @@ class JadwalFormTest extends TestCase
     {
         $tanggal = $this->tanggalDenganJadwal($this->guru);
         $jadwal = Jadwal::with(['kelas', 'mataPelajaran'])
-            ->where('guru_id', $this->guru->id)
+            ->where('guru_nip', $this->guru->nip)
             ->where('hari', Ringkasan::HARI[$tanggal->dayOfWeekIso - 1])
             ->firstOrFail();
 
@@ -157,7 +154,7 @@ class JadwalFormTest extends TestCase
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal->toDateString(),
             'materi' => 'Yang pertama',
-            'guru_id' => $this->guru->id,
+            'guru_nip' => $this->guru->nip,
             'diisi_oleh_id' => $this->guru->id,
             'diisi_oleh_peran' => 'guru',
         ]);

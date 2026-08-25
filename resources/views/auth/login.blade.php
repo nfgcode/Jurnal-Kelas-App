@@ -75,7 +75,7 @@
             @csrf
 
             <h2 class="auth__title">Masuk ke akun Anda</h2>
-            <p class="auth__sub">Gunakan NIP untuk guru dan admin, atau NIS untuk siswa.</p>
+            <p class="auth__sub">Masuk dengan username, email, NIP (guru), atau NIS (siswa).</p>
 
             <div class="role-tabs">
                 @foreach (['admin' => 'Administrator', 'guru' => 'Guru', 'siswa' => 'Siswa'] as $value => $label)

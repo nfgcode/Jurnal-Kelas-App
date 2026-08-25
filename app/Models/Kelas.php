@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,10 +41,10 @@ class Kelas extends Model
         'nama_kelas',
         'tingkat',
         'jurusan',
-        'ruang',
+        'ruangan_kode',
         'kapasitas',
         'tahun_ajaran',
-        'wali_kelas_id',
+        'wali_kelas_nip',
     ];
 
     /**
@@ -63,7 +64,7 @@ class Kelas extends Model
     {
         return $query->where(fn ($inner) => $inner
             ->where('nama_kelas', 'like', "%{$q}%")
-            ->orWhereHas('waliKelas', fn ($w) => $w->where('name', 'like', "%{$q}%")));
+            ->orWhereHas('waliKelas', fn ($w) => $w->where('nama', 'like', "%{$q}%")));
     }
 
     /**
@@ -71,15 +72,40 @@ class Kelas extends Model
      */
     public function waliKelas(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'wali_kelas_id');
+        return $this->belongsTo(Guru::class, 'wali_kelas_nip', 'nip');
+    }
+
+    /**
+     * The room this class calls home. Nullable: a class can exist before it has
+     * been given one.
+     */
+    public function ruangan(): BelongsTo
+    {
+        return $this->belongsTo(Ruangan::class, 'ruangan_kode', 'kode');
+    }
+
+    /**
+     * The room code, for the many screens that just want to print where a
+     * lesson meets. Rooms are rows now ({@see ruangan()}); this keeps the read
+     * side reading as plainly as it did when the column was free text.
+     *
+     * Eager-load `ruangan` wherever this is rendered in a list, or it costs a
+     * query per row.
+     */
+    protected function ruang(): Attribute
+    {
+        return Attribute::make(get: fn () => $this->ruangan?->kode);
     }
 
     /**
      * Get the siswa (students) enrolled in this class.
+     *
+     * These are person rows, not accounts — a student enrolled but not yet
+     * issued a login still belongs to the class and still gets marked present.
      */
     public function siswa(): HasMany
     {
-        return $this->hasMany(User::class, 'kelas_id')->where('role', 'siswa');
+        return $this->hasMany(Siswa::class, 'kelas_id');
     }
 
     /**

@@ -27,7 +27,7 @@ class QrController extends Controller
             ."WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 ELSE 6 END";
 
         $jadwals = Jadwal::where('kelas_id', $kelas->id)
-            ->where('guru_id', $user->id)
+            ->where('guru_nip', $user->nip)
             ->with('mataPelajaran')
             ->orderByRaw($urutHari)
             ->orderBy('jam_ke_mulai')

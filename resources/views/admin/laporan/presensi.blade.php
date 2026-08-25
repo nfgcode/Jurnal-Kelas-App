@@ -41,10 +41,10 @@
 
         <x-filter-tingkat-jurusan :filters="$filters" :kelas-list="$kelasList" />
 
-        <select class="select-hifi" name="guru_id" style="width: 160px" data-searchable onchange="this.form.submit()">
+        <select class="select-hifi" name="guru_nip" style="width: 160px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Guru</option>
             @foreach ($guruList as $guru)
-                <option value="{{ $guru->id }}" @selected(($filters['guru_id'] ?? null) == $guru->id)>{{ $guru->name }}</option>
+                <option value="{{ $guru->nip }}" @selected(($filters['guru_nip'] ?? null) == $guru->nip)>{{ $guru->nama }}</option>
             @endforeach
         </select>
 

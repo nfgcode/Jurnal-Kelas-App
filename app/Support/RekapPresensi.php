@@ -58,10 +58,10 @@ class RekapPresensi
     public static function perSiswa(?array $kelasIds, string $mulai, string $selesai): Builder
     {
         return DB::table('presensi_harian')
-            ->join('users', 'presensi_harian.siswa_id', '=', 'users.id')
+            ->join('siswa', 'presensi_harian.siswa_nis', '=', 'siswa.nis')
             ->join('kelas', 'presensi_harian.kelas_id', '=', 'kelas.id')
             ->selectRaw(
-                'users.id as siswa_id, users.name as nama, users.nis, kelas.nama_kelas, '
+                'siswa.nis as siswa_nis, siswa.nama as nama, siswa.nis, kelas.nama_kelas, '
                 .'COUNT(*) as total_hari, '
                 .self::hitung('hadir').', '
                 .self::hitung('sakit').', '
@@ -70,9 +70,9 @@ class RekapPresensi
             )
             ->whereBetween('presensi_harian.tanggal', [$mulai, $selesai])
             ->when($kelasIds !== null, fn ($q) => $q->whereIn('presensi_harian.kelas_id', $kelasIds))
-            ->groupBy('users.id', 'users.name', 'users.nis', 'kelas.nama_kelas')
+            ->groupBy('siswa.nis', 'siswa.nama', 'kelas.nama_kelas')
             ->orderBy('kelas.nama_kelas')
-            ->orderBy('users.name');
+            ->orderBy('siswa.nama');
     }
 
     /**
@@ -80,12 +80,12 @@ class RekapPresensi
      * status on each day they have a record for.
      *
      * @param  array<int>|null  $kelasIds
-     * @return array<int, array<string, string>> siswa_id => [Y-m-d => status]
+     * @return array<int, array<string, string>> siswa_nis => [Y-m-d => status]
      */
     public static function matriksHarian(?array $kelasIds, string $mulai, string $selesai): array
     {
         $rows = PresensiHarian::query()
-            ->select('siswa_id', 'tanggal', 'status')
+            ->select('siswa_nis', 'tanggal', 'status')
             ->dalamPeriode($mulai, $selesai)
             ->when($kelasIds !== null, fn ($q) => $q->whereIn('kelas_id', $kelasIds))
             ->get();
@@ -93,7 +93,7 @@ class RekapPresensi
         $matriks = [];
 
         foreach ($rows as $row) {
-            $matriks[$row->siswa_id][$row->tanggal->toDateString()] = $row->status;
+            $matriks[$row->siswa_nis][$row->tanggal->toDateString()] = $row->status;
         }
 
         return $matriks;

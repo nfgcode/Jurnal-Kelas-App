@@ -152,7 +152,7 @@ class Ringkasan
             return (float) DB::selectOne('SELECT fn_persentase_kehadiran_siswa(?) AS p', [$siswaId])->p;
         }
 
-        $r = PresensiHarian::where('siswa_id', $siswaId)
+        $r = PresensiHarian::where('siswa_nis', $siswaId)
             ->selectRaw("COUNT(*) t, SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) h")
             ->first();
 

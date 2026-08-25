@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MataPelajaran extends Model
@@ -52,6 +53,20 @@ class MataPelajaran extends Model
             'kejuruan' => 'Kejuruan',
             default => 'Wajib',
         };
+    }
+
+    /**
+     * Teachers certified to teach this subject.
+     *
+     * Distinct from the teachers who happen to appear on this term's timetable
+     * ({@see jadwals()}): a subject taught across 45 classes is held by several
+     * teachers, and one of them being on leave does not un-qualify them.
+     */
+    public function guru(): BelongsToMany
+    {
+        return $this->belongsToMany(Guru::class, 'guru_mata_pelajaran', 'mata_pelajaran_id', 'guru_nip')
+            ->withPivot('utama')
+            ->withTimestamps();
     }
 
     /**

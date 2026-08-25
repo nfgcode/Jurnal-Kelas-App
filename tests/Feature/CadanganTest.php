@@ -28,12 +28,12 @@ class CadanganTest extends TestCase
 
     private function guru(): User
     {
-        return User::factory()->create(['role' => 'guru', 'nip' => '19850000'.str_pad((string) ++self::$seq, 4, '0', STR_PAD_LEFT)]);
+        return $this->buatGuru();
     }
 
     private function siswa(): User
     {
-        return User::factory()->create(['role' => 'siswa', 'nis' => '2026'.str_pad((string) ++self::$seq, 4, '0', STR_PAD_LEFT)]);
+        return $this->buatSiswa();
     }
 
     private function mapel(string $nama, string $kode): MataPelajaran

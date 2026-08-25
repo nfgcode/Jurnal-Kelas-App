@@ -15,7 +15,7 @@
     @endphp
 
     <x-page-head
-        title="Selamat Datang, {{ Auth::user()->name }}!"
+        title="Selamat Datang, {{ Auth::user()->nama }}!"
         sub="Ringkasan seluruh data sekolah · Semester Gasal {{ now()->year }}/{{ now()->year + 1 }} · {{ now()->translatedFormat('j F Y') }}">
         <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ route('admin.laporan.jurnal') }}">Ekspor Data</a>
@@ -71,7 +71,7 @@
                 <div class="breakdown mb-2 is-clickable" role="button" tabindex="0"
                      data-detail-tipe="guru" data-detail-guru="{{ $guru->id }}">
                     <span class="avatar avatar--xs">{{ $guru->inisial() }}</span>
-                    <span class="breakdown__label" style="width: 88px">{{ $guru->name }}</span>
+                    <span class="breakdown__label" style="width: 88px">{{ $guru->nama }}</span>
                     <span class="stack"><span class="stack__seg--hadir" style="width: {{ $guru->jurnals_count / $puncak * 100 }}%"></span></span>
                     <span class="breakdown__value">{{ $guru->jurnals_count }}</span>
                 </div>

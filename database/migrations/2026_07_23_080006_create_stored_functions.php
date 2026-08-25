@@ -16,16 +16,20 @@ return new class extends Migration
             return;
         }
 
+        $charset = DB::connection()->getConfig('charset') ?: 'utf8mb4';
+        $collation = DB::connection()->getConfig('collation') ?: 'utf8mb4_unicode_ci';
+        $kolasi = " CHARACTER SET {$charset} COLLATE {$collation}";
+
         DB::unprepared('DROP FUNCTION IF EXISTS fn_persentase_kehadiran_siswa');
         DB::unprepared("
-            CREATE FUNCTION fn_persentase_kehadiran_siswa(p_siswa_id INT)
+            CREATE FUNCTION fn_persentase_kehadiran_siswa(p_nis VARCHAR(20){$kolasi})
                 RETURNS DECIMAL(5,2)
                 READS SQL DATA
             BEGIN
                 DECLARE v_total INT;
                 DECLARE v_hadir INT;
                 SELECT COUNT(*), SUM(status = 'hadir') INTO v_total, v_hadir
-                    FROM presensi WHERE siswa_id = p_siswa_id;
+                    FROM presensi WHERE siswa_nis = p_nis;
                 IF v_total IS NULL OR v_total = 0 THEN
                     RETURN 0;
                 END IF;
@@ -59,6 +63,10 @@ return new class extends Migration
         if (DB::connection()->getDriverName() !== 'mysql') {
             return;
         }
+
+        $charset = DB::connection()->getConfig('charset') ?: 'utf8mb4';
+        $collation = DB::connection()->getConfig('collation') ?: 'utf8mb4_unicode_ci';
+        $kolasi = " CHARACTER SET {$charset} COLLATE {$collation}";
 
         DB::unprepared('DROP FUNCTION IF EXISTS fn_persentase_kehadiran_siswa');
         DB::unprepared('DROP FUNCTION IF EXISTS fn_persentase_kehadiran_kelas');

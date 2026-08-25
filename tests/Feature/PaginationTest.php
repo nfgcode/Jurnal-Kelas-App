@@ -29,7 +29,7 @@ class PaginationTest extends TestCase
         $this->seed(DemoSeeder::class);
 
         $this->admin = User::where('role', 'admin')->firstOrFail();
-        $this->guru = Jadwal::firstOrFail()->guru;
+        $this->guru = $this->akunGuru(Jadwal::firstOrFail()->guru_nip);
     }
 
     public function test_the_offered_sizes_change_the_page_size(): void
@@ -72,14 +72,17 @@ class PaginationTest extends TestCase
             ->get('/jurnal?per='.max(Halaman::PILIHAN))
             ->assertOk()
             ->assertViewHas('jurnals', fn ($jurnals) => $jurnals
-                ->every(fn ($jurnal) => $jurnal->guru_id === $this->guru->id));
+                ->every(fn ($jurnal) => $jurnal->guru_nip === $this->guru->nip));
     }
 
     public function test_the_admin_tables_take_the_size_too(): void
     {
-        $this->actingAs($this->admin)
-            ->get('/admin/users?per=50')
-            ->assertOk()
-            ->assertViewHas('users', fn ($users) => $users->perPage() === 50);
+        // Each of the three people/account tables honours the same ?per=.
+        foreach (['akun' => 'akun', 'guru' => 'guru', 'siswa' => 'siswa'] as $url => $viewData) {
+            $this->actingAs($this->admin)
+                ->get("/admin/{$url}?per=50")
+                ->assertOk()
+                ->assertViewHas($viewData, fn ($rows) => $rows->perPage() === 50);
+        }
     }
 }

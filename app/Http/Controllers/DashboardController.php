@@ -6,6 +6,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\PresensiHarian;
+use App\Models\Siswa;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
@@ -37,19 +38,19 @@ class DashboardController extends Controller
     private function dashboardGuru(User $user)
     {
         $jadwalHariIni = Jadwal::with(['kelas', 'mataPelajaran'])
-            ->where('guru_id', $user->id)
+            ->where('guru_nip', $user->nip)
             ->where('hari', Ringkasan::hariIni())
             ->orderBy('jam_ke_mulai')
             ->get();
 
         // Today's journals, indexed by schedule so each row knows its status.
         $jurnalHariIni = Jurnal::denganPresensiHarian()
-            ->where('guru_id', $user->id)
+            ->where('guru_nip', $user->nip)
             ->whereDate('tanggal', today())
             ->get()
             ->keyBy('jadwal_id');
 
-        $kelasDiampu = Kelas::whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id'))
+        $kelasDiampu = Kelas::whereIn('id', Jadwal::where('guru_nip', $user->nip)->select('kelas_id'))
             ->orderBy('nama_kelas')
             ->get();
 
@@ -78,19 +79,19 @@ class DashboardController extends Controller
             // Journals this teacher wrote — not the ones the nightly backfill
             // filed under their name, which would draw a full activity chart for
             // a fortnight they actually skipped.
-            'aktivitas' => Ringkasan::harian(Jurnal::manusia()->where('guru_id', $user->id)),
-            'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_id', $user->id)),
+            'aktivitas' => Ringkasan::harian(Jurnal::manusia()->where('guru_nip', $user->nip)),
+            'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_nip', $user->nip)),
             'presensiSaya' => $presensiSaya,
             'kpi' => [
                 'jadwalHariIni' => $jadwalHariIni->count(),
                 'jurnalTerisi' => $jurnalHariIni->count(),
                 'belumDiisi' => max(0, $jadwalHariIni->count() - $jurnalHariIni->count()),
                 'kelasDiampu' => $kelasDiampu->count(),
-                'siswaDiampu' => User::where('role', 'siswa')->whereIn('kelas_id', $kelasDiampu->pluck('id'))->count(),
+                'siswaDiampu' => Siswa::whereIn('kelas_id', $kelasDiampu->pluck('id'))->count(),
                 'rataKehadiran' => round($presensiSaya['hadir'] / $totalPresensi * 100),
             ],
             'jurnalTerakhir' => Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran'])
-                ->where('guru_id', $user->id)
+                ->where('guru_nip', $user->nip)
                 ->latest('tanggal')
                 ->latest('id')
                 ->take(5)
@@ -127,7 +128,7 @@ class DashboardController extends Controller
         $isKetua = $user->isKetuaKelas();
         $kehadiran = $isKetua
             ? Ringkasan::presensi(PresensiHarian::where('kelas_id', $kelasId))
-            : Ringkasan::presensi(PresensiHarian::where('siswa_id', $user->id));
+            : Ringkasan::presensi(PresensiHarian::where('siswa_nis', $user->nis));
         $kehadiranLabel = $isKetua ? 'Kehadiran Kelas' : 'Kehadiran Saya';
         $totalKehadiran = array_sum($kehadiran) ?: 1;
 
@@ -201,7 +202,7 @@ class DashboardController extends Controller
         $awal = today()->copy()->startOfMonth()->subMonthsNoOverflow($bulan - 1);
 
         $catatan = PresensiHarian::query()
-            ->where('siswa_id', $user->id)
+            ->where('siswa_nis', $user->nis)
             ->where('tanggal', '>=', $awal->toDateString())
             ->get()
             ->keyBy(fn ($p) => $p->tanggal->toDateString());
@@ -238,7 +239,7 @@ class DashboardController extends Controller
         $awal = today()->copy()->startOfMonth()->subMonthsNoOverflow($bulan - 1);
 
         return PresensiHarian::query()
-            ->where('siswa_id', $user->id)
+            ->where('siswa_nis', $user->nis)
             ->where('tanggal', '>=', $awal->toDateString())
             ->get()
             ->groupBy(fn ($p) => $p->tanggal->translatedFormat('F Y'))

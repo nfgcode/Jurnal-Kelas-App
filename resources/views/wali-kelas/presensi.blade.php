@@ -60,14 +60,14 @@
                 </thead>
                 <tbody>
                     @forelse ($siswa as $i => $s)
-                        @php $r = $rekapSiswa[$s->id] ?? ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpa' => 0, 'total' => 0, 'persen' => 0]; @endphp
+                        @php $r = $rekapSiswa[$s->nis] ?? ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpa' => 0, 'total' => 0, 'persen' => 0]; @endphp
                         <tr>
                             <td class="is-muted">{{ $i + 1 }}</td>
                             <td class="is-muted">{{ $s->nis ?? '—' }}</td>
                             <td>
                                 <span class="name-cell">
                                     <span class="avatar avatar--xs">{{ $s->inisial() }}</span>
-                                    {{ $s->name }}
+                                    {{ $s->nama }}
                                     @if ($s->is_ketua_kelas)
                                         <x-chip tone="yellow" label="Ketua" />
                                     @endif

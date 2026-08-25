@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MataPelajaranRequest;
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
-use App\Models\User;
 use App\Support\Halaman;
 use App\Support\Ringkasan;
 use App\Support\Urutan;
@@ -29,7 +29,7 @@ class MataPelajaranController extends Controller
 
         $mataPelajaran = MataPelajaran::query()
             // A guru only sees subjects they are timetabled to teach; admin all.
-            ->when($user->isGuru(), fn ($query) => $query->whereHas('jadwals', fn ($j) => $j->where('guru_id', $user->id)))
+            ->when($user->isGuru(), fn ($query) => $query->whereHas('jadwals', fn ($j) => $j->where('guru_nip', $user->nip)))
             ->when($filters['kelompok'] ?? null, fn ($query, $kelompok) => $query->where('kelompok', $kelompok))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
 
@@ -52,10 +52,10 @@ class MataPelajaranController extends Controller
         // For a guru the summary covers only their own timetable, matching the
         // scoped list — not other teachers' assignments.
         $ringkasan = Jadwal::query()
-            ->join('users', 'jadwal.guru_id', '=', 'users.id')
+            ->join('guru', 'jadwal.guru_nip', '=', 'guru.nip')
             ->whereIn('jadwal.mata_pelajaran_id', $mataPelajaran->pluck('id'))
-            ->when($user->isGuru(), fn ($q) => $q->where('jadwal.guru_id', $user->id))
-            ->selectRaw('jadwal.mata_pelajaran_id, COUNT(DISTINCT jadwal.kelas_id) as kelas_count, MIN(users.name) as guru_nama')
+            ->when($user->isGuru(), fn ($q) => $q->where('jadwal.guru_nip', $user->nip))
+            ->selectRaw('jadwal.mata_pelajaran_id, COUNT(DISTINCT jadwal.kelas_id) as kelas_count, MIN(guru.nama) as guru_nama')
             ->groupBy('jadwal.mata_pelajaran_id')
             ->get()
             ->keyBy('mata_pelajaran_id');
@@ -74,8 +74,8 @@ class MataPelajaranController extends Controller
                 'totalJp' => (int) Jadwal::query()
                     ->join('mata_pelajaran', 'jadwal.mata_pelajaran_id', '=', 'mata_pelajaran.id')
                     ->sum('mata_pelajaran.jp_per_minggu'),
-                'guruPengampu' => Jadwal::distinct()->count('guru_id'),
-                'totalGuru' => User::where('role', 'guru')->count(),
+                'guruPengampu' => Jadwal::distinct()->count('guru_nip'),
+                'totalGuru' => Guru::count(),
                 'tanpaGuru' => $tanpaGuru,
             ],
         ]);
@@ -107,9 +107,61 @@ class MataPelajaranController extends Controller
     {
         Gate::authorize('view', $mataPelajaran);
 
-        $mataPelajaran->load('jadwals.kelas', 'jadwals.guru');
+        $mataPelajaran->load([
+            'jadwals.kelas',
+            'jadwals.guru',
+            'jadwals.ruangan',
+            'guru' => fn ($q) => $q->orderBy('nama'),
+        ]);
 
-        return view('mata-pelajaran.show', compact('mataPelajaran'));
+        return view('mata-pelajaran.show', [
+            'mataPelajaran' => $mataPelajaran,
+            // Every active teacher, so the assignment box on this page can offer
+            // the ones not yet holding the subject.
+            'guruList' => Guru::aktif()->orderBy('nama')->get(),
+        ]);
+    }
+
+    /**
+     * Replace the set of teachers certified for this one subject.
+     *
+     * Edited from the subject's own page rather than a central matrix, because
+     * that is the question an admin actually arrives with: "who teaches Kimia?"
+     * The teacher's page edits the same pivot from the other side.
+     */
+    public function simpanGuru(Request $request, MataPelajaran $mataPelajaran)
+    {
+        $data = $request->validate([
+            'guru_nip' => ['array'],
+            'guru_nip.*' => ['string', 'exists:guru,nip'],
+            'utama' => ['nullable', 'string', 'exists:guru,nip'],
+        ]);
+
+        $nips = array_values(array_unique($data['guru_nip'] ?? []));
+        $utama = in_array($data['utama'] ?? null, $nips, true) ? $data['utama'] : null;
+
+        // Detaching a teacher who is still timetabled for this subject would
+        // leave the schedule asserting something the school no longer records.
+        $terjadwal = $mataPelajaran->jadwals()
+            ->whereNotIn('guru_nip', $nips ?: [''])
+            ->distinct()
+            ->pluck('guru_nip');
+
+        if ($terjadwal->isNotEmpty()) {
+            $nama = Guru::whereIn('nip', $terjadwal)->orderBy('nama')->pluck('nama')->join(', ');
+
+            return back()->with('error', sprintf(
+                'Tidak bisa melepas %s: masih ada jadwal %s yang diampu. Hapus atau pindahkan jadwalnya dulu.',
+                $nama,
+                $mataPelajaran->nama,
+            ));
+        }
+
+        $mataPelajaran->guru()->sync(
+            collect($nips)->mapWithKeys(fn ($nip) => [$nip => ['utama' => $nip === $utama]])->all()
+        );
+
+        return back()->with('success', 'Guru pengampu '.$mataPelajaran->nama.' berhasil diperbarui.');
     }
 
     /**

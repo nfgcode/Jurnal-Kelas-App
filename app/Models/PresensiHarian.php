@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * This is the school's attendance record. It is taken once a day by the class's
  * ketua kelas — not per lesson — so a class-day has exactly one roster and every
  * figure derived from it counts each student at most once. The unique index
- * (kelas_id, tanggal, siswa_id) is what guarantees that.
+ * (kelas_id, tanggal, siswa_nis) is what guarantees that.
  */
 class PresensiHarian extends Model
 {
@@ -27,7 +27,7 @@ class PresensiHarian extends Model
     protected $fillable = [
         'kelas_id',
         'tanggal',
-        'siswa_id',
+        'siswa_nis',
         'status',
         'keterangan',
         'diisi_oleh_id',
@@ -123,7 +123,7 @@ class PresensiHarian extends Model
 
     public function siswa(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'siswa_id');
+        return $this->belongsTo(Siswa::class, 'siswa_nis', 'nis');
     }
 
     /** The ketua kelas (or admin) who filed this roster. */

@@ -79,15 +79,15 @@ class DashboardController extends Controller
         // The classes this teacher takes, not a roster they own: attendance is
         // one daily roll call per class, filed by its ketua kelas.
         $presensiSaya = Ringkasan::presensi(
-            PresensiHarian::whereIn('kelas_id', Jadwal::where('guru_id', $user->id)->select('kelas_id'))
+            PresensiHarian::whereIn('kelas_id', Jadwal::where('guru_nip', $user->nip)->select('kelas_id'))
         );
         $total = array_sum($presensiSaya) ?: 1;
 
-        $jadwalHariIni = Jadwal::where('guru_id', $user->id)
+        $jadwalHariIni = Jadwal::where('guru_nip', $user->nip)
             ->where('hari', Ringkasan::hariIni())->count();
         // What this teacher filled in themselves — a backfill placeholder means
         // the opposite, so counting it would shrink "belum_diisi" wrongly.
-        $jurnalHariIni = Jurnal::manusia()->where('guru_id', $user->id)
+        $jurnalHariIni = Jurnal::manusia()->where('guru_nip', $user->nip)
             ->whereDate('tanggal', today())->count();
 
         return [
@@ -96,11 +96,11 @@ class DashboardController extends Controller
                 'jadwal_hari_ini' => $jadwalHariIni,
                 'jurnal_terisi' => $jurnalHariIni,
                 'belum_diisi' => max(0, $jadwalHariIni - $jurnalHariIni),
-                'total_jurnal' => Jurnal::manusia()->where('guru_id', $user->id)->count(),
+                'total_jurnal' => Jurnal::manusia()->where('guru_nip', $user->nip)->count(),
                 'rata_kehadiran' => round($presensiSaya['hadir'] / $total * 100),
             ],
             'presensi' => $presensiSaya,
-            'kehadiran_guru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_id', $user->id)),
+            'kehadiran_guru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_nip', $user->nip)),
         ];
     }
 
@@ -109,7 +109,7 @@ class DashboardController extends Controller
      */
     private function siswa(User $user): array
     {
-        $presensiSaya = Ringkasan::presensi(PresensiHarian::where('siswa_id', $user->id));
+        $presensiSaya = Ringkasan::presensi(PresensiHarian::where('siswa_nis', $user->nis));
         $total = array_sum($presensiSaya) ?: 1;
 
         $jadwalHariIni = Jadwal::when($user->kelas_id, fn ($q) => $q->where('kelas_id', $user->kelas_id))

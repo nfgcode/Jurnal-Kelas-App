@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\Guru;
 use App\Models\Kelas;
+use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -315,23 +317,33 @@ class ImporPengguna
             : null;
 
         if ($adaEmail && ! $perbarui) {
-            $error[] = 'Email sudah terdaftar atas nama '.$adaEmail->name
+            $error[] = 'Email sudah terdaftar atas nama '.$adaEmail->nama
                 .'. Centang "Perbarui data yang sudah ada" bila memang ingin menimpanya.';
         }
 
+        // A NIP/NIS clash is checked against the *person* register, not the
+        // account table: that is where the identifier is the primary key, and a
+        // person can exist there with no login at all.
         if (($data[$identitas] ?? '') !== '') {
-            $bentrok = User::where($identitas, $data[$identitas])
-                ->when($adaEmail, fn ($q) => $q->whereKeyNot($adaEmail->id))
-                ->first();
+            $orangLain = $jenis === 'guru'
+                ? Guru::whereKey($data['nip'])->first()
+                : Siswa::whereKey($data['nis'])->first();
 
-            if ($bentrok) {
-                $error[] = $labelIdentitas.' sudah dipakai akun lain ('.$bentrok->name.').';
+            $miliknyaSendiri = $adaEmail && $adaEmail->{$identitas} === $data[$identitas];
+
+            if ($orangLain && ! $miliknyaSendiri) {
+                $error[] = $labelIdentitas.' sudah terdaftar atas nama '.$orangLain->nama.'.';
             }
         }
 
         return [
             'nomor' => $nomor,
-            'data' => $data + ['_kelas_id' => $kelasId, '_password' => $password, '_user_id' => $adaEmail?->id],
+            'data' => $data + [
+                '_kelas_id' => $kelasId,
+                '_password' => $password,
+                '_user_id' => $adaEmail?->id,
+                '_username' => self::username($data['email'], $adaEmail?->id),
+            ],
             'error' => $error,
             'aksi' => $error !== [] ? 'gagal' : ($adaEmail ? 'perbarui' : 'baru'),
         ];
@@ -358,35 +370,49 @@ class ImporPengguna
                 }
 
                 $data = $row['data'];
+                $status = $data['status'] !== '' ? $data['status'] : 'aktif';
+                // The person register has no "pending" — that is a fact about a
+                // login, not about someone being on the school's books.
+                $statusOrang = $status === 'nonaktif' ? 'nonaktif' : 'aktif';
+
+                $orang = $jenis === 'guru'
+                    ? Guru::updateOrCreate(['nip' => $data['nip']], [
+                        'nama' => $data['nama'],
+                        'status' => $statusOrang,
+                    ])
+                    : Siswa::updateOrCreate(['nis' => $data['nis']], [
+                        'nama' => $data['nama'],
+                        'kelas_id' => $data['_kelas_id'],
+                        'is_ketua_kelas' => self::boolean($data['ketua_kelas'] ?? ''),
+                        'status' => $statusOrang,
+                    ]);
 
                 $atribut = [
-                    'name' => $data['nama'],
+                    'username' => $data['_username'],
+                    // The name lives on the person row; an account carrying a
+                    // second copy is the duplication this schema removed.
+                    'nama' => null,
                     'email' => $data['email'],
                     'role' => $jenis,
-                    'status' => $data['status'] !== '' ? $data['status'] : 'aktif',
+                    'status' => $status,
                     'password' => Hash::make($data['_password']),
+                    $jenis === 'guru' ? 'nip' : 'nis' => $orang->getKey(),
                 ];
 
-                if ($jenis === 'guru') {
-                    $atribut['nip'] = $data['nip'];
-                } else {
-                    $atribut['nis'] = $data['nis'];
-                    $atribut['kelas_id'] = $data['_kelas_id'];
-                    $atribut['is_ketua_kelas'] = self::boolean($data['ketua_kelas'] ?? '');
-                }
-
-                $user = $data['_user_id'] ? User::find($data['_user_id']) : null;
+                $user = $data['_user_id']
+                    ? User::find($data['_user_id'])
+                    : User::where($jenis === 'guru' ? 'nip' : 'nis', $orang->getKey())->first();
 
                 if ($user) {
                     $user->update($atribut);
                     $hasil['perbarui']++;
                 } else {
-                    $user = User::create($atribut);
+                    User::create($atribut);
                     $hasil['baru']++;
                 }
 
-                if ($jenis === 'guru' && $user) {
-                    self::terapkanPerwalian($user, $data['wali_kelas'] ?? '');
+                if ($jenis === 'guru') {
+                    self::terapkanPerwalian($orang, $data['wali_kelas'] ?? '');
                 }
             }
         });
@@ -400,7 +426,7 @@ class ImporPengguna
      * a blank column in a bulk file is much more likely to mean "not stated"
      * than "release every class this teacher looks after".
      */
-    private static function terapkanPerwalian(User $guru, string $daftar): void
+    private static function terapkanPerwalian(Guru $guru, string $daftar): void
     {
         $nama = array_filter(array_map('trim', explode(',', $daftar)));
 
@@ -410,8 +436,34 @@ class ImporPengguna
 
         foreach ($nama as $satu) {
             Kelas::whereRaw('LOWER(nama_kelas) = ?', [mb_strtolower($satu)])
-                ->update(['wali_kelas_id' => $guru->id]);
+                ->update(['wali_kelas_nip' => $guru->nip]);
         }
+    }
+
+    /**
+     * The username to sign in with, derived from the email's local part.
+     *
+     * Deliberately not a template column: a school importing a year group
+     * thinks in emails and NIS, and asking it to invent 360 usernames would be
+     * a column left blank in every file. The numeric suffix resolves a clash
+     * without failing the row over a name nobody chose; an admin can rename it
+     * afterwards on the account page.
+     */
+    private static function username(string $email, ?int $abaikanId): string
+    {
+        $dasar = (string) preg_replace('/[^a-z0-9._-]/', '', mb_strtolower(explode('@', $email)[0] ?? ''));
+
+        $dasar = $dasar !== '' ? $dasar : 'pengguna';
+        $calon = $dasar;
+        $n = 1;
+
+        while (User::where('username', $calon)
+            ->when($abaikanId, fn ($q) => $q->whereKeyNot($abaikanId))
+            ->exists()) {
+            $calon = $dasar.(++$n);
+        }
+
+        return $calon;
     }
 
     /**

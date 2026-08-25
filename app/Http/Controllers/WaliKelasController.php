@@ -31,8 +31,8 @@ class WaliKelasController extends Controller
     {
         [$kelasWali, $kelas] = $this->konteks($request);
 
-        $siswa = $kelas->siswa()->orderBy('name')->get();
-        $rekapSiswa = $this->rekapPerSiswa($siswa->pluck('id')->all());
+        $siswa = $kelas->siswa()->orderBy('nama')->get();
+        $rekapSiswa = $this->rekapPerSiswa($siswa->pluck('nis')->all());
 
         $presensiKelas = $this->presensiKelas($kelas);
         $kelengkapan = Ringkasan::kelengkapanKelas($kelas->id);
@@ -71,14 +71,14 @@ class WaliKelasController extends Controller
 
         $siswa = $kelas->siswa()
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q))
-            ->orderBy('name')
+            ->orderBy('nama')
             ->get();
 
         return view('wali-kelas.siswa', [
             'kelasWali' => $kelasWali,
             'kelas' => $kelas->loadCount(['siswa', 'jadwals'])->load('waliKelas'),
             'siswa' => $siswa,
-            'rekapSiswa' => $this->rekapPerSiswa($siswa->pluck('id')->all()),
+            'rekapSiswa' => $this->rekapPerSiswa($siswa->pluck('nis')->all()),
             'filters' => $filters,
             'jumlahKetua' => $siswa->where('is_ketua_kelas', true)->count(),
         ]);
@@ -106,7 +106,7 @@ class WaliKelasController extends Controller
             'statistik' => [
                 'totalJadwal' => $jadwals->count(),
                 'jp' => $jadwals->sum(fn ($j) => $j->jam_ke_selesai - $j->jam_ke_mulai + 1),
-                'guru' => $jadwals->pluck('guru_id')->unique()->count(),
+                'guru' => $jadwals->pluck('guru_nip')->unique()->count(),
                 'mapel' => $jadwals->pluck('mata_pelajaran_id')->unique()->count(),
             ],
         ]);
@@ -180,7 +180,7 @@ class WaliKelasController extends Controller
 
         $hari = $hari->paginate(Halaman::perHalaman())->withQueryString();
 
-        $siswa = $kelas->siswa()->orderBy('name')->get();
+        $siswa = $kelas->siswa()->orderBy('nama')->get();
 
         return view('wali-kelas.presensi', [
             'kelasWali' => $kelasWali,
@@ -188,7 +188,7 @@ class WaliKelasController extends Controller
             'periode' => $periode,
             'hari' => $hari,
             'siswa' => $siswa,
-            'rekapSiswa' => $this->rekapPerSiswa($siswa->pluck('id')->all()),
+            'rekapSiswa' => $this->rekapPerSiswa($siswa->pluck('nis')->all()),
             'rekap' => $this->presensiKelas($kelas),
             'totalHari' => $hari->total(),
         ]);
@@ -203,7 +203,7 @@ class WaliKelasController extends Controller
      */
     private function konteks(Request $request): array
     {
-        $kelasWali = Kelas::where('wali_kelas_id', $request->user()->id)
+        $kelasWali = Kelas::where('wali_kelas_nip', $request->user()->nip)
             ->orderBy('nama_kelas')
             ->get();
 
@@ -260,11 +260,11 @@ class WaliKelasController extends Controller
             return [];
         }
 
-        return PresensiHarian::whereIn('siswa_id', $siswaIds)
-            ->selectRaw('siswa_id, status, COUNT(*) as total')
-            ->groupBy('siswa_id', 'status')
+        return PresensiHarian::whereIn('siswa_nis', $siswaIds)
+            ->selectRaw('siswa_nis, status, COUNT(*) as total')
+            ->groupBy('siswa_nis', 'status')
             ->get()
-            ->groupBy('siswa_id')
+            ->groupBy('siswa_nis')
             ->map(function ($rows) {
                 $hitung = $rows->pluck('total', 'status');
 

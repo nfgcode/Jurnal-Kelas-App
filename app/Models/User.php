@@ -4,39 +4,49 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * A login, and only a login.
+ *
+ * Everything describing the *person* — their name, class, homeroom, contact
+ * details — lives in {@see Guru} or {@see Siswa} and is reached through `nip` /
+ * `nis`. An admin is the one account type with no person row behind it, so
+ * theirs is the only role that carries `nama` on the account itself; a database
+ * trigger keeps it that way.
+ *
+ * The relations below still hang off this model even after the split, because
+ * `users` carries the NIP/NIS itself: `$user->jadwals` reaches the timetable in
+ * one hop rather than through the teacher row.
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'username',
+        'nama',
         'email',
         'password',
         'role',
         'status',
         'nip',
         'nis',
-        'kelas_id',
         'last_active_at',
-        'is_ketua_kelas',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
      * @var list<string>
      */
     protected $hidden = [
@@ -45,8 +55,6 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -54,25 +62,32 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_active_at' => 'datetime',
-            'is_ketua_kelas' => 'boolean',
             'password' => 'hashed',
         ];
     }
 
     /**
-     * Model events.
+     * The account holder's name, read from wherever it actually lives.
+     *
+     * For a guru or a siswa that is the person row; the column on `users` is
+     * NULL for them, so there is exactly one place a name can be corrected.
+     * Screens that list many accounts must eager-load `guru`/`siswa` — reading
+     * this attribute on an unloaded relation costs a query per row.
      */
-    protected static function booted(): void
+    protected function nama(): Attribute
     {
-        // A homeroom assignment (kelas.wali_kelas_id) is only meaningful for a
-        // guru. When an account stops being a guru, release any class it was
-        // wali of, so the class list never shows a non-guru as its wali.
-        // Deletion is already covered by the FK's nullOnDelete.
-        static::updated(function (User $user) {
-            if ($user->wasChanged('role') && $user->role !== 'guru') {
-                Kelas::where('wali_kelas_id', $user->id)->update(['wali_kelas_id' => null]);
-            }
-        });
+        return Attribute::make(
+            get: fn (?string $value) => $this->guru?->nama ?? $this->siswa?->nama ?? $value,
+        );
+    }
+
+    /**
+     * The class this account's student belongs to, flattened back onto the user
+     * so the many `$user->kelas_id` call sites keep reading naturally.
+     */
+    protected function kelasId(): Attribute
+    {
+        return Attribute::make(get: fn () => $this->siswa?->kelas_id);
     }
 
     /**
@@ -80,7 +95,7 @@ class User extends Authenticatable
      */
     public function isKetuaKelas(): bool
     {
-        return $this->role === 'siswa' && $this->is_ketua_kelas;
+        return $this->role === 'siswa' && (bool) $this->siswa?->is_ketua_kelas;
     }
 
     /**
@@ -88,55 +103,62 @@ class User extends Authenticatable
      */
     public function inisial(): string
     {
-        return mb_strtoupper(mb_substr($this->name ?? '?', 0, 1));
+        return mb_strtoupper(mb_substr($this->nama ?? '?', 0, 1));
     }
 
-    /**
-     * Check if user is admin.
-     */
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
     }
 
-    /**
-     * Check if user is guru (teacher).
-     */
     public function isGuru(): bool
     {
         return $this->role === 'guru';
     }
 
-    /**
-     * Check if user is siswa (student).
-     */
     public function isSiswa(): bool
     {
         return $this->role === 'siswa';
     }
 
     /**
-     * Free-text search across the people list: name, email, NIP/NIS, and class
-     * name — a student's own class or a class a teacher is timetabled in.
+     * Free-text search across the *account* list: the credentials themselves,
+     * plus the name and identifier of the person behind them.
      */
     public function scopeCari($query, string $q)
     {
         return $query->where(function ($inner) use ($q) {
-            $inner->where('name', 'like', "%{$q}%")
+            $inner->where('username', 'like', "%{$q}%")
                 ->orWhere('email', 'like', "%{$q}%")
+                ->orWhere('nama', 'like', "%{$q}%")
                 ->orWhere('nip', 'like', "%{$q}%")
                 ->orWhere('nis', 'like', "%{$q}%")
-                ->orWhereHas('kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
-                ->orWhereHas('jadwals.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"));
+                ->orWhereHas('guru', fn ($g) => $g->where('nama', 'like', "%{$q}%"))
+                ->orWhereHas('siswa', fn ($s) => $s->where('nama', 'like', "%{$q}%"));
         });
     }
 
-    /**
-     * Get the kelas (class) that this student belongs to.
-     */
-    public function kelas(): BelongsTo
+    /** The teacher this account belongs to, if it is a teacher's. */
+    public function guru(): BelongsTo
     {
-        return $this->belongsTo(Kelas::class);
+        return $this->belongsTo(Guru::class, 'nip', 'nip');
+    }
+
+    /** The student this account belongs to, if it is a student's. */
+    public function siswa(): BelongsTo
+    {
+        return $this->belongsTo(Siswa::class, 'nis', 'nis');
+    }
+
+    /**
+     * The student's class, two hops away: account -> siswa -> kelas.
+     */
+    public function kelas(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Kelas::class, Siswa::class,
+            'nis', 'id', 'nis', 'kelas_id',
+        );
     }
 
     /**
@@ -144,7 +166,7 @@ class User extends Authenticatable
      */
     public function kelasWali(): HasMany
     {
-        return $this->hasMany(Kelas::class, 'wali_kelas_id');
+        return $this->hasMany(Kelas::class, 'wali_kelas_nip', 'nip');
     }
 
     /** Memo for {@see isWaliKelas()} so the layout doesn't re-query every render. */
@@ -161,27 +183,27 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the jadwal (schedules) where this user teaches.
+     * The timetable rows this teacher owns.
      */
     public function jadwals(): HasMany
     {
-        return $this->hasMany(Jadwal::class, 'guru_id');
+        return $this->hasMany(Jadwal::class, 'guru_nip', 'nip');
     }
 
     /**
-     * Get the jurnal (journals) created by this teacher.
+     * The journals credited to this teacher.
      */
     public function jurnals(): HasMany
     {
-        return $this->hasMany(Jurnal::class, 'guru_id');
+        return $this->hasMany(Jurnal::class, 'guru_nip', 'nip');
     }
 
     /**
-     * Get the presensi (attendance) records for this student.
+     * The archived per-meeting attendance for this student.
      */
     public function presensis(): HasMany
     {
-        return $this->hasMany(Presensi::class, 'siswa_id');
+        return $this->hasMany(Presensi::class, 'siswa_nis', 'nis');
     }
 
     /**
@@ -190,6 +212,6 @@ class User extends Authenticatable
      */
     public function presensiHarian(): HasMany
     {
-        return $this->hasMany(PresensiHarian::class, 'siswa_id');
+        return $this->hasMany(PresensiHarian::class, 'siswa_nis', 'nis');
     }
 }

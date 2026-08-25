@@ -2,12 +2,24 @@
 
 namespace Tests\Feature;
 
+use App\Models\Guru;
 use App\Models\Kelas;
+use App\Models\MataPelajaran;
+use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
+/**
+ * The admin section, now that people and accounts are managed apart.
+ *
+ * /admin/guru and /admin/siswa hold the school's records; /admin/akun holds
+ * only what someone signs in with. The split is the thing under test as much
+ * as any individual screen: creating a teacher must produce both rows, deleting
+ * an account must leave the person, and neither page may quietly do the other's
+ * job.
+ */
 class AdminSectionTest extends TestCase
 {
     use RefreshDatabase;
@@ -18,23 +30,22 @@ class AdminSectionTest extends TestCase
         return User::firstOrCreate(
             ['email' => 'admin@jurnalkelas.app'],
             [
-                'name' => 'Administrator',
+                'username' => 'admin',
+                'nama' => 'Administrator',
                 'password' => Hash::make('password'),
                 'role' => 'admin',
             ],
         );
     }
 
+    /** A teacher and their login, as a pair. Returns the account. */
     private function guru(): User
     {
-        return User::firstOrCreate(
-            ['email' => 'budi@jurnalkelas.app'],
-            [
-                'name' => 'Budi Santoso',
-                'password' => Hash::make('password'),
-                'role' => 'guru',
-                'nip' => '198501012010011001',
-            ],
+        $existing = User::where('email', 'budi@jurnalkelas.app')->first();
+
+        return $existing ?? $this->buatGuru(
+            ['nip' => '198501012010011001', 'nama' => 'Budi Santoso'],
+            ['username' => 'budi.santoso', 'email' => 'budi@jurnalkelas.app'],
         );
     }
 
@@ -47,6 +58,14 @@ class AdminSectionTest extends TestCase
                 'jurusan' => 'IPA',
                 'tahun_ajaran' => '2024/2025',
             ],
+        );
+    }
+
+    private function mapel(): MataPelajaran
+    {
+        return MataPelajaran::firstOrCreate(
+            ['kode' => 'MTK'],
+            ['nama' => 'Matematika', 'kelompok' => 'wajib', 'jp_per_minggu' => 4],
         );
     }
 
@@ -79,9 +98,9 @@ class AdminSectionTest extends TestCase
     {
         $guru = $this->guru();
 
-        $this->actingAs($guru)->get('/admin')->assertForbidden();
-        $this->actingAs($guru)->get('/admin/users')->assertForbidden();
-        $this->actingAs($guru)->get('/admin/laporan/jurnal')->assertForbidden();
+        foreach (['/admin', '/admin/akun', '/admin/guru', '/admin/siswa', '/admin/laporan/jurnal'] as $url) {
+            $this->actingAs($guru)->get($url)->assertForbidden("GET {$url} should be admin-only");
+        }
     }
 
     public function test_guest_is_redirected_to_login(): void
@@ -89,100 +108,310 @@ class AdminSectionTest extends TestCase
         $this->get('/admin')->assertRedirect('/login');
     }
 
-    public function test_admin_can_list_and_filter_users(): void
+    // ---- Data Guru --------------------------------------------------------
+
+    public function test_creating_a_guru_creates_the_person_and_the_account_together(): void
+    {
+        $mapel = $this->mapel();
+
+        $this->actingAs($this->admin())
+            ->post('/admin/guru', [
+                'nip' => '198802022012011002',
+                'nama' => 'Siti Nurhaliza',
+                'jenis_kelamin' => 'P',
+                'status' => 'aktif',
+                'username' => 'siti.n',
+                'email' => 'siti@jurnalkelas.app',
+                'password' => 'rahasia123',
+                'mata_pelajaran_id' => [$mapel->id],
+                'mapel_utama' => $mapel->id,
+            ])
+            ->assertRedirect(route('admin.guru.index'))
+            ->assertSessionHasNoErrors();
+
+        $guru = Guru::find('198802022012011002');
+        $this->assertNotNull($guru, 'the person row must exist');
+        $this->assertSame('Siti Nurhaliza', $guru->nama);
+        $this->assertTrue($guru->mataPelajaran->contains('id', $mapel->id));
+
+        $akun = $guru->akun;
+        $this->assertNotNull($akun, 'the login must be created alongside the person');
+        $this->assertSame('siti.n', $akun->username);
+        // The accessor resolves the name through the person row; the column
+        // itself stays empty, which is what "one source of truth" means here.
+        $this->assertNull($akun->getRawOriginal('nama'), 'the name lives on the person row, not on the account');
+        $this->assertSame('Siti Nurhaliza', $akun->nama);
+        $this->assertTrue(Hash::check('rahasia123', $akun->password));
+    }
+
+    public function test_a_duplicate_nip_is_refused_and_leaves_no_orphan_account(): void
+    {
+        $this->guru();
+        $this->admin(); // created first, so it is not mistaken for an orphan below
+        $sebelum = User::count();
+
+        $this->actingAs($this->admin())
+            ->post('/admin/guru', [
+                'nip' => '198501012010011001', // already taken
+                'nama' => 'Guru Lain',
+                'status' => 'aktif',
+                'username' => 'guru.lain',
+                'email' => 'lain@jurnalkelas.app',
+                'password' => 'rahasia123',
+            ])
+            ->assertSessionHasErrors('nip');
+
+        $this->assertSame($sebelum, User::count(), 'a refused registration must not leave a login behind');
+    }
+
+    public function test_a_duplicate_guru_name_is_refused_unless_explicitly_allowed(): void
     {
         $this->guru();
 
-        User::create([
-            'name' => 'Ahmad Fauzi',
-            'email' => 'ahmad@siswa.app',
-            'password' => Hash::make('password'),
-            'role' => 'siswa',
-            'nis' => '20240001',
-            'kelas_id' => $this->kelas()->id,
-        ]);
+        $kirim = fn (array $extra = []) => $this->actingAs($this->admin())->post('/admin/guru', array_merge([
+            'nip' => '199003032015011003',
+            'nama' => 'Budi Santoso', // same name as the existing teacher
+            'status' => 'aktif',
+            'username' => 'budi.dua',
+            'email' => 'budi2@jurnalkelas.app',
+            'password' => 'rahasia123',
+        ], $extra));
 
-        // Unfiltered: both users are listed.
-        $this->actingAs($this->admin())
-            ->get('/admin/users')
-            ->assertOk()
-            ->assertSee('Budi Santoso')
-            ->assertSee('Ahmad Fauzi');
+        $kirim()->assertSessionHasErrors('nama');
+        $this->assertNull(Guru::find('199003032015011003'));
 
-        // Filtered by role: only the guru survives.
-        $this->actingAs($this->admin())
-            ->get('/admin/users?role=guru')
-            ->assertOk()
-            ->assertSee('Budi Santoso')
-            ->assertDontSee('Ahmad Fauzi');
-
-        // Filtered by search term.
-        $this->actingAs($this->admin())
-            ->get('/admin/users?q=20240001')
-            ->assertOk()
-            ->assertSee('Ahmad Fauzi')
-            ->assertDontSee('Budi Santoso');
+        $kirim(['izinkan_nama_sama' => 1])->assertSessionHasNoErrors();
+        $this->assertNotNull(Guru::find('199003032015011003'));
     }
 
-    public function test_admin_can_create_a_siswa(): void
+    public function test_admin_can_list_and_filter_guru(): void
+    {
+        $this->guru();
+
+        $this->actingAs($this->admin())
+            ->get('/admin/guru')
+            ->assertOk()
+            ->assertSee('Budi Santoso')
+            ->assertSee('198501012010011001');
+
+        $this->actingAs($this->admin())
+            ->get('/admin/guru?q=198501012010011001')
+            ->assertOk()
+            ->assertSee('Budi Santoso');
+    }
+
+    public function test_admin_can_update_a_guru_without_changing_the_password(): void
+    {
+        $akun = $this->guru();
+        $sandiLama = $akun->password;
+
+        $this->actingAs($this->admin())
+            ->put("/admin/guru/{$akun->nip}", [
+                'nama' => 'Budi Santoso, S.Pd.',
+                'status' => 'aktif',
+                'username' => $akun->username,
+                'email' => $akun->email,
+                'password' => '',
+            ])
+            ->assertRedirect(route('admin.guru.show', $akun->nip))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Budi Santoso, S.Pd.', Guru::find($akun->nip)->nama);
+        $this->assertSame($sandiLama, $akun->refresh()->password, 'a blank password box must leave the password alone');
+    }
+
+    public function test_admin_can_assign_and_release_wali_from_the_guru_form(): void
+    {
+        $akun = $this->guru();
+        $kelas = $this->kelas();
+
+        $payload = fn (array $extra = []): array => array_merge([
+            'nama' => 'Budi Santoso',
+            'status' => 'aktif',
+            'username' => $akun->username,
+            'email' => $akun->email,
+            'password' => '',
+        ], $extra);
+
+        $this->actingAs($this->admin())
+            ->put("/admin/guru/{$akun->nip}", $payload(['kelas_wali' => [$kelas->id]]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame($akun->nip, $kelas->refresh()->wali_kelas_nip);
+
+        // Submitting with none selected releases the assignment.
+        $this->actingAs($this->admin())->put("/admin/guru/{$akun->nip}", $payload());
+
+        $this->assertNull($kelas->refresh()->wali_kelas_nip);
+    }
+
+    public function test_a_guru_with_history_cannot_be_deleted(): void
+    {
+        $akun = $this->guru();
+        $kelas = $this->kelas();
+
+        $akun->guru->jadwals()->create([
+            'kelas_id' => $kelas->id,
+            'mata_pelajaran_id' => $this->mapel()->id,
+            'hari' => 'Senin',
+            'jam_ke_mulai' => 1,
+            'jam_ke_selesai' => 2,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->delete("/admin/guru/{$akun->nip}")
+            ->assertSessionHas('error');
+
+        $this->assertNotNull(Guru::find($akun->nip), 'deleting would have cascaded away their teaching record');
+    }
+
+    // ---- Data Siswa -------------------------------------------------------
+
+    public function test_creating_a_siswa_creates_the_person_and_the_account_together(): void
     {
         $kelas = $this->kelas();
 
         $this->actingAs($this->admin())
-            ->post('/admin/users', [
-                'name' => 'Ahmad Fauzi',
+            ->post('/admin/siswa', [
+                'nis' => '20240001',
+                'nama' => 'Ahmad Fauzi',
+                'kelas_id' => $kelas->id,
+                'status' => 'aktif',
+                'username' => 'ahmad.fauzi',
                 'email' => 'ahmad@siswa.app',
                 'password' => 'rahasia123',
-                'role' => 'siswa',
-                'status' => 'aktif',
-                'nis' => '20240001',
-                'kelas_id' => $kelas->id,
-                'nip' => '999',            // must be discarded for a siswa
             ])
-            ->assertRedirect(route('admin.users.index'));
+            ->assertRedirect(route('admin.siswa.index'))
+            ->assertSessionHasNoErrors();
 
-        $siswa = User::where('email', 'ahmad@siswa.app')->first();
-
+        $siswa = Siswa::find('20240001');
         $this->assertNotNull($siswa);
-        $this->assertSame('siswa', $siswa->role);
-        $this->assertSame('20240001', $siswa->nis);
         $this->assertSame($kelas->id, $siswa->kelas_id);
-        $this->assertNull($siswa->nip, 'nip should be cleared for a siswa');
-        $this->assertTrue(Hash::check('rahasia123', $siswa->password));
+        $this->assertSame('siswa', $siswa->akun->role);
+        $this->assertNull($siswa->akun->nip, 'a student account carries no NIP');
     }
 
-    public function test_creating_a_siswa_requires_nis_and_kelas(): void
+    public function test_creating_a_siswa_requires_a_nis(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/users', [
-                'name' => 'Tanpa Kelas',
+            ->post('/admin/siswa', [
+                'nama' => 'Tanpa NIS',
+                'status' => 'aktif',
+                'username' => 'tanpa.nis',
                 'email' => 'tanpa@siswa.app',
                 'password' => 'rahasia123',
-                'role' => 'siswa',
             ])
-            ->assertSessionHasErrors(['nis', 'kelas_id']);
+            ->assertSessionHasErrors('nis');
     }
 
-    public function test_admin_can_update_user_without_changing_password(): void
+    public function test_promoting_a_ketua_kelas_demotes_the_previous_one(): void
     {
-        $guru = $this->guru();
-        $originalPassword = $guru->password;
+        $kelas = $this->kelas();
+
+        $lama = Siswa::factory()->create(['kelas_id' => $kelas->id, 'is_ketua_kelas' => true]);
+        $baru = Siswa::factory()->create(['kelas_id' => $kelas->id]);
+        $akun = User::factory()->siswa($baru)->create();
 
         $this->actingAs($this->admin())
-            ->put("/admin/users/{$guru->id}", [
-                'name' => 'Budi Santoso, S.Pd.',
-                'email' => $guru->email,
+            ->put("/admin/siswa/{$baru->nis}", [
+                'nama' => $baru->nama,
+                'kelas_id' => $kelas->id,
+                'is_ketua_kelas' => 1,
+                'status' => 'aktif',
+                'username' => $akun->username,
+                'email' => $akun->email,
                 'password' => '',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($baru->refresh()->is_ketua_kelas);
+        $this->assertFalse($lama->refresh()->is_ketua_kelas, 'a class may have only one ketua');
+    }
+
+    public function test_admin_can_filter_siswa_by_class(): void
+    {
+        $kelas = $this->kelas();
+        $lain = Kelas::create(['nama_kelas' => 'X IPS 1', 'tingkat' => 'X', 'tahun_ajaran' => '2024/2025']);
+
+        Siswa::factory()->create(['kelas_id' => $kelas->id, 'nama' => 'Siswa Satu']);
+        Siswa::factory()->create(['kelas_id' => $lain->id, 'nama' => 'Siswa Dua']);
+
+        $this->actingAs($this->admin())
+            ->get("/admin/siswa?kelas_id={$kelas->id}")
+            ->assertOk()
+            ->assertSee('Siswa Satu')
+            ->assertDontSee('Siswa Dua');
+    }
+
+    // ---- Akun -------------------------------------------------------------
+
+    public function test_admin_can_list_and_filter_accounts(): void
+    {
+        $this->guru();
+        $this->buatSiswa(['nama' => 'Ahmad Fauzi'], ['username' => 'ahmad.f', 'email' => 'ahmad@siswa.app']);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/akun')
+            ->assertOk()
+            ->assertSee('budi.santoso')
+            ->assertSee('ahmad.f');
+
+        $this->actingAs($this->admin())
+            ->get('/admin/akun?role=guru')
+            ->assertOk()
+            ->assertSee('budi.santoso')
+            ->assertDontSee('ahmad.f');
+    }
+
+    public function test_the_account_page_only_creates_admins(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/akun', [
+                'username' => 'guru.baru',
+                'nama' => 'Guru Baru',
+                'email' => 'guru.baru@jurnalkelas.app',
+                'password' => 'rahasia123',
                 'role' => 'guru',
                 'status' => 'aktif',
-                'nip' => '198501012010011001',
             ])
-            ->assertRedirect(route('admin.users.index'));
+            ->assertSessionHasErrors('role');
 
-        $guru->refresh();
+        $this->assertNull(User::where('username', 'guru.baru')->first());
+    }
 
-        $this->assertSame('Budi Santoso, S.Pd.', $guru->name);
-        $this->assertSame($originalPassword, $guru->password, 'password should be untouched when left blank');
+    public function test_admin_can_create_another_admin_account(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/akun', [
+                'username' => 'admin.dua',
+                'nama' => 'Admin Dua',
+                'email' => 'admin2@jurnalkelas.app',
+                'password' => 'rahasia123',
+                'role' => 'admin',
+                'status' => 'aktif',
+            ])
+            ->assertRedirect(route('admin.akun.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Admin Dua', User::where('username', 'admin.dua')->firstOrFail()->nama);
+    }
+
+    public function test_an_accounts_role_cannot_be_changed_away_from_its_person(): void
+    {
+        $akun = $this->guru();
+
+        $this->actingAs($this->admin())
+            ->put("/admin/akun/{$akun->id}", [
+                'username' => $akun->username,
+                'email' => $akun->email,
+                'password' => '',
+                'role' => 'admin',
+                'status' => 'aktif',
+                'nama' => 'Bukan Guru Lagi',
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->assertSame('guru', $akun->refresh()->role);
     }
 
     public function test_admin_cannot_demote_their_own_account(): void
@@ -190,13 +419,13 @@ class AdminSectionTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->put("/admin/users/{$admin->id}", [
-                'name' => $admin->name,
+            ->put("/admin/akun/{$admin->id}", [
+                'username' => $admin->username,
+                'nama' => $admin->nama,
                 'email' => $admin->email,
                 'password' => '',
                 'role' => 'guru',
                 'status' => 'aktif',
-                'nip' => '123',
             ])
             ->assertSessionHasErrors('role');
 
@@ -207,28 +436,32 @@ class AdminSectionTest extends TestCase
     {
         $admin = $this->admin();
 
-        $this->actingAs($admin)->delete("/admin/users/{$admin->id}");
+        $this->actingAs($admin)->delete("/admin/akun/{$admin->id}");
 
         $this->assertModelExists($admin);
     }
 
-    public function test_admin_can_delete_another_user(): void
+    public function test_deleting_an_account_leaves_the_person_on_the_register(): void
     {
-        $guru = $this->guru();
+        $akun = $this->guru();
 
         $this->actingAs($this->admin())
-            ->delete("/admin/users/{$guru->id}")
-            ->assertRedirect(route('admin.users.index'));
+            ->delete("/admin/akun/{$akun->id}")
+            ->assertRedirect(route('admin.akun.index'));
 
-        $this->assertModelMissing($guru);
+        $this->assertModelMissing($akun);
+        $this->assertNotNull(
+            Guru::find('198501012010011001'),
+            'revoking a login must not erase the teacher from the school records',
+        );
     }
 
-    public function test_admin_can_view_user_detail(): void
+    public function test_admin_can_view_the_guru_detail_page(): void
     {
-        $guru = $this->guru();
+        $akun = $this->guru();
 
         $this->actingAs($this->admin())
-            ->get("/admin/users/{$guru->id}")
+            ->get("/admin/guru/{$akun->nip}")
             ->assertOk()
             ->assertSee('Budi Santoso')
             ->assertSee('Jadwal Mengajar');
@@ -241,7 +474,7 @@ class AdminSectionTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get("/admin/laporan/jurnal?kelas_id={$kelas->id}&guru_id={$guru->id}")
+            ->get("/admin/laporan/jurnal?kelas_id={$kelas->id}&guru_nip={$guru->nip}")
             ->assertOk()
             ->assertSee('Rekap Jurnal Mengajar');
 
@@ -249,55 +482,5 @@ class AdminSectionTest extends TestCase
             ->get("/admin/laporan/presensi?kelas_id={$kelas->id}")
             ->assertOk()
             ->assertSee('Rekap Presensi per Pertemuan');
-    }
-
-    public function test_admin_can_assign_and_release_wali_from_the_user_form(): void
-    {
-        $guru = $this->guru();
-        $kelas = $this->kelas();
-
-        $payload = fn (array $extra = []): array => array_merge([
-            'name' => $guru->name,
-            'email' => $guru->email,
-            'password' => '',
-            'role' => 'guru',
-            'status' => 'aktif',
-            'nip' => $guru->nip,
-        ], $extra);
-
-        // Checking the class on the user form makes this guru its wali.
-        $this->actingAs($this->admin())
-            ->put("/admin/users/{$guru->id}", $payload(['kelas_wali' => [$kelas->id]]))
-            ->assertRedirect(route('admin.users.index'));
-
-        $this->assertSame($guru->id, $kelas->refresh()->wali_kelas_id);
-
-        // Submitting with none selected releases the assignment.
-        $this->actingAs($this->admin())
-            ->put("/admin/users/{$guru->id}", $payload());
-
-        $this->assertNull($kelas->refresh()->wali_kelas_id);
-    }
-
-    public function test_changing_a_wali_guru_to_another_role_releases_the_class(): void
-    {
-        $guru = $this->guru();
-        $kelas = $this->kelas();
-        $kelas->update(['wali_kelas_id' => $guru->id]);
-
-        $this->actingAs($this->admin())
-            ->put("/admin/users/{$guru->id}", [
-                'name' => $guru->name,
-                'email' => $guru->email,
-                'password' => '',
-                'role' => 'siswa',
-                'status' => 'aktif',
-                'nis' => '20990001',
-                'kelas_id' => $kelas->id,
-            ])
-            ->assertRedirect(route('admin.users.index'));
-
-        $this->assertSame('siswa', $guru->refresh()->role);
-        $this->assertNull($kelas->refresh()->wali_kelas_id, 'a non-guru must not remain a class wali');
     }
 }

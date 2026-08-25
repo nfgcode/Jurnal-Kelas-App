@@ -28,7 +28,7 @@ return new class extends Migration
             ->select([
                 'jadwal.kelas_id',
                 'jurnal.tanggal',
-                'presensi.siswa_id',
+                'presensi.siswa_nis',
                 'presensi.status',
                 'presensi.keterangan',
                 'presensi.created_at',
@@ -37,7 +37,7 @@ return new class extends Migration
             // The order is the rule: earliest lesson of the day wins the day.
             ->orderBy('jadwal.kelas_id')
             ->orderBy('jurnal.tanggal')
-            ->orderBy('presensi.siswa_id')
+            ->orderBy('presensi.siswa_nis')
             ->orderBy('jadwal.jam_ke_mulai')
             ->orderBy('presensi.id');
 
@@ -49,7 +49,7 @@ return new class extends Migration
                 // MySQL stores a DATE; SQLite keeps "Y-m-d H:i:s". Normalising
                 // here is what makes the unique index collapse a class's day.
                 'tanggal' => substr((string) $row->tanggal, 0, 10),
-                'siswa_id' => $row->siswa_id,
+                'siswa_nis' => $row->siswa_nis,
                 'status' => $row->status,
                 'keterangan' => $row->keterangan,
                 // Nobody alive filed these; they are carried over, not authored.

@@ -15,40 +15,40 @@ class LoginTest extends TestCase
     private function admin(): User
     {
         return User::create([
-            'name' => 'Administrator',
+            'username' => 'admin',
+            'nama' => 'Administrator',
             'email' => 'admin@jurnalkelas.app',
             'password' => Hash::make('password'),
             'role' => 'admin',
         ]);
     }
 
+    /**
+     * A teacher is two rows: the person, then the login that points at them.
+     * Written out here rather than via the helper so the NIP stays the literal
+     * value the sign-in tests below type in.
+     */
     private function guru(): User
     {
-        return User::create([
-            'name' => 'Budi Santoso',
-            'email' => 'budi@jurnalkelas.app',
-            'password' => Hash::make('password'),
-            'role' => 'guru',
-            'nip' => '198501012010011001',
-        ]);
+        return $this->buatGuru(
+            ['nip' => '198501012010011001', 'nama' => 'Budi Santoso'],
+            ['username' => 'budi.santoso', 'email' => 'budi@jurnalkelas.app', 'password' => Hash::make('password')],
+        );
     }
 
     private function siswa(): User
     {
-        return User::create([
-            'name' => 'Ahmad Fauzi',
-            'email' => 'ahmad@siswa.app',
-            'password' => Hash::make('password'),
-            'role' => 'siswa',
-            'nis' => '20240001',
-        ]);
+        return $this->buatSiswa(
+            ['nis' => '20240001', 'nama' => 'Ahmad Fauzi'],
+            ['username' => 'ahmad.fauzi', 'email' => 'ahmad@siswa.app', 'password' => Hash::make('password')],
+        );
     }
 
     public function test_login_form_asks_for_nip_or_nis(): void
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('Gunakan NIP untuk guru dan admin, atau NIS untuk siswa.')
+            ->assertSee('Masuk dengan username, email, NIP (guru), atau NIS (siswa).')
             ->assertSee('name="user"', false)
             ->assertDontSee('name="email"', false);
     }
@@ -142,21 +142,34 @@ class LoginTest extends TestCase
         $this->assertSame('siswa', Auth::user()->role);
     }
 
-    public function test_nip_must_be_unique_across_users(): void
+    public function test_nip_must_be_unique_across_guru(): void
     {
         $this->guru();
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->post('/admin/users', [
-                'name' => 'Guru Kembar',
+            ->post('/admin/guru', [
+                'nip' => '198501012010011001', // already taken
+                'nama' => 'Guru Kembar',
+                'status' => 'aktif',
+                'username' => 'guru.kembar',
                 'email' => 'kembar@jurnalkelas.app',
                 'password' => 'rahasia123',
-                'role' => 'guru',
-                'status' => 'aktif',
-                'nip' => '198501012010011001', // already taken
             ])
             ->assertSessionHasErrors('nip');
+    }
+
+    public function test_username_is_also_a_login_identifier(): void
+    {
+        $guru = $this->guru();
+
+        $this->post('/login', [
+            'user' => 'budi.santoso',
+            'password' => 'password',
+            'role' => 'guru',
+        ])->assertRedirect();
+
+        $this->assertAuthenticatedAs($guru);
     }
 
     public function test_user_can_log_out(): void

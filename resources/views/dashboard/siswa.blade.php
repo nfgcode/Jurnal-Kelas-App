@@ -9,7 +9,7 @@
         $totalJurnal = $jurnalStatus['total'] ?: 1;
         $sapaan = Auth::user()->isKetuaKelas()
             ? 'Selamat Datang, Ketua Kelas ' . ($kelas?->nama_kelas ?? '') . '!'
-            : 'Selamat Datang, ' . Auth::user()->name . '!';
+            : 'Selamat Datang, ' . Auth::user()->nama . '!';
     @endphp
 
     <x-page-head
@@ -68,7 +68,7 @@
                             <tr>
                                 <td class="is-muted">{{ $jadwal->jpLabel() }}</td>
                                 <td class="is-strong">{{ $jadwal->mataPelajaran?->nama }}</td>
-                                <td>{{ $jadwal->guru?->name }}</td>
+                                <td>{{ $jadwal->guru?->nama }}</td>
                                 <td>
                                     @if ($jurnal)
                                         @php $chip = $jurnal->kehadiranGuruChip(); @endphp
@@ -181,7 +181,7 @@
                             <tr>
                                 <td class="is-muted">{{ $jurnal->tanggal->format('d/m') }}</td>
                                 <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                                <td class="is-muted is-nowrap">{{ $jurnal->guru?->name }}</td>
+                                <td class="is-muted is-nowrap">{{ $jurnal->guru?->nama }}</td>
                                 <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
                                 <td class="is-muted is-nowrap">{{ Str::limit($jurnal->materi, 18) }}</td>
                                 <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Guru;
 use App\Models\Jurnal;
 use App\Models\Kelas;
+use App\Models\Siswa;
 use App\Models\User;
 use App\Support\LoginResolver;
 use Illuminate\Http\Request;
@@ -20,8 +22,8 @@ class LoginController extends Controller
     {
         return view('auth.login', [
             'ringkasan' => [
-                'Siswa aktif' => User::where('role', 'siswa')->where('status', 'aktif')->count(),
-                'Guru pengajar' => User::where('role', 'guru')->count(),
+                'Siswa aktif' => Siswa::aktif()->count(),
+                'Guru pengajar' => Guru::count(),
                 'Jurnal tercatat' => Jurnal::count(),
                 'Rombel' => Kelas::count(),
             ],

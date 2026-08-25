@@ -25,16 +25,20 @@ return new class extends Migration
             return;
         }
 
+        $charset = DB::connection()->getConfig('charset') ?: 'utf8mb4';
+        $collation = DB::connection()->getConfig('collation') ?: 'utf8mb4_unicode_ci';
+        $kolasi = " CHARACTER SET {$charset} COLLATE {$collation}";
+
         DB::unprepared('DROP FUNCTION IF EXISTS fn_persentase_kehadiran_siswa');
         DB::unprepared("
-            CREATE FUNCTION fn_persentase_kehadiran_siswa(p_siswa_id INT)
+            CREATE FUNCTION fn_persentase_kehadiran_siswa(p_nis VARCHAR(20){$kolasi})
                 RETURNS DECIMAL(5,2)
                 READS SQL DATA
             BEGIN
                 DECLARE v_total INT;
                 DECLARE v_hadir INT;
                 SELECT COUNT(*), SUM(status = 'hadir') INTO v_total, v_hadir
-                    FROM presensi_harian WHERE siswa_id = p_siswa_id;
+                    FROM presensi_harian WHERE siswa_nis = p_nis;
                 IF v_total IS NULL OR v_total = 0 THEN
                     RETURN 0;
                 END IF;
@@ -89,10 +93,10 @@ return new class extends Migration
                         WHERE kelas_id = p_kelas_id AND tanggal = p_tanggal;
 
                     INSERT INTO presensi_harian
-                        (kelas_id, tanggal, siswa_id, status, keterangan, diisi_oleh_id, created_at, updated_at)
-                    SELECT p_kelas_id, p_tanggal, jt.siswa_id, jt.status, jt.keterangan, p_pengisi, NOW(), NOW()
+                        (kelas_id, tanggal, siswa_nis, status, keterangan, diisi_oleh_id, created_at, updated_at)
+                    SELECT p_kelas_id, p_tanggal, jt.siswa_nis, jt.status, jt.keterangan, p_pengisi, NOW(), NOW()
                     FROM JSON_TABLE(p_data, '$[*]' COLUMNS (
-                        siswa_id   INT          PATH '$.siswa_id',
+                        siswa_nis  VARCHAR(20)  PATH '$.siswa_nis',
                         status     VARCHAR(10)  PATH '$.status',
                         keterangan TEXT         PATH '$.keterangan'
                     )) AS jt;
@@ -112,18 +116,22 @@ return new class extends Migration
             return;
         }
 
+        $charset = DB::connection()->getConfig('charset') ?: 'utf8mb4';
+        $collation = DB::connection()->getConfig('collation') ?: 'utf8mb4_unicode_ci';
+        $kolasi = " CHARACTER SET {$charset} COLLATE {$collation}";
+
         DB::unprepared('DROP PROCEDURE IF EXISTS sp_simpan_presensi_harian');
 
         DB::unprepared('DROP FUNCTION IF EXISTS fn_persentase_kehadiran_siswa');
         DB::unprepared("
-            CREATE FUNCTION fn_persentase_kehadiran_siswa(p_siswa_id INT)
+            CREATE FUNCTION fn_persentase_kehadiran_siswa(p_nis VARCHAR(20){$kolasi})
                 RETURNS DECIMAL(5,2)
                 READS SQL DATA
             BEGIN
                 DECLARE v_total INT;
                 DECLARE v_hadir INT;
                 SELECT COUNT(*), SUM(status = 'hadir') INTO v_total, v_hadir
-                    FROM presensi WHERE siswa_id = p_siswa_id;
+                    FROM presensi WHERE siswa_nis = p_nis;
                 IF v_total IS NULL OR v_total = 0 THEN
                     RETURN 0;
                 END IF;

@@ -19,7 +19,7 @@ class MataPelajaranPolicy
         }
 
         return $user->isGuru()
-            && $mataPelajaran->jadwals()->where('guru_id', $user->id)->exists();
+            && $mataPelajaran->jadwals()->where('guru_nip', $user->nip)->exists();
     }
 
     public function create(User $user): bool

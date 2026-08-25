@@ -50,7 +50,7 @@ class Jurnal extends Model
         'kehadiran_guru_alasan',
         'kehadiran_guru_ada_tugas',
         'kehadiran_guru_keterangan',
-        'guru_id',
+        'guru_nip',
         'diisi_oleh_id',
         'diisi_oleh_peran',
         'diedit_setelah_hari',
@@ -253,7 +253,7 @@ class Jurnal extends Model
             ->where('materi', 'like', "%{$q}%")
             ->orWhere('tugas', 'like', "%{$q}%")
             ->orWhere('kegiatan', 'like', "%{$q}%")
-            ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$q}%"))
+            ->orWhereHas('guru', fn ($g) => $g->where('nama', 'like', "%{$q}%"))
             ->orWhereHas('jadwal.kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$q}%"))
             ->orWhereHas('jadwal.mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$q}%")));
     }
@@ -375,7 +375,7 @@ class Jurnal extends Model
             'kelas' => fn ($q, $dir) => $q->orderBy($lewatJadwal('kelas', 'nama_kelas', 'kelas_id'), $dir),
             'mapel' => fn ($q, $dir) => $q->orderBy($lewatJadwal('mata_pelajaran', 'nama', 'mata_pelajaran_id'), $dir),
             'guru' => fn ($q, $dir) => $q->orderBy(
-                User::select('name')->whereColumn('users.id', 'jurnal.guru_id')->limit(1), $dir
+                Guru::select('nama')->whereColumn('guru.nip', 'jurnal.guru_nip')->limit(1), $dir
             ),
             // The lesson periods the meeting occupies, e.g. "JP 3 - 4".
             'jam' => fn ($q, $dir) => $q->orderBy($kolomJadwal('jam_ke_mulai'), $dir),
@@ -404,7 +404,7 @@ class Jurnal extends Model
             'presensi_saya' => fn ($q, $dir) => $q->orderBy(
                 PresensiHarian::select('status')
                     ->whereRaw('DATE(presensi_harian.tanggal) = DATE(jurnal.tanggal)')
-                    ->where('presensi_harian.siswa_id', $siswa->id)
+                    ->where('presensi_harian.siswa_nis', $siswa->nis)
                     ->limit(1),
                 $dir
             ),
@@ -433,7 +433,7 @@ class Jurnal extends Model
      */
     public function guru(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'guru_id');
+        return $this->belongsTo(Guru::class, 'guru_nip', 'nip');
     }
 
     /**

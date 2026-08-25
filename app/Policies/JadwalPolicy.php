@@ -27,7 +27,7 @@ class JadwalPolicy
         }
 
         return $user->isGuru()
-            && $jadwal->kelas?->jadwals()->where('guru_id', $user->id)->exists();
+            && $jadwal->kelas?->jadwals()->where('guru_nip', $user->nip)->exists();
     }
 
     public function create(User $user): bool

@@ -60,18 +60,18 @@
                     <tbody>
                         @forelse ($siswaList as $index => $siswa)
                             @php
-                                $baris = $tersimpan[$siswa->id] ?? null;
+                                $baris = $tersimpan[$siswa->nis] ?? null;
                                 $default = $baris->status ?? 'hadir';
                             @endphp
-                            <tr data-nama="{{ Str::lower($siswa->name) }}" data-nis="{{ $siswa->nis }}">
+                            <tr data-nama="{{ Str::lower($siswa->nama) }}" data-nis="{{ $siswa->nis }}">
                                 <td class="is-muted">{{ $index + 1 }}</td>
                                 <td class="is-muted">{{ $siswa->nis }}</td>
                                 <td>
                                     <span class="name-cell">
                                         <span class="avatar avatar--xs">{{ $siswa->inisial() }}</span>
-                                        {{ $siswa->name }}
+                                        {{ $siswa->nama }}
                                     </span>
-                                    <input type="hidden" name="presensi[{{ $index }}][siswa_id]" value="{{ $siswa->id }}">
+                                    <input type="hidden" name="presensi[{{ $index }}][siswa_nis]" value="{{ $siswa->nis }}">
                                 </td>
                                 <td>
                                     <span class="seg">

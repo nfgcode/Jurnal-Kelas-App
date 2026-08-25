@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\KelasRequest;
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Kelas;
-use App\Models\User;
+use App\Models\Ruangan;
+use App\Models\Siswa;
 use App\Support\Halaman;
 use App\Support\Ringkasan;
 use App\Support\Urutan;
@@ -29,11 +31,11 @@ class KelasController extends Controller
         $user = $request->user();
 
         $kelas = Kelas::query()
-            ->with('waliKelas')
+            ->with(['waliKelas', 'ruangan'])
             ->withCount(['siswa', 'jadwals'])
             // A guru only sees classes they actually teach in; admin sees all.
             ->when($user->isGuru(), fn ($query) => $query->whereIn('id',
-                Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+                Jadwal::where('guru_nip', $user->nip)->select('kelas_id')))
             ->when($filters['tingkat'] ?? null, fn ($query, $tingkat) => $query->where('tingkat', $tingkat))
             ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan', $jurusan))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
@@ -44,9 +46,9 @@ class KelasController extends Controller
         $peta = [
             'nama' => fn ($q, $dir) => $q->orderBy('nama_kelas', $dir),
             'wali' => fn ($q, $dir) => $q->orderBy(
-                User::select('name')->whereColumn('users.id', 'kelas.wali_kelas_id')->limit(1), $dir
+                Guru::select('nama')->whereColumn('guru.nip', 'kelas.wali_kelas_nip')->limit(1), $dir
             ),
-            'ruang' => fn ($q, $dir) => $q->orderBy('ruang', $dir),
+            'ruang' => fn ($q, $dir) => $q->orderBy('ruangan_kode', $dir),
             'siswa' => fn ($q, $dir) => $q->orderBy('siswa_count', $dir),
             'jadwal' => fn ($q, $dir) => $q->orderBy('jadwals_count', $dir),
         ];
@@ -60,9 +62,9 @@ class KelasController extends Controller
         $kelas = $kelas->paginate(Halaman::perHalaman())->withQueryString();
 
         $kelengkapan = Ringkasan::kelengkapan('kelas_id');
-        $totalSiswa = User::where('role', 'siswa')->count();
+        $totalSiswa = Siswa::count();
         $totalKelas = Kelas::count();
-        $tanpaWali = Kelas::whereNull('wali_kelas_id')->pluck('nama_kelas');
+        $tanpaWali = Kelas::whereNull('wali_kelas_nip')->pluck('nama_kelas');
 
         return view('kelas.index', [
             'kelas' => $kelas,
@@ -84,9 +86,21 @@ class KelasController extends Controller
      */
     public function create()
     {
-        $gurus = User::where('role', 'guru')->orderBy('name')->get();
+        return view('kelas.create', $this->opsiForm());
+    }
 
-        return view('kelas.create', compact('gurus'));
+    /**
+     * Pick lists shared by the create and edit forms, so the two cannot offer
+     * different sets of teachers or rooms.
+     *
+     * @return array<string, mixed>
+     */
+    private function opsiForm(): array
+    {
+        return [
+            'gurus' => Guru::aktif()->orderBy('nama')->get(),
+            'ruanganList' => Ruangan::aktif()->orderBy('kode')->get(),
+        ];
     }
 
     /**
@@ -107,7 +121,7 @@ class KelasController extends Controller
     {
         Gate::authorize('view', $kela);
 
-        $kela->load(['waliKelas', 'siswa', 'jadwals.mataPelajaran', 'jadwals.guru']);
+        $kela->load(['waliKelas', 'ruangan', 'siswa', 'jadwals.mataPelajaran', 'jadwals.guru', 'jadwals.ruangan']);
 
         return view('kelas.show', ['kelas' => $kela]);
     }
@@ -117,9 +131,7 @@ class KelasController extends Controller
      */
     public function edit(Kelas $kela)
     {
-        $gurus = User::where('role', 'guru')->orderBy('name')->get();
-
-        return view('kelas.edit', ['kelas' => $kela, 'gurus' => $gurus]);
+        return view('kelas.edit', ['kelas' => $kela] + $this->opsiForm());
     }
 
     /**

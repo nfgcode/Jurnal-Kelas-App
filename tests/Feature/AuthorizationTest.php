@@ -35,10 +35,8 @@ class AuthorizationTest extends TestCase
 
         $this->admin = User::where('role', 'admin')->firstOrFail();
         $this->jadwal = Jadwal::with('kelas')->firstOrFail();
-        $this->guru = $this->jadwal->guru;
-        $this->siswa = User::where('role', 'siswa')
-            ->where('kelas_id', $this->jadwal->kelas_id)
-            ->firstOrFail();
+        $this->guru = $this->akunGuru($this->jadwal->guru_nip);
+        $this->siswa = $this->akunSiswaKelas($this->jadwal->kelas_id);
     }
 
     public function test_siswa_is_denied_master_data_screens(): void
@@ -80,7 +78,7 @@ class AuthorizationTest extends TestCase
 
     public function test_a_student_with_no_class_sees_no_journals(): void
     {
-        $lepas = User::factory()->create(['role' => 'siswa', 'kelas_id' => null, 'status' => 'aktif']);
+        $lepas = $this->buatSiswa();
 
         $this->actingAs($lepas)
             ->get('/jurnal')
@@ -90,8 +88,8 @@ class AuthorizationTest extends TestCase
 
     public function test_a_guru_cannot_edit_another_gurus_journal(): void
     {
-        $lain = User::where('role', 'guru')->where('id', '!=', $this->jadwal->guru_id)->firstOrFail();
-        $jurnal = Jurnal::where('guru_id', $this->jadwal->guru_id)->firstOrFail();
+        $lain = User::where('role', 'guru')->where('id', '!=', $this->jadwal->guru_nip)->firstOrFail();
+        $jurnal = Jurnal::where('guru_nip', $this->jadwal->guru_nip)->firstOrFail();
 
         $this->actingAs($lain)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();
     }
@@ -99,7 +97,7 @@ class AuthorizationTest extends TestCase
     public function test_a_guru_cannot_view_a_class_they_do_not_teach(): void
     {
         // A fresh guru with no timetable teaches nothing.
-        $lepas = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $lepas = $this->buatGuru();
 
         $this->actingAs($lepas)->get("/kelas/{$this->jadwal->kelas_id}")->assertForbidden();
     }
@@ -120,7 +118,7 @@ class AuthorizationTest extends TestCase
         $this->actingAs($this->guru)
             ->post(route('presensi-harian.store', $kelas), [
                 'tanggal' => now()->toDateString(),
-                'presensi' => [['siswa_id' => $kelas->siswa()->value('id'), 'status' => 'hadir']],
+                'presensi' => [['siswa_nis' => $kelas->siswa()->value('nis'), 'status' => 'hadir']],
             ])
             ->assertForbidden();
     }
@@ -129,13 +127,10 @@ class AuthorizationTest extends TestCase
     {
         // A freshly created guru teaches nothing, so they are the reliable
         // "outsider" no matter how the demo timetable is wired.
-        $luar = User::create([
-            'name' => 'Guru Tak Mengajar',
-            'email' => 'guru.tak.mengajar@test.app',
-            'password' => bcrypt('password'),
-            'role' => 'guru',
-            'nip' => '900900',
-        ]);
+        $luar = $this->buatGuru(
+            ['nip' => '900900900900', 'nama' => 'Guru Tak Mengajar'],
+            ['username' => 'guru.tak.mengajar', 'email' => 'guru.tak.mengajar@test.app'],
+        );
 
         $this->actingAs($luar)
             ->get(route('presensi-harian.show', $this->jadwal->kelas_id))
@@ -144,10 +139,7 @@ class AuthorizationTest extends TestCase
 
     public function test_a_regular_siswa_cannot_author_a_journal(): void
     {
-        $biasa = User::where('role', 'siswa')
-            ->where('kelas_id', $this->jadwal->kelas_id)
-            ->where('is_ketua_kelas', false)
-            ->firstOrFail();
+        $biasa = $this->akunSiswaKelas($this->jadwal->kelas_id, false);
 
         $this->actingAs($biasa)->get('/jurnal/create')->assertForbidden();
 
@@ -165,10 +157,7 @@ class AuthorizationTest extends TestCase
 
     public function test_a_ketua_cannot_write_against_another_classs_schedule(): void
     {
-        $ketua = User::where('role', 'siswa')
-            ->where('kelas_id', $this->jadwal->kelas_id)
-            ->where('is_ketua_kelas', true)
-            ->firstOrFail();
+        $ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
 
         $jadwalLain = Jadwal::where('kelas_id', '!=', $ketua->kelas_id)->firstOrFail();
 
@@ -186,10 +175,7 @@ class AuthorizationTest extends TestCase
 
     public function test_the_ketua_flow_reaches_the_roster_after_saving(): void
     {
-        $ketua = User::where('role', 'siswa')
-            ->where('kelas_id', $this->jadwal->kelas_id)
-            ->where('is_ketua_kelas', true)
-            ->firstOrFail();
+        $ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
 
         // DemoSeeder journals today's meetings too; clear this slot so the
         // ketua's journal is the one under test rather than a duplicate.
@@ -214,7 +200,7 @@ class AuthorizationTest extends TestCase
 
     public function test_a_guru_cannot_write_against_another_gurus_schedule(): void
     {
-        $jadwalLain = Jadwal::where('guru_id', '!=', $this->guru->id)->firstOrFail();
+        $jadwalLain = Jadwal::where('guru_nip', '!=', $this->guru->nip)->firstOrFail();
 
         $this->actingAs($this->guru)
             ->post('/jurnal', [
@@ -246,12 +232,12 @@ class AuthorizationTest extends TestCase
     public function test_a_wali_kelas_reads_but_cannot_edit_another_gurus_journal_in_their_class(): void
     {
         $kelas = $this->jadwal->kelas;
-        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
-        $kelas->update(['wali_kelas_id' => $wali->id]);
+        $wali = $this->buatGuru();
+        $kelas->update(['wali_kelas_nip' => $wali->nip]);
 
         // A meeting of that class taught by somebody else.
         $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
-            ->where('guru_id', '!=', $wali->id)
+            ->where('guru_nip', '!=', $wali->nip)
             ->firstOrFail();
 
         $this->actingAs($wali)->get("/jurnal/{$jurnal->public_id}")->assertOk();
@@ -262,7 +248,7 @@ class AuthorizationTest extends TestCase
     {
         // A fresh guru teaches nothing and chairs nothing, so they are outside
         // every class no matter how the demo timetable happens to be wired.
-        $luar = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
+        $luar = $this->buatGuru();
         $jurnal = Jurnal::firstOrFail();
 
         $this->actingAs($luar)->get("/jurnal/{$jurnal->public_id}")->assertForbidden();
@@ -274,7 +260,7 @@ class AuthorizationTest extends TestCase
      */
     public function test_the_numeric_journal_id_no_longer_resolves_in_web_routes(): void
     {
-        $jurnal = Jurnal::where('guru_id', $this->guru->id)->firstOrFail();
+        $jurnal = Jurnal::where('guru_nip', $this->guru->nip)->firstOrFail();
 
         $this->actingAs($this->guru)->get("/jurnal/{$jurnal->id}")->assertNotFound();
         $this->actingAs($this->guru)->get('/jurnal/01ANGKASANGAWURXXXXXXXXXXXX')->assertNotFound();
@@ -290,11 +276,11 @@ class AuthorizationTest extends TestCase
     public function test_only_the_author_or_admin_may_delete_a_journal(): void
     {
         $kelas = $this->jadwal->kelas;
-        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
-        $kelas->update(['wali_kelas_id' => $wali->id]);
+        $wali = $this->buatGuru();
+        $kelas->update(['wali_kelas_nip' => $wali->nip]);
 
         $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
-            ->where('guru_id', '!=', $wali->id)
+            ->where('guru_nip', '!=', $wali->nip)
             ->firstOrFail();
 
         // The wali can open it, but is offered no way to delete it...
@@ -307,7 +293,7 @@ class AuthorizationTest extends TestCase
         $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
 
         // The teacher who wrote it may, and is shown the button.
-        $penulis = User::findOrFail($jurnal->guru_id);
+        $penulis = $this->akunGuru($jurnal->guru_nip);
         $this->actingAs($penulis)->get("/jurnal/{$jurnal->public_id}")
             ->assertOk()
             ->assertSee('data-bs-target="#hapusJurnal"', false);
@@ -320,7 +306,7 @@ class AuthorizationTest extends TestCase
      */
     public function test_deleting_a_journal_leaves_the_daily_attendance_intact(): void
     {
-        $jurnal = Jurnal::where('guru_id', $this->guru->id)->firstOrFail();
+        $jurnal = Jurnal::where('guru_nip', $this->guru->nip)->firstOrFail();
         $kelasId = $jurnal->jadwal->kelas_id;
         $tanggal = $jurnal->tanggal->toDateString();
 

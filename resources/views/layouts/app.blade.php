@@ -104,9 +104,19 @@
             <div class="sidebar__section">Data Master</div>
 
             @if ($isAdmin)
-                <a href="{{ route('admin.users.index') }}"
-                   class="sidebar__link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
-                    <x-ikon nama="people" /><span>Pengguna</span>
+                {{-- People and accounts are deliberately two entries: the top
+                     two hold the school's records, the third only holds logins. --}}
+                <a href="{{ route('admin.guru.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.guru.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="mortarboard" /><span>Data Guru</span>
+                </a>
+                <a href="{{ route('admin.siswa.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.siswa.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="people" /><span>Data Siswa</span>
+                </a>
+                <a href="{{ route('admin.akun.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.akun.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="shield-lock" /><span>Akun Pengguna</span>
                 </a>
                 <a href="{{ route('admin.impor.index') }}"
                    class="sidebar__link {{ request()->routeIs('admin.impor.*') ? 'is-active' : '' }}">
@@ -116,6 +126,9 @@
 
             <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
                 <x-ikon nama="building" /><span>{{ $isAdmin ? 'Kelas' : 'Kelas Saya' }}</span>
+            </a>
+            <a href="{{ route('ruangan.index') }}" class="sidebar__link {{ request()->routeIs('ruangan.*') ? 'is-active' : '' }}">
+                <x-ikon nama="door" /><span>Ruangan</span>
             </a>
             <a href="{{ route('mata-pelajaran.index') }}" class="sidebar__link {{ request()->routeIs('mata-pelajaran.*') ? 'is-active' : '' }}">
                 <x-ikon nama="book" /><span>{{ $isAdmin ? 'Mata Pelajaran' : 'Mapel Saya' }}</span>
@@ -226,7 +239,7 @@
             <div class="dropdown">
             <button class="user-chip dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <span class="avatar">{{ $user?->inisial() }}</span>
-                <span class="d-none d-md-inline">{{ $user?->name }}</span>
+                <span class="d-none d-md-inline">{{ $user?->nama }}</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
                 <li>

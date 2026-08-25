@@ -161,7 +161,7 @@ class ImporController extends Controller
             $pesan .= ', '.$ringkas['dilewati'].' dilewati karena masih bermasalah';
         }
 
-        return redirect()->route('admin.users.index', ['role' => $data['jenis']])
+        return redirect()->route($data['jenis'] === 'guru' ? 'admin.guru.index' : 'admin.siswa.index')
             ->with($ringkas['baru'] || $ringkas['perbarui'] ? 'success' : 'error', $pesan.'.');
     }
 

@@ -117,7 +117,7 @@
                                     <td>
                                         <span class="name-cell">
                                             <span class="avatar avatar--xs">{{ $presensi->siswa?->inisial() }}</span>
-                                            {{ $presensi->siswa?->name }}
+                                            {{ $presensi->siswa?->nama }}
                                         </span>
                                     </td>
                                     <td><x-chip :tone="$tone" :label="ucfirst($presensi->status)" /></td>
@@ -142,12 +142,12 @@
                 <div class="deflist">
                     <div class="deflist__row"><span class="deflist__key">Kelas</span><span class="deflist__val">{{ $jurnal->jadwal?->kelas?->nama_kelas ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Mata Pelajaran</span><span class="deflist__val">{{ $jurnal->jadwal?->mataPelajaran?->nama ?? '—' }}</span></div>
-                    <div class="deflist__row"><span class="deflist__key">Guru</span><span class="deflist__val">{{ $jurnal->guru?->name ?? '—' }}</span></div>
+                    <div class="deflist__row"><span class="deflist__key">Guru</span><span class="deflist__val">{{ $jurnal->guru?->nama ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Jam Ke</span><span class="deflist__val">{{ $jurnal->jadwal?->jpLabel() ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Ruang</span><span class="deflist__val">{{ $jurnal->jadwal?->ruang ?? '—' }}</span></div>
                     <div class="deflist__row">
                         <span class="deflist__key">Diisi Oleh</span>
-                        <span class="deflist__val">{{ $jurnal->diisiOleh?->name ?? $jurnal->guru?->name ?? '—' }}</span>
+                        <span class="deflist__val">{{ $jurnal->diisiOleh?->nama ?? $jurnal->guru?->nama ?? '—' }}</span>
                     </div>
                     <div class="deflist__row">
                         <span class="deflist__key">Diisi Pada</span>

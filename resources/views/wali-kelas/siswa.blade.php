@@ -34,7 +34,7 @@
 
     <x-card title="Daftar Siswa" flush>
         <x-slot:actions>
-            <span class="card-hifi__meta">wali kelas: {{ $kelas->waliKelas?->name ?? '—' }}</span>
+            <span class="card-hifi__meta">wali kelas: {{ $kelas->waliKelas?->nama ?? '—' }}</span>
         </x-slot:actions>
 
         <div class="tbl-wrap">
@@ -53,7 +53,7 @@
                 <tbody>
                     @forelse ($siswa as $i => $s)
                         @php
-                            $r = $rekapSiswa[$s->id] ?? ['total' => 0, 'alpa' => 0, 'persen' => 0];
+                            $r = $rekapSiswa[$s->nis] ?? ['total' => 0, 'alpa' => 0, 'persen' => 0];
                             $tone = $r['persen'] >= 85 ? 'green' : ($r['persen'] >= 70 ? 'yellow' : 'red');
                         @endphp
                         <tr>
@@ -62,7 +62,7 @@
                             <td>
                                 <span class="name-cell">
                                     <span class="avatar avatar--xs">{{ $s->inisial() }}</span>
-                                    {{ $s->name }}
+                                    {{ $s->nama }}
                                     @if ($s->is_ketua_kelas)
                                         <x-chip tone="solid" label="Ketua Kelas" />
                                     @endif

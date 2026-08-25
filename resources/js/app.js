@@ -146,13 +146,13 @@ document.addEventListener('click', async (event) => {
     // Carry the active period and any report filter so the detail matches the
     // figures on screen. Explicit data-* attributes below still take priority.
     new URLSearchParams(window.location.search).forEach((value, key) => {
-        if (['preset', 'mulai', 'selesai', 'kelas_id', 'guru_id', 'tingkat', 'jurusan'].includes(key)) {
+        if (['preset', 'mulai', 'selesai', 'kelas_id', 'guru_nip', 'tingkat', 'jurusan'].includes(key)) {
             url.searchParams.set(key, value);
         }
     });
     url.searchParams.set('tipe', trigger.dataset.detailTipe);
     if (trigger.dataset.detailTanggal) url.searchParams.set('tanggal', trigger.dataset.detailTanggal);
-    if (trigger.dataset.detailGuru) url.searchParams.set('guru_id', trigger.dataset.detailGuru);
+    if (trigger.dataset.detailGuru) url.searchParams.set('guru_nip', trigger.dataset.detailGuru);
     if (trigger.dataset.detailKelas) url.searchParams.set('kelas_id', trigger.dataset.detailKelas);
     if (trigger.dataset.detailStatus) url.searchParams.set('status', trigger.dataset.detailStatus);
 

@@ -27,7 +27,7 @@ class LaporanController extends Controller
 
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'status' => ['nullable', 'in:terisi,telat'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
@@ -69,7 +69,7 @@ class LaporanController extends Controller
 
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -128,7 +128,7 @@ class LaporanController extends Controller
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
-            ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
+            ->when($filters['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? Jurnal::ekspresiTerlambat() : 'NOT ('.Jurnal::ekspresiTerlambat().')'
             ))

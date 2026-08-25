@@ -18,7 +18,7 @@
 
     <x-page-head
         title="Rekap Kehadiran Saya"
-        :sub="collect([$user->name, $user->kelas?->nama_kelas, number_format($jumlah, 0, ',', '.') . ' hari tercatat', $periode->label()])->filter()->join(' · ')">
+        :sub="collect([$user->nama, $user->kelas?->nama_kelas, number_format($jumlah, 0, ',', '.') . ' hari tercatat', $periode->label()])->filter()->join(' · ')">
         <x-periode-filter :periode="$periode" />
         {{-- Exporting a recap is a guru/admin job; a student only reads their own. --}}
     </x-page-head>

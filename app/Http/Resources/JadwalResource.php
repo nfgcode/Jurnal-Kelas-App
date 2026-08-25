@@ -20,17 +20,21 @@ class JadwalResource extends JsonResource
             'id' => $this->id,
             'kelas_id' => $this->kelas_id,
             'mata_pelajaran_id' => $this->mata_pelajaran_id,
-            'guru_id' => $this->guru_id,
+            'guru_nip' => $this->guru_nip,
             'hari' => $this->hari,
             'jam_ke_mulai' => $this->jam_ke_mulai,
             'jam_ke_selesai' => $this->jam_ke_selesai,
             'jp_label' => $this->jpLabel(),
             'jam_mulai' => $this->jam_mulai,
             'jam_selesai' => $this->jam_selesai,
-            'ruang' => $this->ruang,
+            'ruangan_kode' => $this->ruangan_kode,
+            'ruangan' => $this->whenLoaded('ruangan', fn () => [
+                'kode' => $this->ruangan->kode,
+                'nama' => $this->ruangan->nama,
+            ]),
             'kelas' => new KelasResource($this->whenLoaded('kelas')),
             'mata_pelajaran' => new MataPelajaranResource($this->whenLoaded('mataPelajaran')),
-            'guru' => new UserResource($this->whenLoaded('guru')),
+            'guru' => new GuruResource($this->whenLoaded('guru')),
         ];
     }
 }

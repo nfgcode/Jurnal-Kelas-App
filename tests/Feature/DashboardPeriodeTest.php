@@ -98,12 +98,12 @@ class DashboardPeriodeTest extends TestCase
 
     public function test_detail_lists_a_teachers_journals(): void
     {
-        $guru = Jurnal::query()->firstOrFail()->guru;
+        $guru = $this->akunGuru(Jurnal::query()->firstOrFail()->guru_nip);
 
         $this->actingAs($this->admin)
-            ->getJson("/admin/dashboard/detail?tipe=guru&guru_id={$guru->id}&preset=30_hari")
+            ->getJson("/admin/dashboard/detail?tipe=guru&guru_nip={$guru->nip}&preset=30_hari")
             ->assertOk()
-            ->assertJsonFragment(['judul' => 'Jurnal '.$guru->name]);
+            ->assertJsonFragment(['judul' => 'Jurnal '.$guru->nama]);
     }
 
     public function test_dashboard_marks_up_the_drill_targets(): void

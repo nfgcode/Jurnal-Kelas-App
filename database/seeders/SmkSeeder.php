@@ -2,10 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
+use App\Models\Siswa;
 use App\Models\User;
+use App\Support\JamPelajaran;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +44,12 @@ class SmkSeeder extends Seeder
     private const SISWA_PER_KELAS = 30;
 
     private const HARI_RIWAYAT = 60;
+
+    /**
+     * Every demo login shares one password, hashed once. bcrypt is deliberately
+     * slow; hashing it per row cost minutes across 1.400 accounts.
+     */
+    private string $sandi;
 
     /**
      * The ten jurusan. `paralel` is how many classes of that jurusan run per
@@ -128,11 +137,14 @@ class SmkSeeder extends Seeder
         // Deterministic output, so a reseed lands the same demo every time.
         mt_srand(20260806);
 
+        $this->sandi = Hash::make('password');
+
         $this->seedAdmin();
 
         [$mapelUmum, $mapelProduktif] = $this->seedMataPelajaran();
 
         $rombelSpec = $this->rencanaRombel();
+        $this->seedRuangan($rombelSpec);
         $guru = $this->seedGuru(count($rombelSpec));
         [$guruUmum, $guruProduktif] = $this->bagiGuru($guru);
 
@@ -151,12 +163,65 @@ class SmkSeeder extends Seeder
         ));
     }
 
+    /**
+     * A room per rombel plus the shared facilities a vocational school has.
+     * The codes come from the rombel plan, so a class and its room agree.
+     *
+     * @param  array<int, array<string, string>>  $rombelSpec
+     */
+    private function seedRuangan(array $rombelSpec): void
+    {
+        $rows = [];
+
+        foreach ($rombelSpec as $spec) {
+            $rows[] = [
+                'kode' => $spec['ruang'],
+                'nama' => 'Ruang '.substr($spec['ruang'], 2),
+                'jenis' => 'kelas',
+                'kapasitas' => 36,
+                'gedung' => 'Gedung '.$spec['tingkat'],
+                'lantai' => 1,
+                'status' => 'aktif',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        foreach ([
+            ['LAB-KOM-1', 'Laboratorium Komputer 1', 'laboratorium', 36],
+            ['LAB-KOM-2', 'Laboratorium Komputer 2', 'laboratorium', 36],
+            ['BENGKEL-TKR', 'Bengkel Teknik Kendaraan Ringan', 'bengkel', 24],
+            ['BENGKEL-TP', 'Bengkel Teknik Pemesinan', 'bengkel', 24],
+            ['LAB-BOGA', 'Dapur Tata Boga', 'laboratorium', 24],
+            ['AULA', 'Aula Serbaguna', 'aula', 400],
+            ['PERPUS', 'Perpustakaan', 'perpustakaan', 60],
+            ['LAPANGAN', 'Lapangan Olahraga', 'olahraga', 100],
+        ] as [$kode, $nama, $jenis, $kapasitas]) {
+            $rows[] = [
+                'kode' => $kode,
+                'nama' => $nama,
+                'jenis' => $jenis,
+                'kapasitas' => $kapasitas,
+                'gedung' => 'Gedung Praktik',
+                'lantai' => 1,
+                'status' => 'aktif',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('ruangan')->insert($chunk);
+        }
+    }
+
     private function seedAdmin(): void
     {
         User::create([
-            'name' => 'Administrator',
+            'username' => 'admin',
+            'nama' => 'Administrator',
             'email' => 'admin@jurnalkelas.app',
-            'password' => Hash::make('password'),
+            'password' => $this->sandi,
             'role' => 'admin',
             'status' => 'aktif',
             'last_active_at' => now(),
@@ -231,7 +296,7 @@ class SmkSeeder extends Seeder
      * Teachers, one per class so every rombel gets a distinct wali kelas. Names
      * are drawn deterministically from first/last name pools and de-duplicated.
      *
-     * @return array<int, User>
+     * @return array<int, Guru>
      */
     private function seedGuru(int $jumlah): array
     {
@@ -253,29 +318,58 @@ class SmkSeeder extends Seeder
             $i++;
         }
 
-        $guru = [];
+        $orang = [];
+        $akun = [];
+
         foreach ($nama as $k => $name) {
-            $guru[] = User::create([
-                'name' => $name,
+            $nip = (string) (198500000001 + $k);
+            // One dormant teacher keeps the status columns honest.
+            $aktif = $k !== $jumlah - 1;
+
+            $orang[] = [
+                'nip' => $nip,
+                'nama' => $name,
+                'jenis_kelamin' => $k % 2 === 0 ? 'L' : 'P',
+                'no_hp' => '0812'.str_pad((string) (10000 + $k), 8, '0', STR_PAD_LEFT),
+                'alamat' => null,
+                'status' => $aktif ? 'aktif' : 'nonaktif',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            $akun[] = [
+                'username' => $this->slug($name).($k + 1),
+                'nama' => null,
                 'email' => $this->slug($name).($k + 1).'@jurnalkelas.app',
-                'password' => Hash::make('password'),
+                'password' => $this->sandi,
                 'role' => 'guru',
-                // One dormant teacher keeps the Kelola Pengguna status column honest.
-                'status' => $k === $jumlah - 1 ? 'nonaktif' : 'aktif',
-                'nip' => (string) (198500000001 + $k),
+                'status' => $aktif ? 'aktif' : 'nonaktif',
+                'nip' => $nip,
                 'last_active_at' => now()->subDays(mt_rand(0, 5)),
-            ]);
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
         }
 
-        return $guru;
+        DB::table('guru')->insert($orang);
+
+        foreach (array_chunk($akun, 500) as $chunk) {
+            DB::table('users')->insert($chunk);
+        }
+
+        // Re-read in insertion order so the wali-kelas pairing below stays
+        // one-teacher-per-class.
+        $terdaftar = Guru::whereIn('nip', array_column($orang, 'nip'))->get()->keyBy('nip');
+
+        return array_map(fn ($row) => $terdaftar[$row['nip']], $orang);
     }
 
     /**
      * Split the teacher list into a shared pool (teaches normative/adaptive
      * subjects across the school) and three productive teachers per jurusan.
      *
-     * @param  array<int, User>  $guru
-     * @return array{0: array<int, User>, 1: array<string, array<int, User>>}
+     * @param  array<int, Guru>  $guru
+     * @return array{0: array<int, Guru>, 1: array<string, array<int, Guru>>}
      */
     private function bagiGuru(array $guru): array
     {
@@ -297,7 +391,7 @@ class SmkSeeder extends Seeder
 
     /**
      * @param  array<int, array<string, string>>  $rombelSpec
-     * @param  array<int, User>  $guru
+     * @param  array<int, Guru>  $guru
      * @return array<int, Kelas>
      */
     private function seedKelas(array $rombelSpec, array $guru): array
@@ -312,11 +406,11 @@ class SmkSeeder extends Seeder
                 // jurusan filter dropdown, where "Teknik Komputer dan Jaringan"
                 // reads better than "TKJ".
                 'jurusan' => $spec['nama'],
-                'ruang' => $spec['ruang'],
+                'ruangan_kode' => $spec['ruang'],
                 'kapasitas' => 36,
                 'tahun_ajaran' => self::TAHUN_AJARAN,
                 // One distinct homeroom teacher per class (guru list is sized to match).
-                'wali_kelas_id' => $guru[$i]->id,
+                'wali_kelas_nip' => $guru[$i]->nip,
             ]);
         }
 
@@ -328,7 +422,7 @@ class SmkSeeder extends Seeder
      * people); nis / email are unique.
      *
      * @param  array<int, Kelas>  $kelasList
-     * @return array<int, array<int, User>> students keyed by kelas id
+     * @return array<int, array<int, Siswa>> students keyed by kelas id
      */
     private function seedSiswa(array $kelasList): array
     {
@@ -341,17 +435,35 @@ class SmkSeeder extends Seeder
             'Nur Fadhilah', 'Aditya Wijaya', 'Ayu Lestari', 'Rizky Ramadhan',
             'Permata Sari', 'Kurniawan', 'Dewi Anjani', 'Hidayatullah'];
 
-        $siswa = [];
+        $orang = [];
+        $akun = [];
+        $nisPerKelas = [];
         $nis = 20261001;
 
         foreach ($kelasList as $kelas) {
-            $anggota = [];
+            $nisPerKelas[$kelas->id] = [];
 
             for ($i = 0; $i < self::SISWA_PER_KELAS; $i++) {
-                $anggota[] = User::create([
-                    'name' => $depan[$i % count($depan)].' '.$belakang[$i % count($belakang)],
+                $orang[] = [
+                    'nis' => (string) $nis,
+                    'nisn' => '007'.$nis,
+                    'nama' => $depan[$i % count($depan)].' '.$belakang[$i % count($belakang)],
+                    'jenis_kelamin' => $i % 2 === 0 ? 'P' : 'L',
+                    'kelas_id' => $kelas->id,
+                    // The first student of each class chairs it and may fill the journal.
+                    'is_ketua_kelas' => $i === 0,
+                    'no_hp' => null,
+                    'alamat' => null,
+                    'status' => 'aktif',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                $akun[] = [
+                    'username' => 'siswa'.$nis,
+                    'nama' => null,
                     'email' => 'siswa'.$nis.'@jurnalkelas.app',
-                    'password' => Hash::make('password'),
+                    'password' => $this->sandi,
                     'role' => 'siswa',
                     // A handful of dormant/pending accounts keep the status column honest.
                     'status' => match (true) {
@@ -360,16 +472,29 @@ class SmkSeeder extends Seeder
                         default => 'aktif',
                     },
                     'nis' => (string) $nis,
-                    'kelas_id' => $kelas->id,
-                    // The first student of each class chairs it and may fill the journal.
-                    'is_ketua_kelas' => $i === 0,
                     'last_active_at' => now()->subDays(mt_rand(0, 6)),
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
 
+                $nisPerKelas[$kelas->id][] = (string) $nis;
                 $nis++;
             }
+        }
 
-            $siswa[$kelas->id] = $anggota;
+        foreach (array_chunk($orang, 500) as $chunk) {
+            DB::table('siswa')->insert($chunk);
+        }
+
+        foreach (array_chunk($akun, 500) as $chunk) {
+            DB::table('users')->insert($chunk);
+        }
+
+        $semua = Siswa::whereIn('nis', array_column($orang, 'nis'))->get()->keyBy('nis');
+
+        $siswa = [];
+        foreach ($nisPerKelas as $kelasId => $daftarNis) {
+            $siswa[$kelasId] = array_map(fn ($n) => $semua[$n], $daftarNis);
         }
 
         return $siswa;
@@ -385,8 +510,8 @@ class SmkSeeder extends Seeder
      * @param  array<int, array<string, string>>  $rombelSpec
      * @param  array<string, MataPelajaran>  $mapelUmum
      * @param  array<string, array<int, MataPelajaran>>  $mapelProduktif
-     * @param  array<int, User>  $guruUmum
-     * @param  array<string, array<int, User>>  $guruProduktif
+     * @param  array<int, Guru>  $guruUmum
+     * @param  array<string, array<int, Guru>>  $guruProduktif
      * @return array<int, Jadwal>
      */
     private function seedJadwal(
@@ -397,10 +522,14 @@ class SmkSeeder extends Seeder
         array $guruUmum,
         array $guruProduktif,
     ): array {
-        $jadwal = [];
+        $rows = [];
         // Rotates each shared subject across the shared pool as classes are filled,
         // so no single teacher carries the same subject for the whole school.
         $rotasiUmum = [];
+        // Every (teacher, subject) pairing the timetable uses has to exist in
+        // guru_mata_pelajaran, or the schedule form would reject data the seeder
+        // itself produced.
+        $pengampu = [];
 
         foreach ($kelasList as $i => $kelas) {
             $kode = $rombelSpec[$i]['kode'];
@@ -411,10 +540,12 @@ class SmkSeeder extends Seeder
 
             foreach (array_values($mapelUmum) as $m) {
                 $rotasiUmum[$m->id] ??= 0;
-                $guruUntuk[$m->id] = $guruUmum[$rotasiUmum[$m->id]++ % count($guruUmum)]->id;
+                $guruUntuk[$m->id] = $guruUmum[$rotasiUmum[$m->id]++ % count($guruUmum)]->nip;
+                $pengampu[$guruUntuk[$m->id]][$m->id] = false;
             }
             foreach ($mapelProduktif[$kode] as $k => $m) {
-                $guruUntuk[$m->id] = $guruProduktif[$kode][$k % count($guruProduktif[$kode])]->id;
+                $guruUntuk[$m->id] = $guruProduktif[$kode][$k % count($guruProduktif[$kode])]->nip;
+                $pengampu[$guruUntuk[$m->id]][$m->id] = true;
             }
 
             // Shuffle the subject bag per class, then walk it to fill 24 slots.
@@ -427,22 +558,68 @@ class SmkSeeder extends Seeder
                     $m = $urutan[$rotasi % count($urutan)];
                     $rotasi++;
 
-                    $jadwal[] = Jadwal::create([
+                    $waktu = JamPelajaran::rentang($mulai, $selesai);
+
+                    $rows[] = [
                         'kelas_id' => $kelas->id,
                         'mata_pelajaran_id' => $m->id,
-                        'guru_id' => $guruUntuk[$m->id],
+                        'guru_nip' => $guruUntuk[$m->id],
                         'hari' => $hari,
                         'jam_ke_mulai' => $mulai,
                         'jam_ke_selesai' => $selesai,
-                        'jam_mulai' => sprintf('%02d:%02d', 6 + $mulai, ($mulai % 2) * 30),
-                        'jam_selesai' => sprintf('%02d:%02d', 7 + $selesai, ($selesai % 2) * 30),
-                        'ruang' => $kelas->ruang,
-                    ]);
+                        // Bulk insert skips the model's saving hook, so the bell
+                        // schedule is applied here by the same helper it uses.
+                        'jam_mulai' => $waktu['jam_mulai'],
+                        'jam_selesai' => $waktu['jam_selesai'],
+                        'ruangan_kode' => $kelas->ruangan_kode,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                 }
             }
         }
 
-        return $jadwal;
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('jadwal')->insert($chunk);
+        }
+
+        $this->seedGuruMapel($pengampu);
+
+        return Jadwal::orderBy('id')->get()->all();
+    }
+
+    /**
+     * Record the (teacher, subject) pairings the timetable relies on.
+     *
+     * `utama` marks a productive subject: those belong to the jurusan's own
+     * specialists, which is the closest thing a vocational school has to a
+     * teacher's principal subject.
+     *
+     * @param  array<string, array<int, bool>>  $pengampu  produktif-flag keyed by nip, then subject id
+     */
+    private function seedGuruMapel(array $pengampu): void
+    {
+        $rows = [];
+
+        foreach ($pengampu as $nip => $mapel) {
+            $sudahUtama = false;
+
+            foreach ($mapel as $mapelId => $produktif) {
+                $rows[] = [
+                    'guru_nip' => $nip,
+                    'mata_pelajaran_id' => $mapelId,
+                    'utama' => $produktif && ! $sudahUtama,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                $sudahUtama = $sudahUtama || $produktif;
+            }
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('guru_mata_pelajaran')->insert($chunk);
+        }
     }
 
     /**
@@ -512,7 +689,7 @@ class SmkSeeder extends Seeder
                     'kehadiran_guru_alasan' => null,
                     'kehadiran_guru_ada_tugas' => $hadir <= 92 ? null : $adaTugas,
                     'kehadiran_guru_keterangan' => null,
-                    'guru_id' => $jadwal->guru_id,
+                    'guru_nip' => $jadwal->guru_nip,
                     'diisi_oleh_id' => null,
                     // Guru-authored side — the column the unique-per-meeting index keys on.
                     'diisi_oleh_peran' => 'guru',
@@ -541,19 +718,21 @@ class SmkSeeder extends Seeder
      * (see the presensi_harian table). The days come from the journals already
      * seeded, so a class only has attendance on days it had lessons.
      *
-     * @param  array<int, array<int, User>>  $siswaPerKelas
+     * @param  array<int, array<int, Siswa>>  $siswaPerKelas
      */
     private function seedPresensi(array $siswaPerKelas): void
     {
         $keterangan = ['sakit' => 'Surat dokter', 'izin' => 'Izin keluarga', 'alpa' => 'Tanpa keterangan'];
         $now = now();
 
-        // The ketua kelas files it; fall back to whoever is first in the class so
-        // demo data still names a plausible author.
+        // The ketua kelas files it. `diisi_oleh_id` records the *account* that
+        // acted, not the student record, so the NIS is mapped to their login.
+        $akunPerNis = User::whereNotNull('nis')->pluck('id', 'nis');
+
         $pengisi = [];
         foreach ($siswaPerKelas as $kelasId => $daftar) {
             $ketua = collect($daftar)->firstWhere('is_ketua_kelas', true) ?? ($daftar[0] ?? null);
-            $pengisi[$kelasId] = $ketua?->id;
+            $pengisi[$kelasId] = $ketua ? ($akunPerNis[$ketua->nis] ?? null) : null;
         }
 
         $buffer = [];
@@ -578,7 +757,7 @@ class SmkSeeder extends Seeder
                         $buffer[] = [
                             'kelas_id' => $baris->kelas_id,
                             'tanggal' => substr((string) $baris->tanggal, 0, 10),
-                            'siswa_id' => $siswa->id,
+                            'siswa_nis' => $siswa->nis,
                             'status' => $status,
                             'keterangan' => $keterangan[$status] ?? null,
                             'diisi_oleh_id' => $pengisi[$baris->kelas_id] ?? null,

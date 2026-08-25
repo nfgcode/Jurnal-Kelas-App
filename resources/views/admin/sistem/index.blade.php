@@ -101,7 +101,7 @@
                         <tr>
                             <td class="is-muted is-nowrap">{{ $item->created_at->format('d/m H:i') }}</td>
                             <td>
-                                <span class="is-strong">{{ $item->pelapor?->name ?? '—' }}</span>
+                                <span class="is-strong">{{ $item->pelapor?->nama ?? '—' }}</span>
                                 <span class="is-muted">{{ $item->pelapor ? '· '.ucfirst($item->pelapor->role) : '' }}</span>
                             </td>
                             <td class="is-muted" style="font-family: ui-monospace, monospace; font-size: 10.5px">{{ $item->ref }}</td>

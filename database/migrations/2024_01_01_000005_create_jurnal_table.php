@@ -18,7 +18,8 @@ return new class extends Migration
             $table->text('materi');
             $table->text('kegiatan');
             $table->text('catatan')->nullable();
-            $table->foreignId('guru_id')->constrained('users')->cascadeOnDelete();
+            $table->string('guru_nip', 20);
+            $table->foreign('guru_nip')->references('nip')->on('guru')->cascadeOnDelete();
             $table->timestamps();
         });
     }

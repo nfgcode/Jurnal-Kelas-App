@@ -24,10 +24,10 @@ class KelasRequest extends FormRequest
             'nama_kelas' => 'required|string|max:255',
             'tingkat' => 'required|in:X,XI,XII',
             'jurusan' => 'nullable|string|max:255',
-            'ruang' => 'nullable|string|max:50',
+            'ruangan_kode' => 'nullable|exists:ruangan,kode',
             'kapasitas' => 'required|integer|min:1|max:60',
             'tahun_ajaran' => 'required|string|max:9',
-            'wali_kelas_id' => 'nullable|exists:users,id',
+            'wali_kelas_nip' => 'nullable|exists:guru,nip',
         ];
     }
 }

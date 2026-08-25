@@ -39,11 +39,11 @@ class PresensiController extends Controller
 
         $presensi = PresensiHarian::query()
             ->with(['siswa', 'kelas'])
-            ->when($user->isSiswa() && ! $user->isKetuaKelas(), fn ($q) => $q->where('siswa_id', $user->id))
+            ->when($user->isSiswa() && ! $user->isKetuaKelas(), fn ($q) => $q->where('siswa_nis', $user->nis))
             ->when($user->isKetuaKelas(), fn ($q) => $q->where('kelas_id', $user->kelas_id))
             ->when($user->isGuru(), fn ($q) => $q->whereIn(
                 'kelas_id',
-                Jadwal::where('guru_id', $user->id)->select('kelas_id')
+                Jadwal::where('guru_nip', $user->nip)->select('kelas_id')
             ))
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->where('kelas_id', $id))
             ->when($filters['tanggal'] ?? null, fn ($q, $t) => $q->whereDate('tanggal', Carbon::parse($t)->toDateString()))
@@ -99,12 +99,12 @@ class PresensiController extends Controller
         }
 
         // Attendance may only be recorded for students actually in this class.
-        $roster = $kelas->siswa()->pluck('id')->all();
+        $roster = $kelas->siswa()->pluck('nis')->all();
 
         $validated = $request->validate([
             'tanggal' => ['nullable', 'date'],
             'presensi' => ['required', 'array', 'min:1'],
-            'presensi.*.siswa_id' => ['required', Rule::in($roster)],
+            'presensi.*.siswa_nis' => ['required', Rule::in($roster)],
             'presensi.*.status' => ['required', Rule::in(PresensiHarian::STATUS)],
             'presensi.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);

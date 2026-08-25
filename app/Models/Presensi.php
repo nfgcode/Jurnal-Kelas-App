@@ -24,7 +24,7 @@ class Presensi extends Model
      */
     protected $fillable = [
         'jurnal_id',
-        'siswa_id',
+        'siswa_nis',
         'status',
         'keterangan',
     ];
@@ -42,6 +42,6 @@ class Presensi extends Model
      */
     public function siswa(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'siswa_id');
+        return $this->belongsTo(Siswa::class, 'siswa_nis', 'nis');
     }
 }

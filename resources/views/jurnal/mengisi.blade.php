@@ -35,7 +35,7 @@
                                :tanggal-aktif="$tanggalAktif" :jurnal="$jurnal" :kelas="$kelas" />
 
                 <x-field label="Guru Pengajar">
-                    <input class="input-hifi" type="text" value="{{ $jadwal?->guru?->name ?? '—' }}" readonly>
+                    <input class="input-hifi" type="text" value="{{ $jadwal?->guru?->nama ?? '—' }}" readonly>
                 </x-field>
 
                 <x-field label="Materi yang Diajarkan" name="materi" required>
@@ -111,7 +111,7 @@
                                     <tr>
                                         <td class="is-muted is-nowrap" style="padding-left: 0">{{ $lalu->tanggal->format('d/m') }}</td>
                                         <td class="is-strong">{{ $lalu->jadwal?->mataPelajaran?->nama }}</td>
-                                        <td class="is-muted">{{ $lalu->guru?->name }}</td>
+                                        <td class="is-muted">{{ $lalu->guru?->nama }}</td>
                                         <td class="is-muted">{{ Str::limit($lalu->materi, 28) }}</td>
                                         <td class="is-num" style="padding-right: 0">
                                             <x-chip :tone="$chip['tone']" :label="$chip['label']" />
@@ -139,12 +139,12 @@
                 <div class="deflist">
                     <div class="deflist__row"><span class="deflist__key">Kelas</span><span class="deflist__val">{{ $kelas?->nama_kelas ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Mata Pelajaran</span><span class="deflist__val">{{ $jadwal?->mataPelajaran?->nama ?? '—' }}</span></div>
-                    <div class="deflist__row"><span class="deflist__key">Guru</span><span class="deflist__val">{{ $jadwal?->guru?->name ?? '—' }}</span></div>
+                    <div class="deflist__row"><span class="deflist__key">Guru</span><span class="deflist__val">{{ $jadwal?->guru?->nama ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Jam Ke</span><span class="deflist__val">{{ $jadwal?->jpLabel() ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Ruang</span><span class="deflist__val">{{ $jadwal?->ruang ?? $kelas?->ruang ?? '—' }}</span></div>
                     <div class="deflist__row">
                         <span class="deflist__key">Diisi Oleh</span>
-                        <span class="deflist__val">{{ Auth::user()->name }}{{ Auth::user()->isKetuaKelas() ? ' (Ketua)' : '' }}</span>
+                        <span class="deflist__val">{{ Auth::user()->nama }}{{ Auth::user()->isKetuaKelas() ? ' (Ketua)' : '' }}</span>
                     </div>
                 </div>
             </x-card>

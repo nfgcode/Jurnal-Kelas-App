@@ -21,15 +21,15 @@ class StatistikController extends Controller
             $kelasId = $user->kelas_id;
         } else {
             $filters = $request->validate([
-                'siswa_id' => ['nullable', 'exists:users,id'],
+                'siswa_nis' => ['nullable', 'exists:siswa,nis'],
                 'kelas_id' => ['nullable', 'exists:kelas,id'],
             ]);
-            $siswaId = $filters['siswa_id'] ?? null;
+            $siswaId = $filters['siswa_nis'] ?? null;
             $kelasId = $filters['kelas_id'] ?? null;
         }
 
         return response()->json([
-            'siswa_id' => $siswaId,
+            'siswa_nis' => $siswaId,
             'persentase_kehadiran_siswa' => $siswaId === null ? null
                 : Ringkasan::persentaseKehadiranSiswa($siswaId),
             'kelas_id' => $kelasId,

@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('presensi', function (Blueprint $table) {
             $table->id();
             $table->foreignId('jurnal_id')->constrained('jurnal')->cascadeOnDelete();
-            $table->foreignId('siswa_id')->constrained('users')->cascadeOnDelete();
+            $table->string('siswa_nis', 20);
+            $table->foreign('siswa_nis')->references('nis')->on('siswa')->cascadeOnDelete();
             $table->enum('status', ['hadir', 'sakit', 'izin', 'alpa']);
             $table->text('keterangan')->nullable();
             $table->timestamps();

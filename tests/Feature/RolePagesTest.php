@@ -34,13 +34,10 @@ class RolePagesTest extends TestCase
         $this->seed(DemoSeeder::class);
 
         $this->jadwal = Jadwal::with('kelas')->firstOrFail();
-        $this->guru = $this->jadwal->guru;
+        $this->guru = $this->akunGuru($this->jadwal->guru_nip);
         // The ketua kelas: journal filling for a siswa is a ketua-only ability,
         // so the role screens/posts below must act as one.
-        $this->siswa = User::where('role', 'siswa')
-            ->where('kelas_id', $this->jadwal->kelas_id)
-            ->where('is_ketua_kelas', true)
-            ->firstOrFail();
+        $this->siswa = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
     }
 
     /** A journal belonging to the class this guru and siswa share. */
@@ -101,8 +98,8 @@ class RolePagesTest extends TestCase
     public function test_wali_kelas_screens_render(): void
     {
         $kelas = $this->jadwal->kelas;
-        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
-        $kelas->update(['wali_kelas_id' => $wali->id]);
+        $wali = $this->buatGuru();
+        $kelas->update(['wali_kelas_nip' => $wali->nip]);
 
         $expectations = [
             '/wali-kelas' => $kelas->nama_kelas,
@@ -127,8 +124,8 @@ class RolePagesTest extends TestCase
     public function test_the_wali_kelas_attendance_screen_offers_no_way_to_fill_it(): void
     {
         $kelas = $this->jadwal->kelas;
-        $wali = User::factory()->create(['role' => 'guru', 'status' => 'aktif']);
-        $kelas->update(['wali_kelas_id' => $wali->id]);
+        $wali = $this->buatGuru();
+        $kelas->update(['wali_kelas_nip' => $wali->nip]);
 
         $this->actingAs($wali)
             ->get('/wali-kelas/presensi')
@@ -151,7 +148,7 @@ class RolePagesTest extends TestCase
     public function test_siswa_cannot_access_admin_section(): void
     {
         $this->actingAs($this->siswa)->get('/admin')->assertForbidden();
-        $this->actingAs($this->siswa)->get('/admin/users')->assertForbidden();
+        $this->actingAs($this->siswa)->get('/admin/akun')->assertForbidden();
     }
 
     /**
@@ -176,7 +173,7 @@ class RolePagesTest extends TestCase
         $this->assertTrue((bool) $jurnal->kehadiran_guru_ada_tugas);
         $this->assertNull($jurnal->kehadiran_guru_alasan);
         $this->assertNull($jurnal->kehadiran_guru_keterangan);
-        $this->assertSame($this->guru->id, $jurnal->guru_id);
+        $this->assertSame($this->guru->nip, $jurnal->guru_nip);
         $this->assertSame($this->guru->id, $jurnal->diisi_oleh_id);
     }
 
@@ -203,7 +200,7 @@ class RolePagesTest extends TestCase
         $this->assertTrue((bool) $jurnal->kehadiran_guru_ada_tugas);
         $this->assertNull($jurnal->kehadiran_guru_alasan);
         $this->assertSame('Diwakili guru piket', $jurnal->kehadiran_guru_keterangan);
-        $this->assertSame($this->jadwal->guru_id, $jurnal->guru_id);
+        $this->assertSame($this->jadwal->guru_nip, $jurnal->guru_nip);
         $this->assertSame($this->siswa->id, $jurnal->diisi_oleh_id);
     }
 

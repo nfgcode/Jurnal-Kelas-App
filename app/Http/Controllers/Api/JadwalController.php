@@ -14,7 +14,7 @@ class JadwalController extends Controller
     {
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'hari' => ['nullable', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
@@ -22,7 +22,7 @@ class JadwalController extends Controller
         $jadwal = Jadwal::query()
             ->with(['kelas', 'mataPelajaran', 'guru'])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->where('kelas_id', $id))
-            ->when($filters['guru_id'] ?? null, fn ($q, $id) => $q->where('guru_id', $id))
+            ->when($filters['guru_nip'] ?? null, fn ($q, $id) => $q->where('guru_nip', $id))
             ->when($filters['hari'] ?? null, fn ($q, $hari) => $q->where('hari', $hari))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->whereHas('mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$cari}%")))
             ->orderBy('hari')

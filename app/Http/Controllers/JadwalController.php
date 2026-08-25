@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\JadwalRequest;
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\User;
+use App\Models\Ruangan;
+use App\Support\JamPelajaran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -21,7 +23,7 @@ class JadwalController extends Controller
     {
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
-            'guru_id' => ['nullable', 'exists:users,id'],
+            'guru_nip' => ['nullable', 'exists:guru,nip'],
             'hari' => ['nullable', 'in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
@@ -31,7 +33,7 @@ class JadwalController extends Controller
         // The class picker is scoped to the role: a guru chooses among classes
         // they teach, a student only ever sees their own, an admin all.
         $kelasList = Kelas::query()
-            ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+            ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_nip', $user->nip)->select('kelas_id')))
             ->when($user->isSiswa(), fn ($q) => $q->whereKey($user->kelas_id))
             ->orderBy('nama_kelas')
             ->get();
@@ -45,12 +47,13 @@ class JadwalController extends Controller
         $jadwals = Jadwal::query()
             ->with(['mataPelajaran', 'guru'])
             ->when($kelasAktif, fn ($query) => $query->where('kelas_id', $kelasAktif->id))
-            ->when($filters['guru_id'] ?? null, fn ($query, $id) => $query->where('guru_id', $id))
+            ->when($filters['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
             ->when($filters['hari'] ?? null, fn ($query, $hari) => $query->where('hari', $hari))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->where(
                 fn ($inner) => $inner->whereHas('mataPelajaran', fn ($m) => $m->where('nama', 'like', "%{$q}%"))
-                    ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$q}%"))
-                    ->orWhere('ruang', 'like', "%{$q}%")
+                    ->orWhereHas('guru', fn ($g) => $g->where('nama', 'like', "%{$q}%"))
+                    ->orWhereHas('ruangan', fn ($r) => $r->where('kode', 'like', "%{$q}%")
+                        ->orWhere('nama', 'like', "%{$q}%"))
             ))
             ->get();
 
@@ -67,13 +70,13 @@ class JadwalController extends Controller
             // The teacher filter is an admin tool; a guru/siswa never picks
             // "another teacher", so the dropdown isn't built for them.
             'guruList' => $user->isAdmin()
-                ? User::where('role', 'guru')->orderBy('name')->get()
+                ? Guru::aktif()->orderBy('nama')->get()
                 : collect(),
             'filters' => $filters,
             'statistik' => [
                 'totalJadwal' => $user->isAdmin() ? Jadwal::count() : $jadwals->count(),
                 'jpKelas' => $jadwals->sum(fn ($j) => $j->jam_ke_selesai - $j->jam_ke_mulai + 1),
-                'guruTerlibat' => $jadwals->pluck('guru_id')->unique()->count(),
+                'guruTerlibat' => $jadwals->pluck('guru_nip')->unique()->count(),
                 'mapelTerlibat' => $jadwals->pluck('mata_pelajaran_id')->unique()->count(),
                 'bentrok' => $this->hitungBentrok($jadwals),
             ],
@@ -106,15 +109,32 @@ class JadwalController extends Controller
     }
 
     /**
+     * Everything both timetable forms need beyond the row itself: the pick
+     * lists, and the bell schedule the period numbers resolve to. One method so
+     * create and edit cannot drift apart in what they offer.
+     *
+     * @return array<string, mixed>
+     */
+    private function opsiForm(): array
+    {
+        return [
+            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'mataPelajaranList' => MataPelajaran::orderBy('nama')->get(),
+            'gurus' => Guru::aktif()->with('mataPelajaran')->orderBy('nama')->get(),
+            'ruanganList' => Ruangan::aktif()->orderBy('kode')->get(),
+            'jpList' => JamPelajaran::daftar(),
+            'jpDurasi' => JamPelajaran::durasi(),
+            'jpBelPertama' => config('sekolah.jp.bel_pertama'),
+            'jpIstirahat' => JamPelajaran::istirahat(),
+        ];
+    }
+
+    /**
      * Show the form for creating a new jadwal.
      */
     public function create()
     {
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
-        $mataPelajaranList = MataPelajaran::orderBy('nama')->get();
-        $gurus = User::where('role', 'guru')->orderBy('name')->get();
-
-        return view('jadwal.create', compact('kelasList', 'mataPelajaranList', 'gurus'));
+        return view('jadwal.create', $this->opsiForm());
     }
 
     /**
@@ -145,11 +165,7 @@ class JadwalController extends Controller
      */
     public function edit(Jadwal $jadwal)
     {
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
-        $mataPelajaranList = MataPelajaran::orderBy('nama')->get();
-        $gurus = User::where('role', 'guru')->orderBy('name')->get();
-
-        return view('jadwal.edit', compact('jadwal', 'kelasList', 'mataPelajaranList', 'gurus'));
+        return view('jadwal.edit', ['jadwal' => $jadwal] + $this->opsiForm());
     }
 
     /**

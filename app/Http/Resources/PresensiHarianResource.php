@@ -22,11 +22,11 @@ class PresensiHarianResource extends JsonResource
             'id' => $this->id,
             'kelas_id' => $this->kelas_id,
             'tanggal' => $this->tanggal?->toDateString(),
-            'siswa_id' => $this->siswa_id,
+            'siswa_nis' => $this->siswa_nis,
             'status' => $this->status,
             'keterangan' => $this->keterangan,
             'diisi_oleh_id' => $this->diisi_oleh_id,
-            'siswa' => new UserResource($this->whenLoaded('siswa')),
+            'siswa' => new SiswaResource($this->whenLoaded('siswa')),
             'kelas' => new KelasResource($this->whenLoaded('kelas')),
         ];
     }

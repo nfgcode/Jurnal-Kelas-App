@@ -28,7 +28,7 @@ class CadanganData
     /**
      * All backed-up tables in dependency (parent → child) order, so a "replace"
      * restore can delete in reverse and insert forward. The users ↔ kelas cycle
-     * (users.kelas_id ↔ kelas.wali_kelas_id) is why the restore also drops
+     * (users.kelas_id ↔ kelas.wali_kelas_nip) is why the restore also drops
      * foreign-key enforcement — no single order satisfies a circular reference.
      *
      * Deliberately excluded: framework/transient tables (cache, jobs, sessions,

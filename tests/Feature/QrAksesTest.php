@@ -29,7 +29,7 @@ class QrAksesTest extends TestCase
     {
         $jadwal = Jadwal::with('kelas')->firstOrFail();
 
-        return [$jadwal->kelas, User::findOrFail($jadwal->guru_id), $jadwal];
+        return [$jadwal->kelas, $this->akunGuru($jadwal->guru_nip), $jadwal];
     }
 
     public function test_every_class_has_a_unique_qr_token(): void
@@ -95,13 +95,7 @@ class QrAksesTest extends TestCase
         [$kelas] = $this->kelasDenganPengajar();
 
         // A fresh guru with no timetable teaches nothing anywhere.
-        $luar = User::create([
-            'name' => 'Guru Tanpa Jadwal',
-            'email' => 'guru.tanpa.jadwal@test.app',
-            'password' => bcrypt('password'),
-            'role' => 'guru',
-            'nip' => '99881122',
-        ]);
+        $luar = $this->buatGuru(['nama' => 'Guru Tanpa Jadwal'], ['email' => 'guru.tanpa.jadwal@test.app']);
 
         // Scanning the wrong room is an ordinary mistake, not an attack: the page
         // still renders, it simply offers nothing to fill.
@@ -118,13 +112,13 @@ class QrAksesTest extends TestCase
         // A subject taught in this class by a DIFFERENT teacher must not appear
         // as an option — the handoff would fail pastikanJadwalMilik anyway.
         $lain = Jadwal::where('kelas_id', $kelas->id)
-            ->where('guru_id', '!=', $guru->id)
+            ->where('guru_nip', '!=', $guru->nip)
             ->with('mataPelajaran')
             ->first();
 
         $response = $this->actingAs($guru)->get("/qr/{$kelas->qr_token}")->assertOk();
 
-        foreach (Jadwal::where('kelas_id', $kelas->id)->where('guru_id', $guru->id)->get() as $milik) {
+        foreach (Jadwal::where('kelas_id', $kelas->id)->where('guru_nip', $guru->nip)->get() as $milik) {
             $response->assertSee('value="'.$milik->id.'"', false);
         }
 

@@ -38,7 +38,7 @@ class PresensiHarianController extends Controller
             ->where('kelas_id', $kelas->id)
             ->whereDate('tanggal', $tanggal)
             ->get()
-            ->sortBy(fn ($p) => $p->siswa?->name ?? '')
+            ->sortBy(fn ($p) => $p->siswa?->nama ?? '')
             ->values();
 
         return view('presensi-harian.show', [
@@ -77,12 +77,12 @@ class PresensiHarianController extends Controller
                 ->with('error', 'Presensi hanya dapat diisi untuk hari ini. Hubungi admin untuk mengoreksi tanggal lain.');
         }
 
-        $siswaList = $kelas->siswa()->orderBy('name')->get();
+        $siswaList = $kelas->siswa()->orderBy('nama')->get();
 
         $tersimpan = PresensiHarian::where('kelas_id', $kelas->id)
             ->whereDate('tanggal', $tanggal)
             ->get()
-            ->keyBy('siswa_id');
+            ->keyBy('siswa_nis');
 
         return view('presensi-harian.isi', [
             'kelas' => $kelas,
@@ -112,12 +112,12 @@ class PresensiHarianController extends Controller
         }
 
         // Attendance may only be recorded for students actually in this class, so
-        // a crafted siswa_id (another class's student, or a teacher) is rejected.
-        $roster = $kelas->siswa()->pluck('id')->all();
+        // a crafted siswa_nis (another class's student, or a teacher) is rejected.
+        $roster = $kelas->siswa()->pluck('nis')->all();
 
         $validated = $request->validate([
             'presensi' => ['required', 'array', 'min:1'],
-            'presensi.*.siswa_id' => ['required', Rule::in($roster)],
+            'presensi.*.siswa_nis' => ['required', Rule::in($roster)],
             'presensi.*.status' => ['required', Rule::in(PresensiHarian::STATUS)],
             'presensi.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);

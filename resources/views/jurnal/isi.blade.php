@@ -36,7 +36,7 @@
                                :tanggal-aktif="$tanggalAktif" :jurnal="$jurnal" :kelas="$kelas" />
 
                 <x-field label="Guru Pengajar">
-                    <input class="input-hifi" type="text" value="{{ Auth::user()->name }}" readonly>
+                    <input class="input-hifi" type="text" value="{{ Auth::user()->nama }}" readonly>
                 </x-field>
 
                 <x-field label="Materi yang Diajarkan" name="materi" required>
@@ -119,7 +119,7 @@
                                     <tr>
                                         <td class="is-muted is-nowrap" style="padding-left: 0">{{ $lalu->tanggal->format('d/m') }}</td>
                                         <td class="is-strong">{{ $lalu->jadwal?->mataPelajaran?->nama }}</td>
-                                        <td class="is-muted">{{ $lalu->guru?->name }}</td>
+                                        <td class="is-muted">{{ $lalu->guru?->nama }}</td>
                                         <td class="is-muted">{{ Str::limit($lalu->materi, 28) }}</td>
                                         <td class="is-num" style="padding-right: 0">
                                             <x-chip :tone="$chip['tone']" :label="$chip['label']" />

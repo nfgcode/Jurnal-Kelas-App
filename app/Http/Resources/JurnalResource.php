@@ -37,7 +37,7 @@ class JurnalResource extends JsonResource
                 'chip' => $this->kehadiranGuruChip(),
             ],
             'status_pengisian' => $this->statusPengisian(),
-            'guru_id' => $this->guru_id,
+            'guru_nip' => $this->guru_nip,
             'diisi_oleh_id' => $this->diisi_oleh_id,
             // Attendance rollups, present only when the query counted them.
             'total_siswa' => $this->whenHas('total_siswa', fn () => (int) $this->total_siswa),
@@ -46,7 +46,7 @@ class JurnalResource extends JsonResource
             'izin_count' => $this->whenHas('izin_count', fn () => (int) $this->izin_count),
             'alpa_count' => $this->whenHas('alpa_count', fn () => (int) $this->alpa_count),
             'jadwal' => new JadwalResource($this->whenLoaded('jadwal')),
-            'guru' => new UserResource($this->whenLoaded('guru')),
+            'guru' => new GuruResource($this->whenLoaded('guru')),
             'diisi_oleh' => new UserResource($this->whenLoaded('diisiOleh')),
             // Attendance is no longer carried by a journal: it is one roll call
             // per class per day, read from /api/presensi. The per-meeting counts

@@ -73,7 +73,7 @@
                             <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
                             <td class="is-muted">{{ $jurnal->jadwal?->jpLabel() }}</td>
                             <td class="is-strong">{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                            <td class="is-nowrap is-muted">{{ $jurnal->guru?->name ?? '—' }}</td>
+                            <td class="is-nowrap is-muted">{{ $jurnal->guru?->nama ?? '—' }}</td>
                             <td class="is-muted">{{ Str::limit($jurnal->materi, 28) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 22) : '—' }}</td>
                             <td>

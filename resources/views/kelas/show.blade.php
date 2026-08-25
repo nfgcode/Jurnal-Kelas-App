@@ -38,7 +38,7 @@
                                 <td>
                                     <span class="name-cell">
                                         <span class="avatar avatar--xs">{{ $siswa->inisial() }}</span>
-                                        {{ $siswa->name }}
+                                        {{ $siswa->nama }}
                                     </span>
                                 </td>
                                 <td class="is-num">

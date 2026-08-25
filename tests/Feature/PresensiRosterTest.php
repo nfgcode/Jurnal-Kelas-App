@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Kelas;
 use App\Models\PresensiHarian;
+use App\Models\Siswa;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,18 +35,16 @@ class PresensiRosterTest extends TestCase
      */
     private function skenario(): array
     {
-        $kelas = Kelas::whereNotNull('wali_kelas_id')
+        $kelas = Kelas::whereNotNull('wali_kelas_nip')
             ->whereHas('siswa', fn ($q) => $q->where('is_ketua_kelas', true))
             ->firstOrFail();
 
         return [
             'kelas' => $kelas,
-            'wali' => User::findOrFail($kelas->wali_kelas_id),
-            'pengajar' => User::findOrFail($kelas->jadwals()->value('guru_id')),
-            'ketua' => User::where('role', 'siswa')->where('kelas_id', $kelas->id)
-                ->where('is_ketua_kelas', true)->firstOrFail(),
-            'siswaBiasa' => User::where('role', 'siswa')->where('kelas_id', $kelas->id)
-                ->where('is_ketua_kelas', false)->firstOrFail(),
+            'wali' => $this->akunGuru($kelas->wali_kelas_nip),
+            'pengajar' => $this->akunGuru($kelas->jadwals()->value('guru_nip')),
+            'ketua' => $this->akunSiswaKelas($kelas->id, true),
+            'siswaBiasa' => $this->akunSiswaKelas($kelas->id, false),
             'admin' => User::where('role', 'admin')->firstOrFail(),
         ];
     }
@@ -53,11 +52,11 @@ class PresensiRosterTest extends TestCase
     /** The roster payload the form posts, marking everyone present. */
     private function payload(Kelas $kelas): array
     {
-        $roster = $kelas->siswa()->pluck('id');
+        $roster = $kelas->siswa()->pluck('nis');
         $payload = ['tanggal' => now()->toDateString(), 'presensi' => []];
 
-        foreach ($roster as $i => $id) {
-            $payload['presensi'][$i] = ['siswa_id' => $id, 'status' => 'hadir'];
+        foreach ($roster as $i => $nis) {
+            $payload['presensi'][$i] = ['siswa_nis' => $nis, 'status' => 'hadir'];
         }
 
         return $payload;
@@ -120,7 +119,7 @@ class PresensiRosterTest extends TestCase
     public function test_filing_attendance_stores_one_row_per_student_and_an_audit_entry(): void
     {
         $s = $this->skenario();
-        $roster = $s['kelas']->siswa()->pluck('id');
+        $roster = $s['kelas']->siswa()->pluck('nis');
 
         $this->actingAs($s['ketua'])
             ->post(route('presensi-harian.store', $s['kelas']), $this->payload($s['kelas']))
@@ -129,7 +128,7 @@ class PresensiRosterTest extends TestCase
         $this->assertDatabaseHas('presensi_harian', [
             'kelas_id' => $s['kelas']->id,
             'tanggal' => now()->toDateString(),
-            'siswa_id' => $roster->first(),
+            'siswa_nis' => $roster->first(),
             'status' => 'hadir',
             'diisi_oleh_id' => $s['ketua']->id,
         ]);
@@ -148,7 +147,7 @@ class PresensiRosterTest extends TestCase
     public function test_filing_twice_in_a_day_replaces_rather_than_duplicates(): void
     {
         $s = $this->skenario();
-        $roster = $s['kelas']->siswa()->pluck('id');
+        $roster = $s['kelas']->siswa()->pluck('nis');
 
         $this->actingAs($s['ketua'])->post(route('presensi-harian.store', $s['kelas']), $this->payload($s['kelas']));
 
@@ -162,7 +161,7 @@ class PresensiRosterTest extends TestCase
 
         $this->assertDatabaseHas('presensi_harian', [
             'kelas_id' => $s['kelas']->id,
-            'siswa_id' => $roster->first(),
+            'siswa_nis' => $roster->first(),
             'status' => 'alpa',
         ]);
 
@@ -206,23 +205,23 @@ class PresensiRosterTest extends TestCase
 
     /**
      * Attendance may only be recorded for students actually in the class, so a
-     * crafted siswa_id from another class is rejected.
+     * crafted siswa_nis from another class is rejected.
      */
     public function test_a_student_from_another_class_is_rejected(): void
     {
         $s = $this->skenario();
-        $luar = User::where('role', 'siswa')->where('kelas_id', '!=', $s['kelas']->id)->firstOrFail();
+        $luar = Siswa::where('kelas_id', '!=', $s['kelas']->id)->firstOrFail();
 
         $this->actingAs($s['ketua'])
             ->post(route('presensi-harian.store', $s['kelas']), [
                 'tanggal' => now()->toDateString(),
-                'presensi' => [['siswa_id' => $luar->id, 'status' => 'hadir']],
+                'presensi' => [['siswa_nis' => $luar->nis, 'status' => 'hadir']],
             ])
-            ->assertSessionHasErrors('presensi.0.siswa_id');
+            ->assertSessionHasErrors('presensi.0.siswa_nis');
 
         $this->assertDatabaseMissing('presensi_harian', [
             'kelas_id' => $s['kelas']->id,
-            'siswa_id' => $luar->id,
+            'siswa_nis' => $luar->nis,
         ]);
     }
 

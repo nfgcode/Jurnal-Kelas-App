@@ -17,9 +17,8 @@ Aplikasi web untuk mencatat jurnal mengajar dan presensi siswa di sekolah meneng
 ## Fitur Utama
 
 ### Login Tiga Peran
-- **Admin** login pakai email
-- **Guru** login pakai NIP
-- **Siswa** login pakai NIS
+- Empat identitas diterima: **username**, **email**, **NIP** (guru), dan **NIS** (siswa) — sekolah membagikan NIP/NIS, jadi itu yang paling diingat orang
+- Tab peran di formulir mempersempit pencarian, jadi angka yang sama tidak pernah nyasar ke akun peran lain
 - Untuk API, autentikasinya pakai token (Laravel Sanctum)
 
 ### Dashboard per Peran
@@ -94,10 +93,46 @@ php artisan jurnal:isi-otomatis --sekarang --lookback=60  # langsung diproses, t
 > Perintah ini butuh **queue worker** dan **scheduler** yang hidup di container `app` (lewat supervisord), plus `APP_TIMEZONE` yang benar supaya "ganti hari"-nya sesuai waktu setempat.
 
 ### Master Data
-- **Kelas** — tingkat (X/XI/XII), jurusan, ruang, kapasitas, wali kelas, tahun ajaran
-- **Mata Pelajaran** — kelompok kurikulum (Wajib / Peminatan / Muatan Lokal / Kejuruan), JP per minggu
-- **Jadwal** — per hari, jam pelajaran, ruang, dan guru pengampu
-- **Pengguna** — tambah/ubah/hapus admin, guru, siswa lengkap dengan peran & status
+- **Kelas** — tingkat (X/XI/XII), jurusan, ruangan, kapasitas, wali kelas, tahun ajaran
+- **Ruangan** — daftar ruang milik sekolah: kode pintu, jenis (kelas/lab/bengkel/aula/…), kapasitas, gedung & lantai, status (aktif/perbaikan/nonaktif). Kelas dan jadwal menunjuk ke sini, bukan mengetik nama ruang lepas
+- **Mata Pelajaran** — kelompok kurikulum (Wajib / Peminatan / Muatan Lokal / Kejuruan), JP per minggu, plus **guru pengampunya** yang bisa diubah langsung dari halaman mapel itu
+- **Jadwal** — per hari, nomor JP, ruangan, dan guru pengampu
+- **Data Guru / Data Siswa / Akun Pengguna** — tiga halaman terpisah, lihat di bawah
+
+### Data Orang vs Akun Login
+Dulu semuanya satu tabel `users`: nama, NIP, NIS, kelas, dan kata sandi bercampur di satu baris, dan peran dibedakan cuma lewat kolom `role`. Sekarang dipisah jadi tiga, karena tiga hal itu memang punya umur yang berbeda:
+
+| Tabel | Primary key | Isinya |
+|-------|-------------|--------|
+| `guru` | **NIP** | Data kepegawaian: nama, jenis kelamin, kontak, status, mapel yang diampu |
+| `siswa` | **NIS** | Data kesiswaan: nama, NISN, kelas, ketua kelas, status (aktif/lulus/nonaktif) |
+| `users` | id | **Cuma kredensial**: username, email, kata sandi, peran, status, plus NIP/NIS yang menunjuk orangnya |
+
+Kenapa NIP/NIS jadi primary key, bukan id berurutan: nomor itu bukan detail internal — dia tercetak di rapor, disebut antar-staf, dan diketik di buku absensi. Dipakai sebagai kunci berarti baris presensi langsung menyebut siswanya, tanpa join.
+
+Akibat yang terasa sehari-hari:
+- Siswa **lulus** → akunnya dicabut, riwayat presensinya tetap utuh
+- Guru baru bisa didata **sebelum** IT sempat membuatkan akun
+- Admin yang cuma mereset kata sandi **tidak bisa** tanpa sengaja mengganti nama orang — nama cuma ada di satu tempat
+- Menghapus akun ≠ menghapus orang. Guru yang sudah pernah mengajar malah **ditolak** untuk dihapus (jadwal & jurnalnya akan ikut terhapus); yang benar adalah menonaktifkannya
+
+**Menambah guru/siswa memakai stored procedure.** `sp_tambah_guru` / `sp_tambah_siswa` menulis baris orang dan baris akun **dalam satu transaksi** dengan `EXIT HANDLER` yang me-`ROLLBACK` lalu `RESIGNAL` — separuh jadi lebih buruk daripada tidak jadi sama sekali (guru tanpa akun tak bisa masuk; akun tanpa guru adalah kredensial yang menunjuk entah siapa). Duplikat NIP/NIS/email/username ditolak dengan pesan yang bisa dibaca, bukan error 1062 mentah. **Nama kembar** ditolak juga secara bawaan, tapi bisa di-override dengan centang — dua siswa memang bisa sama-sama bernama Muhammad Rizki.
+
+Triggernya menjaga aturan itu tetap berlaku siapa pun yang menulis (aplikasi, skrip impor, atau admin yang mengetik langsung di phpMyAdmin): akun guru wajib punya NIP, akun siswa wajib punya NIS, akun admin tidak boleh punya keduanya, dan nama di akun otomatis dikosongkan untuk guru/siswa supaya tidak ada salinan kedua.
+
+> Di SQLite (database test) prosedur dan trigger itu tidak ada. `App\Support\PendaftaranPengguna` menjalankan urutan yang sama sebagai transaksi PHP, dan **menerjemahkan kode kesalahan yang sama** (`NIS_SUDAH_ADA`, `NAMA_SUDAH_ADA`, …) jadi pesan validasi — jadi dua jalur itu tidak bisa bercerai soal apa yang dilihat admin.
+
+### Guru ↔ Mata Pelajaran
+Satu guru boleh mengampu 1–3 mapel, dan satu mapel boleh dipegang beberapa guru — di SMK dengan 45 rombel, satu orang tidak mungkin memegang semuanya. Pasangannya disimpan di tabel `guru_mata_pelajaran`, terpisah dari jadwal.
+
+Kenapa terpisah: jadwal menjawab pertanyaan lain — *apa yang dijadwalkan semester ini*. Guru yang sedang tidak mendapat jam jadi seolah tidak berkompetensi apa-apa, dan formulir jadwal dengan senang hati memasangkan guru olahraga dengan Kimia. Sekarang formulirnya **menolak** pasangan yang tidak pernah disetujui sekolah, dengan pesan yang menyebut mapel apa saja yang memang diampu.
+
+Bisa diubah dari dua sisi: dari halaman gurunya (centang mapel), atau dari halaman mapelnya (centang guru). Keduanya menulis tabel yang sama.
+
+### Jam Pelajaran Dihitung Server
+`jam_mulai` dan `jam_selesai` tidak diketik lagi. Formulir jadwal cuma menanyakan **nomor JP**, dan servernya menurunkan jamnya dari jadwal bel di `config/sekolah.php`: **1 JP = 45 menit**, bel pertama 07:00, istirahat 15 menit setelah JP 4 dan 30 menit setelah JP 8.
+
+Dulu formulirnya menanyakan keduanya, jadi slot berlabel "JP 1–2" yang mulai 13:00 diterima tanpa protes — dan tidak ada yang tahu mana dari keduanya yang harus dipercaya saat menghitung keterlambatan jurnal. Perhitungannya dipasang di event `saving` model, jadi web, API, dan seeder tunduk pada aturan yang sama.
 
 ### Laporan Admin
 - Laporan jurnal dengan filter periode
@@ -382,7 +417,7 @@ Script setup-nya bakal:
 | Admin | `admin@jurnalkelas.app` | `password` |
 | Guru | `budi.santoso@jurnalkelas.app` | `password` |
 
-> **Catatan:** guru juga bisa login pakai NIP, siswa pakai NIS.
+> **Catatan:** semua peran juga bisa masuk pakai username; guru pakai NIP dan siswa pakai NIS.
 
 ### Setup Lokal (Tanpa Docker)
 
@@ -502,7 +537,7 @@ GET /api/me
 | `POST/PUT/DELETE` | `/api/kelas/*` | Admin | Kelola kelas |
 | `POST/PUT/DELETE` | `/api/mata-pelajaran/*` | Admin | Kelola mata pelajaran |
 | `POST/PUT/DELETE` | `/api/jadwal/*` | Admin | Kelola jadwal |
-| `GET/POST/PUT/DELETE` | `/api/users/*` | Admin | Kelola user |
+| `GET/POST/PUT/DELETE` | `/api/users/*` | Admin | Kelola **akun login**. Sama seperti di web, hanya akun admin yang bisa dibuat di sini — akun guru/siswa lahir bersama data orangnya |
 | `GET` | `/api/laporan/jurnal` | Admin | Laporan jurnal |
 | `GET` | `/api/laporan/presensi` | Admin | Laporan presensi |
 | `GET` | `/api/laporan/rekap-kelas` | Admin | Rekap per kelas |
@@ -569,7 +604,9 @@ Jurnal-Kelas-App/
 │       ├── DbDriver.php          # Deteksi driver (MySQL vs SQLite)
 │       ├── Halaman.php           # Whitelist ukuran halaman (25/50/75/100)
 │       ├── Ikon.php              # Ikon SVG inline (pengganti icon font)
-│       ├── LoginResolver.php     # Resolver login NIP/NIS/Email
+│       ├── LoginResolver.php     # Resolver login username/email/NIP/NIS
+│       ├── PendaftaranPengguna.php # Daftar guru/siswa + akunnya dalam satu transaksi (SP di MySQL)
+│       ├── JamPelajaran.php      # Jadwal bel: nomor JP → jam dinding (45 menit/JP)
 │       ├── PembacaLog.php        # Baca bagian akhir berkas log (aman buat log besar)
 │       ├── Periode.php           # Object rentang tanggal
 │       ├── PesanError.php        # Teks halaman error per peran
@@ -582,7 +619,7 @@ Jurnal-Kelas-App/
 │       ├── XlsxExport.php        # Penulis .xlsx (OOXML) lewat ZipArchive
 │       └── XlsxReader.php        # Pembaca .xlsx/.csv buat impor (ZipArchive + SimpleXML)
 ├── database/
-│   ├── migrations/               # 36 migrasi (tabel, index, view, function, trigger)
+│   ├── migrations/               # 38 migrasi (tabel, index, view, function, procedure, trigger)
 │   └── seeders/
 │       ├── DemoSeeder.php        # Data demo default (dipakai make setup & test suite)
 │       └── SmkSeeder.php         # Simulasi SMK besar (10 jurusan, ~45 rombel), opsional, dev-only
@@ -593,7 +630,7 @@ Jurnal-Kelas-App/
 │   ├── sass/                     # SCSS (lapisan Bootstrap terpilih + custom + breakpoint mobile)
 │   ├── js/                       # JS (dropdown/modal Bootstrap, drill-down AJAX, searchable-select)
 │   └── views/                    # Template Blade
-│       ├── admin/                # Halaman admin (users, impor, laporan, sistem, kelas-qr, presensi-log, cadangan)
+│       ├── admin/                # Halaman admin (guru, siswa, akun, impor, laporan, sistem, kelas-qr, presensi-log, cadangan)
 │       ├── dashboard/            # Dashboard per peran
 │       ├── wali-kelas/           # Mode Wali Kelas (dashboard, data, jadwal, jurnal, presensi)
 │       ├── jurnal/               # Halaman jurnal
@@ -655,7 +692,8 @@ Tiap berkas test menjaga satu jenis kesalahan yang pernah benar-benar kejadian:
 | `CadanganTest` | Backup/restore khusus admin: ekspor memuat semua tabel & bisa dipilih sebagian, unduhan ter-gzip dan bisa dipulihkan lagi (gabung/ganti), berkas asing ditolak |
 | `IkonTest` | Semua ikon yang dipakai memang ada, biar ikon tidak kosong diam-diam |
 | `ErrorHandlingTest` | Guru/siswa tidak pernah lihat stack trace; admin tetap lihat detail |
-| `RolePagesTest`, `CrudPagesTest`, `AdminSectionTest`, `DashboardPeriodeTest`, `LoginTest` | Tiap halaman per peran kerender, form CRUD jalan, login tiap peran jalan |
+| `AdminSectionTest` | Pemisahan orang & akun: menambah guru menghasilkan **dua baris sekaligus**, NIP kembar ditolak **tanpa meninggalkan akun yatim**, nama kembar ditolak kecuali disengaja, menghapus akun **menyisakan** orangnya, dan guru yang sudah punya jadwal menolak dihapus |
+| `RolePagesTest`, `CrudPagesTest`, `DashboardPeriodeTest`, `LoginTest` | Tiap halaman per peran kerender, form CRUD jalan, login tiap peran jalan (termasuk lewat username) |
 
 ---
 

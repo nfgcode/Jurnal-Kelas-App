@@ -19,14 +19,14 @@ class SimpanPresensiHarian
      * On MySQL the replace runs inside sp_simpan_presensi_harian (one
      * transaction, rolled back by its handler on any error); elsewhere a Laravel
      * transaction gives the same all-or-nothing guarantee. The unique index
-     * (kelas_id, tanggal, siswa_id) is the final guard against two people saving
+     * (kelas_id, tanggal, siswa_nis) is the final guard against two people saving
      * the same day at once, either way.
      *
      * One presensi_harian_log row records who saved it and how many students —
      * flagged `koreksi` when the day already had a roster, which is the
      * distinction the admin audit screen is actually there to show.
      *
-     * @param  array<int, array{siswa_id: int|string, status: string, keterangan?: ?string}>  $rows
+     * @param  array<int, array{siswa_nis: int|string, status: string, keterangan?: ?string}>  $rows
      */
     public static function simpan(Kelas $kelas, string $tanggal, array $rows, ?User $pengisi = null): void
     {
@@ -35,7 +35,7 @@ class SimpanPresensiHarian
         $koreksi = PresensiHarian::sudahDiisi($kelas->id, $tanggal);
 
         $bersih = array_map(fn ($data) => [
-            'siswa_id' => (int) $data['siswa_id'],
+            'siswa_nis' => (int) $data['siswa_nis'],
             'status' => $data['status'],
             'keterangan' => $data['keterangan'] ?? null,
         ], $rows);

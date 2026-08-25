@@ -31,11 +31,8 @@ class PeriodeFilterTest extends TestCase
         $this->seed(DemoSeeder::class);
 
         $jadwal = Jadwal::firstOrFail();
-        $this->guru = $jadwal->guru;
-        $this->siswa = User::where('role', 'siswa')
-            ->where('kelas_id', $jadwal->kelas_id)
-            ->where('is_ketua_kelas', false)
-            ->firstOrFail();
+        $this->guru = $this->akunGuru($jadwal->guru_nip);
+        $this->siswa = $this->akunSiswaKelas($jadwal->kelas_id, false);
     }
 
     public function test_a_preset_narrows_the_journal_rows_to_its_window(): void
@@ -102,7 +99,7 @@ class PeriodeFilterTest extends TestCase
             ->get('/jurnal?preset=tahun_ini&per=100')
             ->assertOk()
             ->assertViewHas('jurnals', fn ($jurnals) => $jurnals
-                ->every(fn ($jurnal) => $jurnal->guru_id === $this->guru->id));
+                ->every(fn ($jurnal) => $jurnal->guru_nip === $this->guru->nip));
 
         // ...and a student only their own class's.
         $this->actingAs($this->siswa)

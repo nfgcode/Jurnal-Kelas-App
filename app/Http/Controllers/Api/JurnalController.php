@@ -33,7 +33,7 @@ class JurnalController extends Controller
         $jurnals = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->denganPresensiHarian()
-            ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
+            ->when($user->isGuru(), fn ($q) => $q->where('guru_nip', $user->nip))
             ->when($user->isSiswa(), fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $user->kelas_id)))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cariTeks($q))
             ->orderBy($sort, $dir)
@@ -78,7 +78,7 @@ class JurnalController extends Controller
 
         // Same ownership rule as the web form: a guru writes on their own slot,
         // a ketua kelas on their own class's; only an admin writes anywhere.
-        abort_if($user->isGuru() && $jadwal->guru_id !== $user->id, 403);
+        abort_if($user->isGuru() && $jadwal->guru_nip !== $user->nip, 403);
         abort_if($user->isSiswa() && $jadwal->kelas_id !== $user->kelas_id, 403);
 
         $peran = Jurnal::peranPengisi($user);
@@ -105,7 +105,7 @@ class JurnalController extends Controller
         }
 
         // A guru writes their own; otherwise the slot's teacher owns the entry.
-        $data['guru_id'] = $user->isGuru() ? $user->id : $jadwal->guru_id;
+        $data['guru_nip'] = $user->isGuru() ? $user->nip : $jadwal->guru_nip;
         $data['diisi_oleh_id'] = $user->id;
         $data['diisi_oleh_peran'] = $peran;
         $data['kehadiran_guru_status'] ??= 'hadir';
@@ -141,7 +141,7 @@ class JurnalController extends Controller
         // in that class's history and completeness while still crediting the
         // mover). Mirrors pastikanJadwalMilik() on the web path.
         $jadwalBaru = Jadwal::findOrFail($data['jadwal_id']);
-        abort_if($user->isGuru() && $jadwalBaru->guru_id !== $user->id, 403);
+        abort_if($user->isGuru() && $jadwalBaru->guru_nip !== $user->nip, 403);
         abort_if($user->isSiswa() && $jadwalBaru->kelas_id !== $user->kelas_id, 403);
 
         // Correcting a system placeholder "adopts" it as the caller's own entry,

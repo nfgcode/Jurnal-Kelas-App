@@ -6,7 +6,6 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -27,7 +26,7 @@ class ApiJurnalKontrakTest extends TestCase
 
     private function jurnalUji(): array
     {
-        $guru = User::factory()->create(['role' => 'guru', 'nip' => '198500000001']);
+        $guru = $this->buatGuru();
 
         $kelas = Kelas::create([
             'nama_kelas' => 'X UJI API',
@@ -44,7 +43,7 @@ class ApiJurnalKontrakTest extends TestCase
         $jadwal = Jadwal::create([
             'kelas_id' => $kelas->id,
             'mata_pelajaran_id' => $mapel->id,
-            'guru_id' => $guru->id,
+            'guru_nip' => $guru->nip,
             'hari' => Ringkasan::HARI[Carbon::parse($tanggal)->dayOfWeekIso - 1] ?? 'Senin',
             'jam_ke_mulai' => 1,
             'jam_ke_selesai' => 2,
@@ -57,7 +56,7 @@ class ApiJurnalKontrakTest extends TestCase
             'tanggal' => $tanggal,
             'materi' => 'Materi awal',
             'kehadiran_guru_status' => 'hadir',
-            'guru_id' => $guru->id,
+            'guru_nip' => $guru->nip,
             'diisi_oleh_id' => $guru->id,
             'diisi_oleh_peran' => 'guru',
         ]);

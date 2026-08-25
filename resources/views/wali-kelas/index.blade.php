@@ -38,11 +38,11 @@
                     <tbody>
                         @php
                             // The roll a wali actually needs to act on: worst attendance first.
-                            $perhatian = $siswa->sortBy(fn ($s) => $rekapSiswa[$s->id]['persen'] ?? 100)->take(8);
+                            $perhatian = $siswa->sortBy(fn ($s) => $rekapSiswa[$s->nis]['persen'] ?? 100)->take(8);
                         @endphp
                         @forelse ($perhatian as $s)
                             @php
-                                $r = $rekapSiswa[$s->id] ?? ['alpa' => 0, 'persen' => 0];
+                                $r = $rekapSiswa[$s->nis] ?? ['alpa' => 0, 'persen' => 0];
                                 $tone = $r['persen'] >= 85 ? 'green' : ($r['persen'] >= 70 ? 'yellow' : 'red');
                             @endphp
                             <tr>
@@ -50,7 +50,7 @@
                                 <td>
                                     <span class="name-cell">
                                         <span class="avatar avatar--xs">{{ $s->inisial() }}</span>
-                                        {{ $s->name }}
+                                        {{ $s->nama }}
                                         @if ($s->is_ketua_kelas)
                                             <x-chip tone="yellow" label="Ketua" />
                                         @endif
@@ -88,7 +88,7 @@
                                 <td class="is-muted is-nowrap">{{ $j->tanggal->format('d/m/Y') }}</td>
                                 <td class="is-strong">{{ $j->jadwal?->mataPelajaran?->nama ?? '—' }}</td>
                                 <td>{{ Str::limit($j->materi, 40) }}</td>
-                                <td class="is-muted">{{ $j->guru?->name ?? '—' }}</td>
+                                <td class="is-muted">{{ $j->guru?->nama ?? '—' }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="empty-state">Belum ada jurnal untuk kelas ini.</td></tr>

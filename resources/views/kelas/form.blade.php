@@ -19,9 +19,15 @@
                value="{{ old('jurusan', $kelas?->jurusan) }}" placeholder="mis. IPA, IPS, TKJ">
     </x-field>
 
-    <x-field label="Ruang" name="ruang">
-        <input class="input-hifi" type="text" name="ruang" id="ruang"
-               value="{{ old('ruang', $kelas?->ruang) }}" placeholder="mis. R-101">
+    <x-field label="Ruang Kelas" name="ruangan_kode" hint="Ruang tempat rombel ini menetap.">
+        <select class="select-hifi" name="ruangan_kode" id="ruangan_kode" data-searchable>
+            <option value="">— Belum ditentukan —</option>
+            @foreach ($ruanganList as $ruangan)
+                <option value="{{ $ruangan->kode }}" @selected(old('ruangan_kode', $kelas?->ruangan_kode) === $ruangan->kode)>
+                    {{ $ruangan->label() }} · {{ $ruangan->kapasitas }} kursi
+                </option>
+            @endforeach
+        </select>
     </x-field>
 
     <x-field label="Kapasitas" name="kapasitas" required hint="Jumlah siswa ideal per rombel.">
@@ -34,11 +40,11 @@
                value="{{ old('tahun_ajaran', $kelas?->tahun_ajaran ?? now()->year . '/' . (now()->year + 1)) }}" required>
     </x-field>
 
-    <x-field label="Wali Kelas" name="wali_kelas_id">
-        <select class="select-hifi" name="wali_kelas_id" id="wali_kelas_id" data-searchable>
+    <x-field label="Wali Kelas" name="wali_kelas_nip">
+        <select class="select-hifi" name="wali_kelas_nip" id="wali_kelas_nip" data-searchable>
             <option value="">Belum ditetapkan</option>
             @foreach ($gurus as $guru)
-                <option value="{{ $guru->id }}" @selected(old('wali_kelas_id', $kelas?->wali_kelas_id) == $guru->id)>{{ $guru->name }}</option>
+                <option value="{{ $guru->nip }}" @selected(old('wali_kelas_nip', $kelas?->wali_kelas_nip) == $guru->nip)>{{ $guru->nama }}</option>
             @endforeach
         </select>
     </x-field>

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\PresensiHarian;
+use App\Models\Siswa;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,7 +53,7 @@ class CrudPagesTest extends TestCase
             'materi' => 'Persamaan kuadrat',
             'kegiatan' => 'Diskusi kelompok dan latihan soal',
             'catatan' => null,
-            'guru_id' => $jadwal->guru_id,
+            'guru_nip' => $jadwal->guru_nip,
         ]);
 
         // The class's roll call for that day — one row per student, which is
@@ -60,7 +62,7 @@ class CrudPagesTest extends TestCase
             PresensiHarian::updateOrCreate([
                 'kelas_id' => $jadwal->kelas_id,
                 'tanggal' => $jurnal->tanggal->toDateString(),
-                'siswa_id' => $siswa->id,
+                'siswa_nis' => $siswa->nis,
             ], [
                 'status' => ['hadir', 'sakit', 'izin', 'alpa'][$i % 4],
             ]);
@@ -80,8 +82,14 @@ class CrudPagesTest extends TestCase
             'jurnal index' => ['/jurnal'],
             'jurnal create' => ['/jurnal/create'],
             'presensi index' => ['/presensi'],
-            'admin users' => ['/admin/users'],
-            'admin users create' => ['/admin/users/create'],
+            'admin akun' => ['/admin/akun'],
+            'admin akun create' => ['/admin/akun/create'],
+            'admin guru' => ['/admin/guru'],
+            'admin guru create' => ['/admin/guru/create'],
+            'admin siswa' => ['/admin/siswa'],
+            'admin siswa create' => ['/admin/siswa/create'],
+            'ruangan index' => ['/ruangan'],
+            'ruangan create' => ['/ruangan/create'],
             'laporan jurnal' => ['/admin/laporan/jurnal'],
             'laporan presensi' => ['/admin/laporan/presensi'],
         ];
@@ -99,7 +107,7 @@ class CrudPagesTest extends TestCase
         $mapel = MataPelajaran::first();
         $jadwal = Jadwal::first();
         $jurnal = Jurnal::first();
-        $siswa = User::where('role', 'siswa')->firstOrFail();
+        $siswa = Siswa::firstOrFail();
 
         $urls = [
             "/kelas/{$kelas->id}",
@@ -112,8 +120,10 @@ class CrudPagesTest extends TestCase
             "/jurnal/{$jurnal->public_id}/edit",
             route('presensi-harian.show', [$kelas, 'tanggal' => $jurnal->tanggal->toDateString()]),
             route('presensi-harian.edit', [$kelas, 'tanggal' => $jurnal->tanggal->toDateString()]),
-            "/admin/users/{$siswa->id}",
-            "/admin/users/{$siswa->id}/edit",
+            "/admin/siswa/{$siswa->nis}",
+            "/admin/siswa/{$siswa->nis}/edit",
+            "/admin/guru/{$jadwal->guru_nip}",
+            '/ruangan',
         ];
 
         foreach ($urls as $url) {
@@ -123,7 +133,7 @@ class CrudPagesTest extends TestCase
 
     public function test_kelas_can_be_created_from_the_form_fields(): void
     {
-        $guru = User::where('role', 'guru')->firstOrFail();
+        $guru = Guru::firstOrFail();
 
         $this->actingAs($this->admin)
             ->post('/kelas', [
@@ -133,14 +143,14 @@ class CrudPagesTest extends TestCase
                 'ruang' => 'Lab RPL 2',
                 'kapasitas' => 34,
                 'tahun_ajaran' => '2025/2026',
-                'wali_kelas_id' => $guru->id,
+                'wali_kelas_nip' => $guru->nip,
             ])
             ->assertRedirect(route('kelas.index'))
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('kelas', [
             'nama_kelas' => 'XII RPL 3',
-            'wali_kelas_id' => $guru->id,
+            'wali_kelas_nip' => $guru->nip,
         ]);
     }
 
@@ -156,13 +166,13 @@ class CrudPagesTest extends TestCase
     {
         $kelas = Kelas::first();
         $mapel = MataPelajaran::first();
-        $guru = User::where('role', 'guru')->firstOrFail();
+        $guru = Guru::firstOrFail();
 
         $this->actingAs($this->admin)
             ->post('/jadwal', [
                 'kelas_id' => $kelas->id,
                 'mata_pelajaran_id' => $mapel->id,
-                'guru_id' => $guru->id,
+                'guru_nip' => $guru->nip,
                 'hari' => 'Jumat',
                 'jam_ke_mulai' => 7,
                 'jam_ke_selesai' => 8,
@@ -196,7 +206,7 @@ class CrudPagesTest extends TestCase
 
         foreach ($siswa as $i => $s) {
             $payload['presensi'][$i] = [
-                'siswa_id' => $s->id,
+                'siswa_nis' => $s->nis,
                 'status' => 'hadir',
                 'keterangan' => null,
             ];
@@ -224,10 +234,10 @@ class CrudPagesTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('presensi-harian.edit', $kelas))
             ->assertOk()
-            ->assertSee($siswa->name)
+            ->assertSee($siswa->nama)
             ->assertSee($siswa->nis)
             ->assertSee('Simpan Presensi')
-            ->assertSee('presensi[0][siswa_id]', false);
+            ->assertSee('presensi[0][siswa_nis]', false);
     }
 
     /**
@@ -236,6 +246,8 @@ class CrudPagesTest extends TestCase
      */
     public function test_the_guru_attendance_export_downloads_for_both_modes(): void
     {
+        // The export is downloaded by a signed-in teacher, so this is the
+        // account, not the person register row.
         $guru = User::where('role', 'guru')->firstOrFail();
         $xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 

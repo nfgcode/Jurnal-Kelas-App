@@ -31,10 +31,10 @@ return new class extends Migration
                 START TRANSACTION;
                     DELETE FROM presensi WHERE jurnal_id = p_jurnal_id;
 
-                    INSERT INTO presensi (jurnal_id, siswa_id, status, keterangan, created_at, updated_at)
-                    SELECT p_jurnal_id, jt.siswa_id, jt.status, jt.keterangan, NOW(), NOW()
+                    INSERT INTO presensi (jurnal_id, siswa_nis, status, keterangan, created_at, updated_at)
+                    SELECT p_jurnal_id, jt.siswa_nis, jt.status, jt.keterangan, NOW(), NOW()
                     FROM JSON_TABLE(p_data, '$[*]' COLUMNS (
-                        siswa_id   INT          PATH '$.siswa_id',
+                        siswa_nis  VARCHAR(20)  PATH '$.siswa_nis',
                         status     VARCHAR(10)  PATH '$.status',
                         keterangan TEXT         PATH '$.keterangan'
                     )) AS jt;

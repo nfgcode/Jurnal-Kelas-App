@@ -58,10 +58,10 @@
         </label>
 
         @if ($guruList->isNotEmpty())
-            <select class="select-hifi" name="guru_id" style="width: 170px" data-searchable onchange="this.form.submit()">
+            <select class="select-hifi" name="guru_nip" style="width: 170px" data-searchable onchange="this.form.submit()">
                 <option value="">Semua Guru</option>
                 @foreach ($guruList as $guru)
-                    <option value="{{ $guru->id }}" @selected(($filters['guru_id'] ?? null) == $guru->id)>{{ $guru->name }}</option>
+                    <option value="{{ $guru->nip }}" @selected(($filters['guru_nip'] ?? null) == $guru->nip)>{{ $guru->nama }}</option>
                 @endforeach
             </select>
         @endif
@@ -105,7 +105,7 @@
                            href="{{ route('jadwal.show', $sel) }}"
                            style="grid-column: {{ $kolom + 2 }}; grid-row: {{ $jp + 1 }} / {{ $sel->jam_ke_selesai + 2 }}">
                             <span class="matrix__mapel">{{ $sel->mataPelajaran?->nama }}</span>
-                            <span class="matrix__guru">{{ $sel->guru?->name }}</span>
+                            <span class="matrix__guru">{{ $sel->guru?->nama }}</span>
                             <span class="matrix__ruang">{{ $sel->ruang ?? $kelasAktif?->ruang }}</span>
                         </a>
                     @elseif ($sel === null && $jp === $jpIstirahat)

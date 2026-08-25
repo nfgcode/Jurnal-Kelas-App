@@ -54,7 +54,7 @@ class JurnalController extends Controller
         }
 
         if ($user->isGuru()) {
-            $query->where('guru_id', $user->id);
+            $query->where('guru_nip', $user->nip);
         }
 
         // Grade and jurusan narrow by the meeting's class — applied only on the
@@ -70,11 +70,11 @@ class JurnalController extends Controller
         $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
         // The stat cards count journals a person wrote, so the nightly backfill's
         // placeholders are left out — they mean the opposite of "filled in".
-        $milikSaya = ($user->isGuru() ? Jurnal::where('guru_id', $user->id) : Jurnal::query())->manusia();
+        $milikSaya = ($user->isGuru() ? Jurnal::where('guru_nip', $user->nip) : Jurnal::query())->manusia();
 
         // A guru filters only among the classes/subjects they teach; admin all.
         $kelasList = Kelas::query()
-            ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_id', $user->id)->select('kelas_id')))
+            ->when($user->isGuru(), fn ($q) => $q->whereIn('id', Jadwal::where('guru_nip', $user->nip)->select('kelas_id')))
             ->orderBy('nama_kelas')
             ->get();
 
@@ -92,7 +92,7 @@ class JurnalController extends Controller
             'periode' => $periode,
             'kelasList' => $kelasList,
             'mapelList' => MataPelajaran::query()
-                ->when($user->isGuru(), fn ($q) => $q->whereHas('jadwals', fn ($j) => $j->where('guru_id', $user->id)))
+                ->when($user->isGuru(), fn ($q) => $q->whereHas('jadwals', fn ($j) => $j->where('guru_nip', $user->nip)))
                 ->orderBy('nama')->get(),
             'filters' => $filters,
             'statistik' => [
@@ -146,7 +146,7 @@ class JurnalController extends Controller
         // The student's own attendance for the days the rows on this page fall
         // on — keyed by date, because the roll call is taken once a day and not
         // once per lesson.
-        $presensiSaya = PresensiHarian::where('siswa_id', $user->id)
+        $presensiSaya = PresensiHarian::where('siswa_nis', $user->nis)
             ->whereIn('tanggal', $jurnals->pluck('tanggal')->map(fn ($t) => $t->toDateString())->unique()->all())
             ->get()
             ->keyBy(fn ($p) => $p->tanggal->toDateString());
@@ -233,7 +233,7 @@ class JurnalController extends Controller
         }
 
         $data = $this->normalize($validated, $user);
-        $data['guru_id'] = $user->isGuru() ? $user->id : $jadwal->guru_id;
+        $data['guru_nip'] = $user->isGuru() ? $user->nip : $jadwal->guru_nip;
         $data['diisi_oleh_id'] = $user->id;
         $data['diisi_oleh_peran'] = $peran;
 
@@ -278,7 +278,7 @@ class JurnalController extends Controller
                 ->where('kelas_id', $kelasId)
                 ->whereDate('tanggal', $tanggal)
                 ->get()
-                ->sortBy(fn ($p) => $p->siswa?->name ?? '')
+                ->sortBy(fn ($p) => $p->siswa?->nama ?? '')
                 ->values()
             : collect();
 
@@ -383,7 +383,7 @@ class JurnalController extends Controller
      */
     private function tolakGanda(?Jurnal $lama, string $peran): RedirectResponse
     {
-        $siapa = $lama?->diisiOleh?->name;
+        $siapa = $lama?->diisiOleh?->nama;
         $sisi = $peran === 'siswa' ? 'perwakilan kelas' : 'guru pengajar';
 
         // Name the meeting: with a day's worth of slots in the dropdown, "this
@@ -413,7 +413,7 @@ class JurnalController extends Controller
      */
     private function pastikanJadwalMilik(User $user, Jadwal $jadwal): void
     {
-        abort_if($user->isGuru() && $jadwal->guru_id !== $user->id, 403,
+        abort_if($user->isGuru() && $jadwal->guru_nip !== $user->nip, 403,
             'Jadwal tersebut bukan jadwal mengajar Anda.');
 
         abort_if($user->isSiswa() && $jadwal->kelas_id !== $user->kelas_id, 403,
@@ -511,7 +511,7 @@ class JurnalController extends Controller
             ->whereYear('tanggal', now()->year);
 
         $rekapKehadiran = $user->isGuru()
-            ? Ringkasan::kehadiranGuru($bulanIni(Jurnal::where('guru_id', $user->id)))
+            ? Ringkasan::kehadiranGuru($bulanIni(Jurnal::where('guru_nip', $user->nip)))
             : Ringkasan::kehadiranGuru(
                 $bulanIni(Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $user->kelas_id)))
             );

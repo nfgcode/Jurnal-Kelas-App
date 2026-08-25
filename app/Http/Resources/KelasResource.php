@@ -21,14 +21,18 @@ class KelasResource extends JsonResource
             'nama_kelas' => $this->nama_kelas,
             'tingkat' => $this->tingkat,
             'jurusan' => $this->jurusan,
-            'ruang' => $this->ruang,
+            'ruangan_kode' => $this->ruangan_kode,
+            'ruangan' => $this->whenLoaded('ruangan', fn () => [
+                'kode' => $this->ruangan->kode,
+                'nama' => $this->ruangan->nama,
+            ]),
             'kapasitas' => $this->kapasitas,
             'tahun_ajaran' => $this->tahun_ajaran,
-            'wali_kelas_id' => $this->wali_kelas_id,
+            'wali_kelas_nip' => $this->wali_kelas_nip,
             'jumlah_siswa' => $this->whenCounted('siswa'),
             'jumlah_jadwal' => $this->whenCounted('jadwals'),
-            'wali_kelas' => new UserResource($this->whenLoaded('waliKelas')),
-            'siswa' => UserResource::collection($this->whenLoaded('siswa')),
+            'wali_kelas' => new GuruResource($this->whenLoaded('waliKelas')),
+            'siswa' => SiswaResource::collection($this->whenLoaded('siswa')),
         ];
     }
 }

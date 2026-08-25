@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('kelas_id')->constrained('kelas')->cascadeOnDelete();
             $table->foreignId('mata_pelajaran_id')->constrained('mata_pelajaran')->cascadeOnDelete();
-            $table->foreignId('guru_id')->constrained('users')->cascadeOnDelete();
+            $table->string('guru_nip', 20);
+            $table->foreign('guru_nip')->references('nip')->on('guru')->cascadeOnDelete();
             $table->enum('hari', ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']);
             $table->time('jam_mulai');
             $table->time('jam_selesai');

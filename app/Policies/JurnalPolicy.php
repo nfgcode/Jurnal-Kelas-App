@@ -21,7 +21,7 @@ class JurnalPolicy
         }
 
         if ($user->isGuru()) {
-            if ($jurnal->guru_id === $user->id) {
+            if ($jurnal->guru_nip === $user->nip) {
                 return true;
             }
 
@@ -32,7 +32,7 @@ class JurnalPolicy
             $kelasId = $jurnal->jadwal?->kelas_id;
 
             return $kelasId !== null
-                && Kelas::whereKey($kelasId)->where('wali_kelas_id', $user->id)->exists();
+                && Kelas::whereKey($kelasId)->where('wali_kelas_nip', $user->nip)->exists();
         }
 
         return $user->kelas_id !== null
@@ -60,7 +60,7 @@ class JurnalPolicy
         }
 
         if ($user->isGuru()) {
-            return $jurnal->guru_id === $user->id;
+            return $jurnal->guru_nip === $user->nip;
         }
 
         return $user->isKetuaKelas()
@@ -72,7 +72,7 @@ class JurnalPolicy
     public function delete(User $user, Jurnal $jurnal): bool
     {
         return $user->isAdmin()
-            || ($user->isGuru() && $jurnal->guru_id === $user->id);
+            || ($user->isGuru() && $jurnal->guru_nip === $user->nip);
     }
 
     /**
@@ -104,7 +104,7 @@ class JurnalPolicy
         }
 
         return $user->isGuru()
-            && (Jadwal::where('guru_id', $user->id)->where('kelas_id', $kelasId)->exists()
-                || Kelas::whereKey($kelasId)->where('wali_kelas_id', $user->id)->exists());
+            && (Jadwal::where('guru_nip', $user->nip)->where('kelas_id', $kelasId)->exists()
+                || Kelas::whereKey($kelasId)->where('wali_kelas_nip', $user->nip)->exists());
     }
 }

@@ -20,7 +20,7 @@ class KelasPolicy
         }
 
         return $user->isGuru()
-            && $kelas->jadwals()->where('guru_id', $user->id)->exists();
+            && $kelas->jadwals()->where('guru_nip', $user->nip)->exists();
     }
 
     /**
@@ -53,8 +53,8 @@ class KelasPolicy
         }
 
         if ($user->isGuru()) {
-            return $kelas->jadwals()->where('guru_id', $user->id)->exists()
-                || $kelas->wali_kelas_id === $user->id;
+            return $kelas->jadwals()->where('guru_nip', $user->nip)->exists()
+                || $kelas->wali_kelas_nip === $user->nip;
         }
 
         return $user->kelas_id === $kelas->id;

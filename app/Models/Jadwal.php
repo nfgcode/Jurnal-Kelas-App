@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\JamPelajaran;
 use App\Support\Ringkasan;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,14 +30,34 @@ class Jadwal extends Model
     protected $fillable = [
         'kelas_id',
         'mata_pelajaran_id',
-        'guru_id',
+        'guru_nip',
         'hari',
         'jam_ke_mulai',
         'jam_ke_selesai',
         'jam_mulai',
         'jam_selesai',
-        'ruang',
+        'ruangan_kode',
     ];
+
+    /**
+     * Model events.
+     */
+    protected static function booted(): void
+    {
+        // Clock times are derived, never typed: whatever period numbers a slot
+        // is given, its jam_mulai/jam_selesai follow from the bell schedule.
+        // Doing it on `saving` covers the web form, the API and the seeders
+        // alike, so no writer can produce a slot whose label and clock disagree.
+        static::saving(function (Jadwal $jadwal) {
+            $rentang = JamPelajaran::rentang(
+                (int) $jadwal->jam_ke_mulai,
+                (int) $jadwal->jam_ke_selesai,
+            );
+
+            $jadwal->jam_mulai = $rentang['jam_mulai'];
+            $jadwal->jam_selesai = $rentang['jam_selesai'];
+        });
+    }
 
     /**
      * The timetable rows a user may write a journal against: a guru their own
@@ -49,7 +71,7 @@ class Jadwal extends Model
     public function scopeUntukPengguna($query, User $user)
     {
         return $query
-            ->when($user->isGuru(), fn ($q) => $q->where('guru_id', $user->id))
+            ->when($user->isGuru(), fn ($q) => $q->where('guru_nip', $user->nip))
             ->when($user->isSiswa(), fn ($q) => $q->where('kelas_id', $user->kelas_id ?? 0));
     }
 
@@ -74,6 +96,16 @@ class Jadwal extends Model
     }
 
     /**
+     * Wall-clock span of this slot, e.g. "07:00 - 08:30". Read from the bell
+     * schedule rather than the stored columns so a config change shows up on
+     * screen immediately, without a re-save of every row.
+     */
+    public function waktuLabel(): string
+    {
+        return JamPelajaran::label((int) $this->jam_ke_mulai, (int) $this->jam_ke_selesai);
+    }
+
+    /**
      * Get the kelas (class) for this schedule.
      */
     public function kelas(): BelongsTo
@@ -94,7 +126,29 @@ class Jadwal extends Model
      */
     public function guru(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'guru_id');
+        return $this->belongsTo(Guru::class, 'guru_nip', 'nip');
+    }
+
+    /**
+     * The room this slot meets in. Falls back to the class's home room when the
+     * slot has none of its own — most lessons happen where the class lives.
+     */
+    public function ruangan(): BelongsTo
+    {
+        return $this->belongsTo(Ruangan::class, 'ruangan_kode', 'kode');
+    }
+
+    /**
+     * The room code, for the many screens that just want to print where a
+     * lesson meets. Rooms are rows now ({@see ruangan()}); this keeps the read
+     * side reading as plainly as it did when the column was free text.
+     *
+     * Eager-load `ruangan` wherever this is rendered in a list, or it costs a
+     * query per row.
+     */
+    protected function ruang(): Attribute
+    {
+        return Attribute::make(get: fn () => $this->ruangan?->kode);
     }
 
     /**

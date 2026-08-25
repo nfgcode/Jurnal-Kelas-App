@@ -28,18 +28,19 @@ class JurnalOtomatisTest extends TestCase
 
     private static int $seq = 0;
 
+    /**
+     * These helpers hand back the *account*, because that is what the tests act
+     * as. The person row behind it is one hop away as `$akun->guru` / `->siswa`,
+     * and the NIP/NIS a schedule or roster needs is on the account too.
+     */
     private function guru(): User
     {
-        return User::factory()->create([
-            'role' => 'guru',
-            'nip' => '1985'.str_pad((string) ++self::$seq, 8, '0', STR_PAD_LEFT),
-        ]);
+        return $this->buatGuru(['nip' => '1985'.str_pad((string) ++self::$seq, 8, '0', STR_PAD_LEFT)]);
     }
 
     private function siswa(Kelas $kelas, bool $ketua = false): User
     {
-        return User::factory()->create([
-            'role' => 'siswa',
+        return $this->buatSiswa([
             'nis' => '2026'.str_pad((string) ++self::$seq, 6, '0', STR_PAD_LEFT),
             'kelas_id' => $kelas->id,
             'is_ketua_kelas' => $ketua,
@@ -61,7 +62,7 @@ class JurnalOtomatisTest extends TestCase
             'nama_kelas' => 'X UJI '.++self::$seq,
             'tingkat' => 'X',
             'tahun_ajaran' => '2026/2027',
-            'wali_kelas_id' => $wali?->id,
+            'wali_kelas_nip' => $wali?->nip,
         ]);
     }
 
@@ -70,12 +71,10 @@ class JurnalOtomatisTest extends TestCase
         return Jadwal::create([
             'kelas_id' => $kelas->id,
             'mata_pelajaran_id' => $mapel->id,
-            'guru_id' => $guru->id,
+            'guru_nip' => $guru->nip,
             'hari' => Ringkasan::HARI[Carbon::parse($tanggal)->dayOfWeekIso - 1],
             'jam_ke_mulai' => $jamMulai,
             'jam_ke_selesai' => $jamMulai + 1,
-            'jam_mulai' => sprintf('%02d:00', 6 + $jamMulai),
-            'jam_selesai' => sprintf('%02d:30', 6 + $jamMulai),
         ]);
     }
 
@@ -98,8 +97,9 @@ class JurnalOtomatisTest extends TestCase
             'tanggal' => $tanggal,
             'materi' => 'Materi uji',
             'kehadiran_guru_status' => 'hadir',
-            'guru_id' => $jadwal->guru_id,
-            'diisi_oleh_id' => $jadwal->guru_id,
+            'guru_nip' => $jadwal->guru_nip,
+            // The author is an account; the NIP identifies the person, not the login.
+            'diisi_oleh_id' => User::where('nip', $jadwal->guru_nip)->value('id'),
             'diisi_oleh_peran' => 'guru',
         ], $ganti));
     }
@@ -304,7 +304,7 @@ class JurnalOtomatisTest extends TestCase
 
     public function test_the_recap_splits_written_automatic_and_missing(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create();
         $guru = $this->guru();
         $kelas = $this->kelas();
         $tanggal = $this->tanggalLampau();
@@ -331,7 +331,7 @@ class JurnalOtomatisTest extends TestCase
 
     public function test_a_backfilled_journal_is_not_reported_as_a_late_teacher(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create();
         $guru = $this->guru();
         $kelas = $this->kelas();
         $tanggal = $this->tanggalLampau(10); // long enough ago to be "late" if counted
@@ -493,7 +493,7 @@ class JurnalOtomatisTest extends TestCase
 
     public function test_admin_can_filter_journals_edited_after_the_day(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = User::factory()->create();
         $guru = $this->guru();
         $kelas = $this->kelas();
         $tanggal = $this->tanggalLampau(3);

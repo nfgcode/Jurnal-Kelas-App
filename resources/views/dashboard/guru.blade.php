@@ -10,7 +10,7 @@
     @endphp
 
     <x-page-head
-        title="Selamat Datang, {{ Auth::user()->name }}!"
+        title="Selamat Datang, {{ Auth::user()->nama }}!"
         :sub="'Ringkasan kegiatan mengajar Anda · Semester Gasal ' . now()->year . '/' . (now()->year + 1) . ' · ' . now()->translatedFormat('j F Y')">
         {{-- A label, not a control: this screen is "today plus standing totals",
              so there is no period to choose. Styled as a chip so it never looks

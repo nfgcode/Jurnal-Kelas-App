@@ -20,7 +20,7 @@
         <select class="select-hifi" name="diedit_oleh_id" style="width: 200px" data-searchable onchange="this.form.submit()">
             <option value="">Semua Pengisi</option>
             @foreach ($editorList as $editor)
-                <option value="{{ $editor->id }}" @selected(($filters['diedit_oleh_id'] ?? null) == $editor->id)>{{ $editor->name }}</option>
+                <option value="{{ $editor->id }}" @selected(($filters['diedit_oleh_id'] ?? null) == $editor->id)>{{ $editor->nama }}</option>
             @endforeach
         </select>
 
@@ -66,7 +66,7 @@
                             <td class="is-muted is-nowrap">{{ $entri->created_at?->format('d/m/Y H:i') }}</td>
                             <td class="is-strong">
                                 @if ($editor)
-                                    <a class="text-reset" href="{{ route('admin.users.show', $editor) }}">{{ $editor->name }}</a>
+                                    <a class="text-reset" href="{{ route('admin.akun.show', $editor) }}">{{ $editor->nama }}</a>
                                 @else
                                     <span class="is-muted">(dihapus)</span>
                                 @endif

@@ -38,7 +38,7 @@ class PresensiLogController extends Controller
             'log' => $log,
             'kelasList' => Kelas::orderBy('nama_kelas')->get(),
             'editorList' => User::whereIn('id', PresensiHarianLog::select('diedit_oleh_id')->distinct())
-                ->orderBy('name')->get(),
+                ->orderBy('nama')->get(),
             'filters' => $filters,
         ]);
     }

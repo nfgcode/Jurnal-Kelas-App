@@ -119,17 +119,25 @@ class ImporPenggunaTest extends TestCase
                 'jenis' => 'siswa',
                 'berkas' => $pratinjau->viewData('berkas'),
             ])
-            ->assertRedirect(route('admin.users.index', ['role' => 'siswa']))
+            ->assertRedirect(route('admin.siswa.index'))
             ->assertSessionHas('success');
 
+        // The login and the person are two rows: the account carries the
+        // credentials and the NIS that points at the student; the student row
+        // carries the class and the ketua flag.
         $this->assertDatabaseHas('users', [
             'email' => 'siswa.impor1@test.app',
+            'username' => 'siswa.impor1',
             'role' => 'siswa',
             'nis' => 'IMP001',
+        ]);
+        $this->assertDatabaseHas('siswa', [
+            'nis' => 'IMP001',
+            'nama' => 'Siswa Impor Satu',
             'kelas_id' => $kelas->id,
             'is_ketua_kelas' => true,
         ]);
-        $this->assertDatabaseHas('users', ['email' => 'siswa.impor2@test.app', 'is_ketua_kelas' => false]);
+        $this->assertDatabaseHas('siswa', ['nis' => 'IMP002', 'is_ketua_kelas' => false]);
     }
 
     public function test_rows_with_problems_are_reported_and_never_written(): void
@@ -202,7 +210,7 @@ class ImporPenggunaTest extends TestCase
     public function test_existing_accounts_are_only_overwritten_when_asked(): void
     {
         $ada = User::where('role', 'guru')->firstOrFail();
-        $namaLama = $ada->name;
+        $namaLama = $ada->nama;
 
         $rows = [['Nama Baru Sekali', $ada->email, $ada->nip ?? 'IMP030', '', 'rahasia123', 'aktif']];
 
@@ -228,8 +236,8 @@ class ImporPenggunaTest extends TestCase
             'perbarui' => '1',
         ]);
 
-        $this->assertSame('Nama Baru Sekali', $ada->fresh()->name);
-        $this->assertNotSame($namaLama, $ada->fresh()->name);
+        $this->assertSame('Nama Baru Sekali', $ada->fresh()->nama);
+        $this->assertNotSame($namaLama, $ada->fresh()->nama);
     }
 
     /**

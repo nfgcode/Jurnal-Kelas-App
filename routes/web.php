@@ -1,13 +1,15 @@
 <?php
 
+use App\Http\Controllers\Admin\AkunController;
 use App\Http\Controllers\Admin\CadanganController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\ImporController;
 use App\Http\Controllers\Admin\KelasQrController;
 use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\PresensiLogController;
 use App\Http\Controllers\Admin\SistemController;
-use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JadwalController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\PresensiHarianController;
 use App\Http\Controllers\QrController;
+use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\WaliKelasController;
 use Illuminate\Support\Facades\Route;
 
@@ -73,12 +76,19 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::resource('kelas', KelasController::class)->except(['index', 'show']);
         Route::resource('mata-pelajaran', MataPelajaranController::class)->except(['index', 'show']);
+        // Teacher assignment is edited from the subject's own page.
+        Route::put('mata-pelajaran/{mataPelajaran}/guru', [MataPelajaranController::class, 'simpanGuru'])
+            ->name('mata-pelajaran.guru');
         Route::resource('jadwal', JadwalController::class)->except(['index', 'show']);
+        Route::resource('ruangan', RuanganController::class)->except(['index', 'show']);
     });
 
     Route::middleware('role:admin,guru')->group(function () {
         Route::resource('kelas', KelasController::class)->only(['index', 'show']);
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'show']);
+        // A guru reads the room register to find where a lesson meets; only an
+        // admin may change it.
+        Route::resource('ruangan', RuanganController::class)->only(['index', 'show']);
     });
 
     Route::resource('jadwal', JadwalController::class)->only(['index', 'show']);
@@ -133,8 +143,11 @@ Route::middleware('auth')->group(function () {
         // JSON drill-down behind the dashboard's clickable figures.
         Route::get('/dashboard/detail', [AdminDashboardController::class, 'detail'])->name('dashboard.detail');
 
-        // User management (admin, guru, siswa accounts)
-        Route::resource('users', UserController::class);
+        // People and accounts are managed apart. The two person registers hold
+        // the school's records; /akun holds only what someone signs in with.
+        Route::resource('guru', GuruController::class);
+        Route::resource('siswa', SiswaController::class);
+        Route::resource('akun', AkunController::class);
 
         // Bulk account creation from a spreadsheet: template out, filled file
         // in, preview, then commit.

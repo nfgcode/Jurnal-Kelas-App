@@ -10,7 +10,7 @@
 
     <x-page-head
         title="Presensi Harian"
-        :sub="collect([$kelas->nama_kelas, $tanggal->translatedFormat('l, j F Y'), $pengisi ? 'diisi oleh ' . $pengisi->name : null])->filter()->join(' · ')">
+        :sub="collect([$kelas->nama_kelas, $tanggal->translatedFormat('l, j F Y'), $pengisi ? 'diisi oleh ' . $pengisi->nama : null])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">← Rekap Presensi</a>
 
         <form method="GET" class="d-inline-block">
@@ -63,7 +63,7 @@
                             <td>
                                 <span class="name-cell">
                                     <span class="avatar avatar--xs">{{ $presensi->siswa?->inisial() }}</span>
-                                    {{ $presensi->siswa?->name }}
+                                    {{ $presensi->siswa?->nama }}
                                 </span>
                             </td>
                             <td><x-chip :tone="$tone" :label="ucfirst($presensi->status)" /></td>
@@ -97,7 +97,7 @@
                         @foreach ($riwayat as $entri)
                             <tr>
                                 <td class="is-muted is-nowrap">{{ $entri->created_at?->translatedFormat('j M Y, H:i') }}</td>
-                                <td>{{ $entri->dieditOleh?->name ?? '—' }}</td>
+                                <td>{{ $entri->dieditOleh?->nama ?? '—' }}</td>
                                 <td class="is-num">{{ $entri->jumlah_siswa }}</td>
                                 <td class="is-num">
                                     <x-chip :tone="$entri->koreksi ? 'yellow' : 'green'"
