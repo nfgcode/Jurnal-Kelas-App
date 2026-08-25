@@ -3,7 +3,10 @@
 namespace Tests;
 
 use App\Models\Guru;
+use App\Models\Jurusan;
+use App\Models\Kelas;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
 use App\Models\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
@@ -74,7 +77,36 @@ abstract class TestCase extends BaseTestCase
     {
         return User::whereHas('siswa', fn ($s) => $s
             ->where('kelas_id', $kelasId)
-            ->when($ketua !== null, fn ($q) => $q->where('is_ketua_kelas', $ketua)))
+            ->when($ketua !== null, fn ($q) => $q->ketua($ketua)))
             ->firstOrFail();
+    }
+
+    /**
+     * A class, with the school year (and jurusan) it references brought into
+     * existence first.
+     *
+     * `kelas.tahun_ajaran_kode` is a non-null foreign key now, so a bare
+     * `Kelas::create()` in a test fails on the constraint rather than on
+     * whatever the test was actually checking.
+     *
+     * @param  array<string, mixed>  $atribut
+     */
+    protected function buatKelas(array $atribut = []): Kelas
+    {
+        $tahun = $atribut['tahun_ajaran_kode'] ?? '2026/2027';
+        TahunAjaran::firstOrCreate(['kode' => $tahun], ['aktif' => true]);
+
+        if (! empty($atribut['jurusan_kode'])) {
+            Jurusan::firstOrCreate(
+                ['kode' => $atribut['jurusan_kode']],
+                ['nama' => $atribut['jurusan_kode']],
+            );
+        }
+
+        return Kelas::create($atribut + [
+            'nama_kelas' => 'X UJI',
+            'tingkat' => 'X',
+            'tahun_ajaran_kode' => $tahun,
+        ]);
     }
 }

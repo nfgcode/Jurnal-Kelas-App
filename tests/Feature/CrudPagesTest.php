@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
+use App\Models\Jurusan;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\PresensiHarian;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -137,19 +139,19 @@ class CrudPagesTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post('/kelas', [
-                'nama_kelas' => 'XII RPL 3',
+                'nama_kelas' => 'XII TKJ 3',
                 'tingkat' => 'XII',
-                'jurusan' => 'RPL',
-                'ruang' => 'Lab RPL 2',
+                'jurusan_kode' => Jurusan::value('kode'),
+                'paralel' => 3,
                 'kapasitas' => 34,
-                'tahun_ajaran' => '2025/2026',
+                'tahun_ajaran_kode' => TahunAjaran::value('kode'),
                 'wali_kelas_nip' => $guru->nip,
             ])
             ->assertRedirect(route('kelas.index'))
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('kelas', [
-            'nama_kelas' => 'XII RPL 3',
+            'nama_kelas' => 'XII TKJ 3',
             'wali_kelas_nip' => $guru->nip,
         ]);
     }
@@ -165,25 +167,25 @@ class CrudPagesTest extends TestCase
     public function test_jadwal_can_be_created(): void
     {
         $kelas = Kelas::first();
-        $mapel = MataPelajaran::first();
-        $guru = Guru::firstOrFail();
+        // A teacher may only be timetabled for a subject they are recorded as
+        // teaching, so the pair is taken from the pivot rather than invented.
+        $guru = Guru::has('mataPelajaran')->firstOrFail();
+        $mapel = $guru->mataPelajaran->first();
 
+        // JP 11 is outside the seeded blocks, so the slot is free for everyone.
         $this->actingAs($this->admin)
             ->post('/jadwal', [
                 'kelas_id' => $kelas->id,
                 'mata_pelajaran_id' => $mapel->id,
                 'guru_nip' => $guru->nip,
                 'hari' => 'Jumat',
-                'jam_ke_mulai' => 7,
-                'jam_ke_selesai' => 8,
-                'jam_mulai' => '13:00',
-                'jam_selesai' => '14:30',
-                'ruang' => 'R-204',
+                'jam_ke_mulai' => 11,
+                'jam_ke_selesai' => 12,
             ])
             ->assertRedirect(route('jadwal.index'))
             ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('jadwal', ['hari' => 'Jumat', 'kelas_id' => $kelas->id]);
+        $this->assertDatabaseHas('jadwal', ['hari' => 'Jumat', 'kelas_id' => $kelas->id, 'jam_ke_mulai' => 11]);
     }
 
     public function test_jadwal_create_form_lists_the_dropdown_options(): void

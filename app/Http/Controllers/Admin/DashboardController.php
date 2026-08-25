@@ -120,7 +120,7 @@ class DashboardController extends Controller
             'guru_nip' => ['nullable', 'exists:guru,nip'],
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:100'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
             'status' => ['nullable', 'in:hadir,sakit,izin,alpa'],
         ]);
 
@@ -255,7 +255,7 @@ class DashboardController extends Controller
             ->when($status, fn ($query) => $query->where('presensi_harian.status', $status))
             ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('presensi_harian.kelas_id', $id))
             ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereIn('presensi_harian.kelas_id', Kelas::where('tingkat', $t)->select('id')))
-            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereIn('presensi_harian.kelas_id', Kelas::where('jurusan', $j)->select('id')))
+            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereIn('presensi_harian.kelas_id', Kelas::where('jurusan_kode', $j)->select('id')))
             ->with(['siswa', 'kelas'])
             ->orderByDesc('presensi_harian.tanggal')
             ->orderByDesc('presensi_harian.id')
@@ -302,7 +302,7 @@ class DashboardController extends Controller
             ->with(['kelas', 'mataPelajaran', 'guru'])
             ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('kelas_id', $id))
             ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('kelas', fn ($k) => $k->where('tingkat', $t)))
-            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('kelas', fn ($k) => $k->where('jurusan', $j)))
+            ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('kelas', fn ($k) => $k->where('jurusan_kode', $j)))
             ->when($data['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
             ->get()
             ->groupBy('hari');
@@ -359,7 +359,7 @@ class DashboardController extends Controller
 
         $baris = Kelas::orderBy('tingkat')->orderBy('nama_kelas')
             ->when($data['tingkat'] ?? null, fn ($q, $t) => $q->where('tingkat', $t))
-            ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->where('jurusan', $j))
+            ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->where('jurusan_kode', $j))
             ->get()
             ->map(fn ($kelas) => [
                 'kelas' => $kelas->nama_kelas,
@@ -386,7 +386,7 @@ class DashboardController extends Controller
         $query
             ->when($data['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($data['tingkat'] ?? null, fn ($q, $t) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
-            ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
+            ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan_kode', $j)))
             ->when($data['guru_nip'] ?? null, fn ($q, $id) => $q->where('guru_nip', $id));
     }
 }

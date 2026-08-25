@@ -95,8 +95,13 @@ class User extends Authenticatable
      */
     public function isKetuaKelas(): bool
     {
-        return $this->role === 'siswa' && (bool) $this->siswa?->is_ketua_kelas;
+        return $this->isKetuaKelas ??= $this->role === 'siswa'
+            && $this->nis !== null
+            && Kelas::where('ketua_nis', $this->nis)->exists();
     }
+
+    /** Memo for {@see isKetuaKelas()}: it is checked on every journal render. */
+    private ?bool $isKetuaKelas = null;
 
     /**
      * Initial used by the circular avatar on every screen.

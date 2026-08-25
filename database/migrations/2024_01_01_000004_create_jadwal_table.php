@@ -18,8 +18,10 @@ return new class extends Migration
             $table->string('guru_nip', 20);
             $table->foreign('guru_nip')->references('nip')->on('guru')->cascadeOnDelete();
             $table->enum('hari', ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']);
-            $table->time('jam_mulai');
-            $table->time('jam_selesai');
+            // No clock columns: the wall-clock span of a slot follows from its
+            // lesson-period numbers and the bell schedule in config/sekolah.php,
+            // so storing it as well would be a second answer to one question.
+            // See App\Support\JamPelajaran.
             $table->timestamps();
         });
     }

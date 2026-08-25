@@ -13,10 +13,10 @@
     </x-page-head>
 
     <div class="grid-row grid-row--4">
-        <x-stat label="Kelas" :value="$jadwal->kelas?->nama_kelas ?? '—'" :caption="$jadwal->kelas?->jurusan" />
+        <x-stat label="Kelas" :value="$jadwal->kelas?->nama_kelas ?? '—'" :caption="$jadwal->kelas?->jurusan?->nama" />
         <x-stat label="Guru" :value="$jadwal->guru?->inisial() ?? '—'" :caption="$jadwal->guru?->nama" />
         <x-stat label="Jam Pelajaran" :value="'JP ' . $jadwal->jpLabel()"
-                :caption="substr($jadwal->jam_mulai, 0, 5) . '–' . substr($jadwal->jam_selesai, 0, 5)" />
+                :caption="$jadwal->waktuLabel()" />
         <x-stat label="Jurnal Tercatat" :value="$jadwal->jurnals->count()" caption="pertemuan" />
     </div>
 

@@ -95,7 +95,9 @@ class CadanganTest extends TestCase
 
         $this->assertArrayHasKey('tabel', $data);
         foreach ([
-            'users', 'kelas', 'mata_pelajaran', 'jadwal', 'jurnal', 'presensi',
+            'jurusan', 'tahun_ajaran', 'ruangan', 'mata_pelajaran',
+            'guru', 'kelas', 'siswa', 'users', 'guru_mata_pelajaran',
+            'jadwal', 'jurnal', 'presensi',
             'presensi_log', 'presensi_harian', 'presensi_harian_log',
             'pengumuman', 'laporan_error', 'personal_access_tokens',
         ] as $tabel) {

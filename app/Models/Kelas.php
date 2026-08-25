@@ -40,11 +40,13 @@ class Kelas extends Model
     protected $fillable = [
         'nama_kelas',
         'tingkat',
-        'jurusan',
+        'jurusan_kode',
+        'paralel',
         'ruangan_kode',
         'kapasitas',
-        'tahun_ajaran',
+        'tahun_ajaran_kode',
         'wali_kelas_nip',
+        'ketua_nis',
     ];
 
     /**
@@ -64,7 +66,42 @@ class Kelas extends Model
     {
         return $query->where(fn ($inner) => $inner
             ->where('nama_kelas', 'like', "%{$q}%")
+            ->orWhereHas('jurusan', fn ($j) => $j->where('nama', 'like', "%{$q}%")->orWhere('kode', 'like', "%{$q}%"))
             ->orWhereHas('waliKelas', fn ($w) => $w->where('nama', 'like', "%{$q}%")));
+    }
+
+    /**
+     * The competency area this rombel belongs to. Nullable: an SMA class, or a
+     * class entered before its jurusan was set up, has none.
+     */
+    public function jurusan(): BelongsTo
+    {
+        return $this->belongsTo(Jurusan::class, 'jurusan_kode', 'kode');
+    }
+
+    public function tahunAjaran(): BelongsTo
+    {
+        return $this->belongsTo(TahunAjaran::class, 'tahun_ajaran_kode', 'kode');
+    }
+
+    /**
+     * The student who may file this class's journal on the teacher's behalf.
+     *
+     * One column, so the "one ketua per class" rule is a property of the schema
+     * rather than something a model hook has to keep tidying up.
+     */
+    public function ketua(): BelongsTo
+    {
+        return $this->belongsTo(Siswa::class, 'ketua_nis', 'nis');
+    }
+
+    /**
+     * Jurusan name for the many screens that just print it. Reads through the
+     * relation, so eager-load `jurusan` wherever this appears in a list.
+     */
+    public function jurusanNama(): ?string
+    {
+        return $this->jurusan?->nama;
     }
 
     /**

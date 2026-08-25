@@ -23,11 +23,15 @@ class KelasRequest extends FormRequest
         return [
             'nama_kelas' => 'required|string|max:255',
             'tingkat' => 'required|in:X,XI,XII',
-            'jurusan' => 'nullable|string|max:255',
+            'jurusan_kode' => 'nullable|exists:jurusan,kode',
+            'paralel' => 'required|integer|min:1|max:20',
             'ruangan_kode' => 'nullable|exists:ruangan,kode',
             'kapasitas' => 'required|integer|min:1|max:60',
-            'tahun_ajaran' => 'required|string|max:9',
+            'tahun_ajaran_kode' => 'required|exists:tahun_ajaran,kode',
             'wali_kelas_nip' => 'nullable|exists:guru,nip',
+            // The chair must be a student of this very class; the controller
+            // checks that, because the rule needs the class being edited.
+            'ketua_nis' => 'nullable|exists:siswa,nis',
         ];
     }
 }

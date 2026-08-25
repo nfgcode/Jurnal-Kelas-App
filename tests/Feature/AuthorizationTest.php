@@ -49,7 +49,7 @@ class AuthorizationTest extends TestCase
     public function test_siswa_cannot_write_master_data(): void
     {
         $this->actingAs($this->siswa)
-            ->post('/kelas', ['nama_kelas' => 'Hacked', 'tingkat' => 'X', 'kapasitas' => 30, 'tahun_ajaran' => '2025/2026'])
+            ->post('/kelas', ['nama_kelas' => 'Hacked', 'tingkat' => 'X', 'kapasitas' => 30, 'paralel' => 1, 'tahun_ajaran_kode' => '2026/2027'])
             ->assertForbidden();
 
         $this->assertDatabaseMissing('kelas', ['nama_kelas' => 'Hacked']);
@@ -88,7 +88,10 @@ class AuthorizationTest extends TestCase
 
     public function test_a_guru_cannot_edit_another_gurus_journal(): void
     {
-        $lain = User::where('role', 'guru')->where('id', '!=', $this->jadwal->guru_nip)->firstOrFail();
+        // Compare NIP against NIP: comparing users.id against a NIP is always
+        // true, which quietly picked the journal's *own* teacher and let the
+        // test pass while proving nothing.
+        $lain = User::where('role', 'guru')->where('nip', '!=', $this->jadwal->guru_nip)->firstOrFail();
         $jurnal = Jurnal::where('guru_nip', $this->jadwal->guru_nip)->firstOrFail();
 
         $this->actingAs($lain)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();

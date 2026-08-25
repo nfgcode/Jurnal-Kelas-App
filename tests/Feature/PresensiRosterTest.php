@@ -36,7 +36,7 @@ class PresensiRosterTest extends TestCase
     private function skenario(): array
     {
         $kelas = Kelas::whereNotNull('wali_kelas_nip')
-            ->whereHas('siswa', fn ($q) => $q->where('is_ketua_kelas', true))
+            ->whereNotNull('ketua_nis')
             ->firstOrFail();
 
         return [

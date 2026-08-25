@@ -4,11 +4,12 @@ namespace Database\Seeders;
 
 use App\Models\Guru;
 use App\Models\Jadwal;
+use App\Models\Jurusan;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
 use App\Models\User;
-use App\Support\JamPelajaran;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -60,52 +61,52 @@ class SmkSeeder extends Seeder
     private function daftarJurusan(): array
     {
         return [
-            'AKL' => ['nama' => 'Akuntansi dan Keuangan Lembaga', 'paralel' => 2, 'produktif' => [
+            'AKL' => ['nama' => 'Akuntansi dan Keuangan Lembaga', 'bidang' => 'Bisnis dan Manajemen', 'paralel' => 2, 'produktif' => [
                 ['Akuntansi Keuangan', 'PAK', 6],
                 ['Komputer Akuntansi', 'PKA', 5],
                 ['Praktikum Akuntansi Lembaga', 'PAL', 5],
             ]],
-            'MPLB' => ['nama' => 'Manajemen Perkantoran dan Layanan Bisnis', 'paralel' => 2, 'produktif' => [
+            'MPLB' => ['nama' => 'Manajemen Perkantoran dan Layanan Bisnis', 'bidang' => 'Bisnis dan Manajemen', 'paralel' => 2, 'produktif' => [
                 ['Otomatisasi Perkantoran', 'POP', 6],
                 ['Kearsipan', 'PKR', 5],
                 ['Korespondensi', 'PKO', 5],
             ]],
-            'BDP' => ['nama' => 'Bisnis Digital dan Pemasaran', 'paralel' => 1, 'produktif' => [
+            'BDP' => ['nama' => 'Bisnis Digital dan Pemasaran', 'bidang' => 'Bisnis dan Manajemen', 'paralel' => 1, 'produktif' => [
                 ['Bisnis Online', 'PBO', 6],
                 ['Pengelolaan Bisnis Ritel', 'PBR', 5],
                 ['Pemasaran', 'PPM', 5],
             ]],
-            'TKJ' => ['nama' => 'Teknik Komputer dan Jaringan', 'paralel' => 2, 'produktif' => [
+            'TKJ' => ['nama' => 'Teknik Komputer dan Jaringan', 'bidang' => 'Teknologi Informasi', 'paralel' => 2, 'produktif' => [
                 ['Administrasi Sistem Jaringan', 'PAS', 6],
                 ['Teknologi Jaringan Berbasis Luas', 'PTJ', 6],
                 ['Komputer dan Jaringan Dasar', 'PKJ', 5],
             ]],
-            'RPL' => ['nama' => 'Rekayasa Perangkat Lunak', 'paralel' => 2, 'produktif' => [
+            'RPL' => ['nama' => 'Rekayasa Perangkat Lunak', 'bidang' => 'Teknologi Informasi', 'paralel' => 2, 'produktif' => [
                 ['Pemrograman Web dan Perangkat Bergerak', 'PPW', 6],
                 ['Pemrograman Berorientasi Objek', 'PBP', 6],
                 ['Basis Data', 'PBD', 5],
             ]],
-            'DKV' => ['nama' => 'Desain Komunikasi Visual', 'paralel' => 1, 'produktif' => [
+            'DKV' => ['nama' => 'Desain Komunikasi Visual', 'bidang' => 'Seni dan Ekonomi Kreatif', 'paralel' => 1, 'produktif' => [
                 ['Desain Grafis Percetakan', 'PDG', 6],
                 ['Animasi 2D dan 3D', 'PAN', 5],
                 ['Fotografi', 'PFO', 5],
             ]],
-            'TKR' => ['nama' => 'Teknik Kendaraan Ringan Otomotif', 'paralel' => 2, 'produktif' => [
+            'TKR' => ['nama' => 'Teknik Kendaraan Ringan Otomotif', 'bidang' => 'Teknologi Manufaktur dan Rekayasa', 'paralel' => 2, 'produktif' => [
                 ['Pemeliharaan Mesin Kendaraan Ringan', 'PMK', 8],
                 ['Pemeliharaan Sasis dan Pemindah Tenaga', 'PSP', 7],
                 ['Pemeliharaan Kelistrikan Kendaraan', 'PKK', 5],
             ]],
-            'TBSM' => ['nama' => 'Teknik dan Bisnis Sepeda Motor', 'paralel' => 1, 'produktif' => [
+            'TBSM' => ['nama' => 'Teknik dan Bisnis Sepeda Motor', 'bidang' => 'Teknologi Manufaktur dan Rekayasa', 'paralel' => 1, 'produktif' => [
                 ['Pemeliharaan Mesin Sepeda Motor', 'PMS', 8],
                 ['Pemeliharaan Kelistrikan Sepeda Motor', 'PKM', 6],
                 ['Pemeliharaan Sasis Sepeda Motor', 'PSS', 5],
             ]],
-            'TITL' => ['nama' => 'Teknik Instalasi Tenaga Listrik', 'paralel' => 1, 'produktif' => [
+            'TITL' => ['nama' => 'Teknik Instalasi Tenaga Listrik', 'bidang' => 'Teknologi Manufaktur dan Rekayasa', 'paralel' => 1, 'produktif' => [
                 ['Instalasi Penerangan Listrik', 'PIP', 7],
                 ['Instalasi Tenaga Listrik', 'PIT', 7],
                 ['Instalasi Motor Listrik', 'PIM', 6],
             ]],
-            'KUL' => ['nama' => 'Kuliner', 'paralel' => 1, 'produktif' => [
+            'KUL' => ['nama' => 'Kuliner', 'bidang' => 'Pariwisata', 'paralel' => 1, 'produktif' => [
                 ['Pengolahan dan Penyajian Makanan', 'PPP', 8],
                 ['Produk Pastry dan Bakery', 'PPB', 6],
                 ['Tata Hidang', 'PTH', 5],
@@ -145,7 +146,12 @@ class SmkSeeder extends Seeder
 
         $rombelSpec = $this->rencanaRombel();
         $this->seedRuangan($rombelSpec);
-        $guru = $this->seedGuru(count($rombelSpec));
+        $this->seedTahunAjaran();
+        $this->seedJurusan();
+        // Two teachers per rombel. One-per-rombel exactly saturates the week
+        // (45 classes x 24 blocks = 45 teachers x 24 blocks), which is why the
+        // old data could not avoid booking someone into two rooms at once.
+        $guru = $this->seedGuru(count($rombelSpec) * 2);
         [$guruUmum, $guruProduktif] = $this->bagiGuru($guru);
 
         $kelas = $this->seedKelas($rombelSpec, $guru);
@@ -169,6 +175,38 @@ class SmkSeeder extends Seeder
      *
      * @param  array<int, array<string, string>>  $rombelSpec
      */
+    private function seedTahunAjaran(): void
+    {
+        TahunAjaran::create([
+            'kode' => self::TAHUN_AJARAN,
+            'mulai' => '2026-07-13',
+            'selesai' => '2027-06-19',
+            'aktif' => true,
+        ]);
+    }
+
+    /**
+     * The competency areas, as rows rather than as a long name repeated on
+     * every one of the 45 classes.
+     */
+    private function seedJurusan(): void
+    {
+        $rows = [];
+
+        foreach ($this->daftarJurusan() as $kode => $j) {
+            $rows[] = [
+                'kode' => $kode,
+                'nama' => $j['nama'],
+                'bidang' => $j['bidang'] ?? null,
+                'aktif' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        DB::table('jurusan')->insert($rows);
+    }
+
     private function seedRuangan(array $rombelSpec): void
     {
         $rows = [];
@@ -283,6 +321,7 @@ class SmkSeeder extends Seeder
                         'kode' => $kode,
                         'nama' => $j['nama'],
                         'nama_kelas' => $namaKelas,
+                        'paralel' => $p,
                         'ruang' => 'R-'.$ruang++,
                     ];
                 }
@@ -402,13 +441,11 @@ class SmkSeeder extends Seeder
             $kelas[] = Kelas::create([
                 'nama_kelas' => $spec['nama_kelas'],
                 'tingkat' => $spec['tingkat'],
-                // The full jurusan name — it is shown as a caption and drives the
-                // jurusan filter dropdown, where "Teknik Komputer dan Jaringan"
-                // reads better than "TKJ".
-                'jurusan' => $spec['nama'],
+                'jurusan_kode' => $spec['kode'],
+                'paralel' => $spec['paralel'],
                 'ruangan_kode' => $spec['ruang'],
                 'kapasitas' => 36,
-                'tahun_ajaran' => self::TAHUN_AJARAN,
+                'tahun_ajaran_kode' => self::TAHUN_AJARAN,
                 // One distinct homeroom teacher per class (guru list is sized to match).
                 'wali_kelas_nip' => $guru[$i]->nip,
             ]);
@@ -450,8 +487,6 @@ class SmkSeeder extends Seeder
                     'nama' => $depan[$i % count($depan)].' '.$belakang[$i % count($belakang)],
                     'jenis_kelamin' => $i % 2 === 0 ? 'P' : 'L',
                     'kelas_id' => $kelas->id,
-                    // The first student of each class chairs it and may fill the journal.
-                    'is_ketua_kelas' => $i === 0,
                     'no_hp' => null,
                     'alamat' => null,
                     'status' => 'aktif',
@@ -490,6 +525,12 @@ class SmkSeeder extends Seeder
             DB::table('users')->insert($chunk);
         }
 
+        // The first student of each class chairs it. The fact belongs to the
+        // class, so it is written there.
+        foreach ($nisPerKelas as $kelasId => $daftarNis) {
+            DB::table('kelas')->where('id', $kelasId)->update(['ketua_nis' => $daftarNis[0]]);
+        }
+
         $semua = Siswa::whereIn('nis', array_column($orang, 'nis'))->get()->keyBy('nis');
 
         $siswa = [];
@@ -523,54 +564,50 @@ class SmkSeeder extends Seeder
         array $guruProduktif,
     ): array {
         $rows = [];
-        // Rotates each shared subject across the shared pool as classes are filled,
-        // so no single teacher carries the same subject for the whole school.
-        $rotasiUmum = [];
-        // Every (teacher, subject) pairing the timetable uses has to exist in
-        // guru_mata_pelajaran, or the schedule form would reject data the seeder
-        // itself produced.
+        $penjadwal = new PenjadwalTanpaBentrok;
+        // Every (teacher, subject) pairing the timetable ends up using has to
+        // exist in guru_mata_pelajaran, or the schedule form would reject data
+        // the seeder itself produced.
         $pengampu = [];
 
         foreach ($kelasList as $i => $kelas) {
             $kode = $rombelSpec[$i]['kode'];
 
-            // The subject → teacher map for this class, fixed for the whole week.
-            $mapel = array_merge(array_values($mapelUmum), $mapelProduktif[$kode]);
-            $guruUntuk = [];
-
+            // Who may teach what for this class: the shared pool covers the
+            // normative subjects, the jurusan's own specialists cover its
+            // productive ones.
+            $kandidat = [];
             foreach (array_values($mapelUmum) as $m) {
-                $rotasiUmum[$m->id] ??= 0;
-                $guruUntuk[$m->id] = $guruUmum[$rotasiUmum[$m->id]++ % count($guruUmum)]->nip;
-                $pengampu[$guruUntuk[$m->id]][$m->id] = false;
+                $kandidat[$m->id] = array_map(fn ($g) => $g->nip, $guruUmum);
             }
-            foreach ($mapelProduktif[$kode] as $k => $m) {
-                $guruUntuk[$m->id] = $guruProduktif[$kode][$k % count($guruProduktif[$kode])]->nip;
-                $pengampu[$guruUntuk[$m->id]][$m->id] = true;
+            foreach ($mapelProduktif[$kode] as $m) {
+                $kandidat[$m->id] = array_map(fn ($g) => $g->nip, $guruProduktif[$kode]);
             }
 
-            // Shuffle the subject bag per class, then walk it to fill 24 slots.
-            $urutan = $mapel;
-            shuffle($urutan);
-            $rotasi = 0;
+            $bag = array_merge(array_values($mapelUmum), $mapelProduktif[$kode]);
+            shuffle($bag);
+            $guruKelas = [];
 
             foreach (self::HARI as $hari) {
                 foreach (self::JP_SLOT as [$mulai, $selesai]) {
-                    $m = $urutan[$rotasi % count($urutan)];
-                    $rotasi++;
+                    [$m, $nip] = $this->pilihUntukSlot($bag, $kandidat, $guruKelas, $penjadwal, $hari, $mulai);
 
-                    $waktu = JamPelajaran::rentang($mulai, $selesai);
+                    if ($m === null) {
+                        continue; // Nobody qualified is free: leave the slot empty.
+                    }
+
+                    $guruKelas[$m->id] = $nip;
+                    $penjadwal->tandai($nip, $hari, $mulai);
+                    $pengampu[$nip][$m->id] = isset($mapelProduktif[$kode])
+                        && in_array($m->id, array_map(fn ($x) => $x->id, $mapelProduktif[$kode]), true);
 
                     $rows[] = [
                         'kelas_id' => $kelas->id,
                         'mata_pelajaran_id' => $m->id,
-                        'guru_nip' => $guruUntuk[$m->id],
+                        'guru_nip' => $nip,
                         'hari' => $hari,
                         'jam_ke_mulai' => $mulai,
                         'jam_ke_selesai' => $selesai,
-                        // Bulk insert skips the model's saving hook, so the bell
-                        // schedule is applied here by the same helper it uses.
-                        'jam_mulai' => $waktu['jam_mulai'],
-                        'jam_selesai' => $waktu['jam_selesai'],
                         'ruangan_kode' => $kelas->ruangan_kode,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -586,6 +623,39 @@ class SmkSeeder extends Seeder
         $this->seedGuruMapel($pengampu);
 
         return Jadwal::orderBy('id')->get()->all();
+    }
+
+    /**
+     * Take the first subject from the bag whose teachers are not all busy.
+     *
+     * The bag rotates rather than shrinks, so a subject that could not be placed
+     * in this slot is tried again in a later one instead of being lost.
+     *
+     * @param  array<int, MataPelajaran>  $bag
+     * @param  array<int, array<int, string>>  $kandidat  NIPs keyed by subject id
+     * @param  array<int, string>  $guruKelas
+     * @return array{0: MataPelajaran|null, 1: string|null}
+     */
+    private function pilihUntukSlot(
+        array &$bag,
+        array $kandidat,
+        array $guruKelas,
+        PenjadwalTanpaBentrok $penjadwal,
+        string $hari,
+        int $jamKe,
+    ): array {
+        for ($coba = 0; $coba < count($bag); $coba++) {
+            $m = array_shift($bag);
+            $bag[] = $m;
+
+            $nip = $penjadwal->pilih($kandidat[$m->id] ?? [], $hari, $jamKe, $guruKelas[$m->id] ?? null);
+
+            if ($nip !== null) {
+                return [$m, $nip];
+            }
+        }
+
+        return [null, null];
     }
 
     /**

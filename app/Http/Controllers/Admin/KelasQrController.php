@@ -109,7 +109,7 @@ class KelasQrController extends Controller
     {
         // CASE rather than MySQL's FIELD(): the test suite runs on SQLite.
         return Kelas::orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
-            ->orderBy('jurusan')
+            ->with('jurusan')->orderBy('jurusan_kode')
             ->orderBy('nama_kelas');
     }
 

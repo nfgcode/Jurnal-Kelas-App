@@ -93,11 +93,33 @@ php artisan jurnal:isi-otomatis --sekarang --lookback=60  # langsung diproses, t
 > Perintah ini butuh **queue worker** dan **scheduler** yang hidup di container `app` (lewat supervisord), plus `APP_TIMEZONE` yang benar supaya "ganti hari"-nya sesuai waktu setempat.
 
 ### Master Data
-- **Kelas** — tingkat (X/XI/XII), jurusan, ruangan, kapasitas, wali kelas, tahun ajaran
+- **Jurusan** — kompetensi keahlian sekolah (kode, nama, bidang keahlian). Kelas menunjuk ke sini, bukan mengetik "Teknik Komputer dan Jaringan" ulang di tiap rombel
+- **Tahun Ajaran** — daftar tahun ajaran, satu di antaranya ditandai berjalan
+- **Kelas** — tingkat (X/XI/XII), jurusan, kelas paralel ke-berapa, ruangan, kapasitas, wali kelas, ketua kelas, tahun ajaran
 - **Ruangan** — daftar ruang milik sekolah: kode pintu, jenis (kelas/lab/bengkel/aula/…), kapasitas, gedung & lantai, status (aktif/perbaikan/nonaktif). Kelas dan jadwal menunjuk ke sini, bukan mengetik nama ruang lepas
 - **Mata Pelajaran** — kelompok kurikulum (Wajib / Peminatan / Muatan Lokal / Kejuruan), JP per minggu, plus **guru pengampunya** yang bisa diubah langsung dari halaman mapel itu
 - **Jadwal** — per hari, nomor JP, ruangan, dan guru pengampu
 - **Data Guru / Data Siswa / Akun Pengguna** — tiga halaman terpisah, lihat di bawah
+
+### Normalisasi Skema
+Skema ditelaah ulang sampai 3NF. Yang diperbaiki, beserta bukti dari data yang ada saat itu:
+
+| Pelanggaran | Bukti | Perbaikan |
+|---|---|---|
+| `kelas.jurusan` teks bebas | 10 nama panjang ditulis ulang di 45 baris | Tabel `jurusan` (PK kode) |
+| `kelas.tahun_ajaran` teks bebas | string sama di semua baris | Tabel `tahun_ajaran` (PK kode) |
+| `jadwal.jam_mulai/jam_selesai` | ditentukan penuh oleh `jam_ke_*`; 4 pasangan unik untuk 4 nomor JP | Kolomnya dihapus, jamnya dihitung dari jadwal bel |
+| `siswa.is_ketua_kelas` | atribut relasi kelas↔siswa ditaruh di siswa; "satu ketua" cuma dijaga PHP | Pindah ke `kelas.ketua_nis` — ketua kedua jadi *tidak bisa direpresentasikan* |
+| `jadwal` tanpa kunci unik | **353 slot** dengan guru yang sama mengajar dua kelas di jam yang sama | 3 UNIQUE: (kelas, hari, JP), (guru, hari, JP), (ruangan, hari, JP) |
+
+Yang **sengaja tidak** dinormalisasi, karena tampak redundan padahal bukan:
+
+- **`presensi_harian.kelas_id`** seolah bisa dibaca dari `siswa.kelas_id`. Tapi itu kelas siswa **pada tanggal itu**; kalau ia pindah rombel, riwayat kehadirannya tidak boleh ikut pindah.
+- **`jurnal.guru_nip`** seolah bisa dibaca lewat `jadwal_id`. Tapi `jadwal.guru_nip` bisa diubah admin: kalau satu slot dialihkan ke guru lain, seluruh jurnal lampau akan mendadak berpindah nama. Kolom ini mencatat siapa yang **benar-benar mengajar saat itu**.
+- **`jurnal.diisi_oleh_peran`** memuat nilai `'sistem'` yang tidak ada di `users.role`, dan itulah yang dikunci indeks unik "satu jurnal per sisi".
+- **`users.role`** diskriminator; admin memang tidak punya baris orang untuk diturunkan perannya.
+
+> Aturannya sederhana: kolom yang **bisa** dihitung ulang dari kolom lain memang duplikasi — kecuali kalau nilai sumbernya bisa berubah di kemudian hari, karena kolom itu lalu berubah arti jadi "nilainya saat kejadian".
 
 ### Data Orang vs Akun Login
 Dulu semuanya satu tabel `users`: nama, NIP, NIS, kelas, dan kata sandi bercampur di satu baris, dan peran dibedakan cuma lewat kolom `role`. Sekarang dipisah jadi tiga, karena tiga hal itu memang punya umur yang berbeda:
@@ -619,7 +641,7 @@ Jurnal-Kelas-App/
 │       ├── XlsxExport.php        # Penulis .xlsx (OOXML) lewat ZipArchive
 │       └── XlsxReader.php        # Pembaca .xlsx/.csv buat impor (ZipArchive + SimpleXML)
 ├── database/
-│   ├── migrations/               # 38 migrasi (tabel, index, view, function, procedure, trigger)
+│   ├── migrations/               # 40 migrasi (tabel, index, view, function, procedure, trigger)
 │   └── seeders/
 │       ├── DemoSeeder.php        # Data demo default (dipakai make setup & test suite)
 │       └── SmkSeeder.php         # Simulasi SMK besar (10 jurusan, ~45 rombel), opsional, dev-only

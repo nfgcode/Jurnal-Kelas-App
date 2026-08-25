@@ -201,7 +201,6 @@ class PendaftaranPengguna
                 'kelas_id' => $kelasId,
                 'no_hp' => $data['no_hp'] ?? null,
                 'alamat' => $data['alamat'] ?? null,
-                'is_ketua_kelas' => false,
                 'status' => 'aktif',
             ]);
 

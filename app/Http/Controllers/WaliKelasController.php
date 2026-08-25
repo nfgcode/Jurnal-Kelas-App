@@ -80,7 +80,7 @@ class WaliKelasController extends Controller
             'siswa' => $siswa,
             'rekapSiswa' => $this->rekapPerSiswa($siswa->pluck('nis')->all()),
             'filters' => $filters,
-            'jumlahKetua' => $siswa->where('is_ketua_kelas', true)->count(),
+            'jumlahKetua' => $kelas->ketua_nis ? 1 : 0,
         ]);
     }
 

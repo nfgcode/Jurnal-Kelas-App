@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,35 +37,35 @@ class Siswa extends Model
         'nama',
         'jenis_kelamin',
         'kelas_id',
-        'is_ketua_kelas',
         'no_hp',
         'alamat',
         'status',
     ];
 
-    protected function casts(): array
+    /**
+     * Whether this student chairs their class.
+     *
+     * No longer a column: the fact belongs to the class ("who chairs X TKJ 1?"),
+     * not to the student, and living in `kelas.ketua_nis` makes a second ketua
+     * unrepresentable instead of something a model hook had to keep undoing.
+     *
+     * Reads through the class, so eager-load `kelas` wherever a roster renders
+     * this — or compare `$kelas->ketua_nis` directly when the class is already
+     * in hand, which costs nothing.
+     */
+    protected function isKetuaKelas(): Attribute
     {
-        return [
-            'is_ketua_kelas' => 'boolean',
-        ];
+        return Attribute::make(get: fn () => $this->kelas?->ketua_nis === $this->nis);
     }
 
     /**
-     * Model events.
+     * Students who do (or do not) chair a class.
      */
-    protected static function booted(): void
+    public function scopeKetua($query, bool $ya = true)
     {
-        // A class has exactly one ketua kelas. Promoting a student demotes
-        // whoever held it, so the journal-on-behalf-of permission can never be
-        // claimed by two students at once.
-        static::saved(function (Siswa $siswa) {
-            if ($siswa->is_ketua_kelas && $siswa->kelas_id) {
-                static::where('kelas_id', $siswa->kelas_id)
-                    ->where('nis', '!=', $siswa->nis)
-                    ->where('is_ketua_kelas', true)
-                    ->update(['is_ketua_kelas' => false]);
-            }
-        });
+        $ketua = Kelas::whereNotNull('ketua_nis')->select('ketua_nis');
+
+        return $ya ? $query->whereIn('nis', $ketua) : $query->whereNotIn('nis', $ketua);
     }
 
     /**
@@ -103,6 +104,12 @@ class Siswa extends Model
     public function kelas(): BelongsTo
     {
         return $this->belongsTo(Kelas::class);
+    }
+
+    /** The class this student chairs, if any. */
+    public function kelasDiketuai(): HasOne
+    {
+        return $this->hasOne(Kelas::class, 'ketua_nis', 'nis');
     }
 
     /**

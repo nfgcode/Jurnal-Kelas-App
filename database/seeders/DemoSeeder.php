@@ -4,12 +4,13 @@ namespace Database\Seeders;
 
 use App\Models\Guru;
 use App\Models\Jadwal;
+use App\Models\Jurusan;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Ruangan;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
 use App\Models\User;
-use App\Support\JamPelajaran;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -57,11 +58,13 @@ class DemoSeeder extends Seeder
         $this->sandi = Hash::make('password');
 
         $ruangan = $this->seedRuangan();
+        $tahun = $this->seedTahunAjaran();
+        $jurusan = $this->seedJurusan();
         $this->seedAdmin();
         $guru = $this->seedGuru();
         $mapel = $this->seedMataPelajaran();
         $pengampu = $this->seedGuruMapel($guru, $mapel);
-        $kelas = $this->seedKelas($guru, $ruangan);
+        $kelas = $this->seedKelas($guru, $ruangan, $jurusan, $tahun);
         $siswa = $this->seedSiswa($kelas);
         $jadwal = $this->seedJadwal($kelas, $mapel, $pengampu);
 
@@ -108,6 +111,36 @@ class DemoSeeder extends Seeder
         return $ruangan;
     }
 
+    private function seedTahunAjaran(): TahunAjaran
+    {
+        return TahunAjaran::create([
+            'kode' => '2026/2027',
+            'mulai' => '2026-07-13',
+            'selesai' => '2027-06-19',
+            'aktif' => true,
+        ]);
+    }
+
+    /**
+     * @return array<string, Jurusan>
+     */
+    private function seedJurusan(): array
+    {
+        $daftar = [
+            ['IPA', 'Ilmu Pengetahuan Alam', 'Akademik'],
+            ['IPS', 'Ilmu Pengetahuan Sosial', 'Akademik'],
+            ['TKJ', 'Teknik Komputer dan Jaringan', 'Teknologi Informasi'],
+        ];
+
+        $jurusan = [];
+
+        foreach ($daftar as [$kode, $nama, $bidang]) {
+            $jurusan[$kode] = Jurusan::create(['kode' => $kode, 'nama' => $nama, 'bidang' => $bidang]);
+        }
+
+        return $jurusan;
+    }
+
     private function seedAdmin(): User
     {
         return User::create([
@@ -126,10 +159,16 @@ class DemoSeeder extends Seeder
      */
     private function seedGuru(): array
     {
+        // Eighteen for twelve classes. Twelve would exactly saturate the week
+        // (12 classes x 24 blocks = 12 teachers x 24 blocks), leaving the
+        // scheduler no room to route around a clash — which is how the old data
+        // ended up with a teacher in two rooms at once.
         $nama = [
             'Budi Santoso', 'Siti Nurhaliza', 'Ahmad Hidayat', 'Dewi Lestari',
             'Rina Marlina', 'Eko Prasetyo', 'Fitri Handayani', 'Gunawan Wibowo',
             'Hesti Purnama', 'Irfan Maulana', 'Joko Susilo', 'Kartika Sari',
+            'Lukman Hakim', 'Maya Anggraini', 'Nanda Pratama', 'Oki Rahmawati',
+            'Putri Ramadhani', 'Rahmat Kurniawan',
         ];
 
         $guru = [];
@@ -214,29 +253,44 @@ class DemoSeeder extends Seeder
      * pairing that is not in this pivot — seed data that contradicted it would
      * be data an admin could not have entered by hand.
      *
+     * Three teachers per subject, so the scheduler has somewhere to turn when
+     * its first choice is already teaching. One certified teacher per subject
+     * would make a clash unavoidable the moment two classes want that subject
+     * in the same period.
+     *
      * @param  array<int, Guru>  $guruList
      * @param  array<int, MataPelajaran>  $mapelList
-     * @return array<int, Guru> teacher keyed by subject id
+     * @return array<int, array<int, string>> NIPs keyed by subject id
      */
     private function seedGuruMapel(array $guruList, array $mapelList): array
     {
         $pengampu = [];
         $pivot = [];
+        $n = count($guruList);
+        $utamaTerpakai = [];
 
         foreach ($mapelList as $i => $mapel) {
-            $guru = $guruList[$i % count($guruList)];
-            $pengampu[$mapel->id] = $guru;
+            $nips = [];
 
-            $pivot[] = [
-                'guru_nip' => $guru->nip,
-                'mata_pelajaran_id' => $mapel->id,
-                // Their first subject is the one they are principally
-                // responsible for; with 18 subjects over 12 teachers, six of
-                // them hold a second.
-                'utama' => $i < count($guruList),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+            for ($k = 0; $k < 3; $k++) {
+                $guru = $guruList[($i * 3 + $k) % $n];
+                $nips[] = $guru->nip;
+
+                // Each teacher's first subject is their principal one; the rest
+                // are the second and third they also cover.
+                $utama = ! isset($utamaTerpakai[$guru->nip]);
+                $utamaTerpakai[$guru->nip] = true;
+
+                $pivot[] = [
+                    'guru_nip' => $guru->nip,
+                    'mata_pelajaran_id' => $mapel->id,
+                    'utama' => $utama,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            $pengampu[$mapel->id] = array_values(array_unique($nips));
         }
 
         DB::table('guru_mata_pelajaran')->insert($pivot);
@@ -247,9 +301,10 @@ class DemoSeeder extends Seeder
     /**
      * @param  array<int, Guru>  $guru
      * @param  array<int, Ruangan>  $ruangan
+     * @param  array<string, Jurusan>  $jurusan
      * @return array<int, Kelas>
      */
-    private function seedKelas(array $guru, array $ruangan): array
+    private function seedKelas(array $guru, array $ruangan, array $jurusan, TahunAjaran $tahun): array
     {
         $rombel = [
             ['X', 'IPA', 1], ['X', 'IPA', 2], ['X', 'IPS', 1], ['X', 'TKJ', 1],
@@ -259,17 +314,18 @@ class DemoSeeder extends Seeder
 
         $kelas = [];
 
-        foreach ($rombel as $i => [$tingkat, $jurusan, $urut]) {
+        foreach ($rombel as $i => [$tingkat, $kodeJurusan, $urut]) {
             $kelas[] = Kelas::create([
-                'nama_kelas' => "{$tingkat} {$jurusan} {$urut}",
+                'nama_kelas' => "{$tingkat} {$kodeJurusan} {$urut}",
                 'tingkat' => $tingkat,
-                'jurusan' => $jurusan,
+                'jurusan_kode' => $jurusan[$kodeJurusan]->kode,
+                'paralel' => $urut,
                 'ruangan_kode' => $ruangan[$i]->kode,
                 'kapasitas' => 36,
-                'tahun_ajaran' => '2026/2027',
-                // One wali per class, and 12 classes to 12 teachers, so nobody
-                // holds two homerooms.
-                'wali_kelas_nip' => $guru[$i % count($guru)]->nip,
+                'tahun_ajaran_kode' => $tahun->kode,
+                // One wali per class; there are more teachers than classes, so
+                // nobody holds two homerooms.
+                'wali_kelas_nip' => $guru[$i]->nip,
             ]);
         }
 
@@ -306,9 +362,6 @@ class DemoSeeder extends Seeder
                     'nama' => $depan[$i].' '.$belakang[$i % count($belakang)],
                     'jenis_kelamin' => $i % 2 === 0 ? 'P' : 'L',
                     'kelas_id' => $kelas->id,
-                    // The first student of each class chairs it and may fill
-                    // the class journal.
-                    'is_ketua_kelas' => $i === 0,
                     'no_hp' => null,
                     'alamat' => null,
                     'status' => 'aktif',
@@ -348,6 +401,12 @@ class DemoSeeder extends Seeder
             DB::table('users')->insert($chunk);
         }
 
+        // The first student of each class chairs it. The fact lives on the
+        // class, so it is set here rather than on each student row.
+        foreach ($nisPerKelas as $kelasId => $daftarNis) {
+            DB::table('kelas')->where('id', $kelasId)->update(['ketua_nis' => $daftarNis[0]]);
+        }
+
         $semua = Siswa::whereIn('nis', array_merge(...array_values($nisPerKelas)))->get()->keyBy('nis');
 
         $siswa = [];
@@ -359,41 +418,49 @@ class DemoSeeder extends Seeder
     }
 
     /**
+     * Fill every class's week without ever booking a teacher twice.
+     *
+     * The subject bag is walked slot by slot; when nobody certified for the next
+     * subject is free, that subject is pushed to the back and the next one is
+     * tried. A class keeps the same teacher for a subject all week whenever that
+     * teacher is free, so the timetable still reads like a real one.
+     *
      * @param  array<int, Kelas>  $kelasList
      * @param  array<int, MataPelajaran>  $mapelList
-     * @param  array<int, Guru>  $pengampu  teacher keyed by subject id
+     * @param  array<int, array<int, string>>  $pengampu  NIPs keyed by subject id
      * @return array<int, Jadwal>
      */
     private function seedJadwal(array $kelasList, array $mapelList, array $pengampu): array
     {
         $rows = [];
+        $penjadwal = new PenjadwalTanpaBentrok;
 
         foreach ($kelasList as $kelas) {
             // Shuffle per class. Walking the subject list in a fixed order
             // leaves the week on a modular cycle, which can starve a teacher of
             // any lesson on a given weekday.
-            $urutan = $mapelList;
-            shuffle($urutan);
-            $rotasi = 0;
+            $bag = $mapelList;
+            shuffle($bag);
+            $guruKelas = [];
 
             foreach (self::HARI as $hari) {
                 foreach (self::JP_SLOT as [$mulai, $selesai]) {
-                    $mapel = $urutan[$rotasi % count($urutan)];
-                    $rotasi++;
+                    [$mapel, $nip] = $this->pilihUntukSlot($bag, $pengampu, $guruKelas, $penjadwal, $hari, $mulai);
 
-                    $waktu = JamPelajaran::rentang($mulai, $selesai);
+                    if ($mapel === null) {
+                        continue; // Nobody free at all: leave the slot empty.
+                    }
+
+                    $guruKelas[$mapel->id] = $nip;
+                    $penjadwal->tandai($nip, $hari, $mulai);
 
                     $rows[] = [
                         'kelas_id' => $kelas->id,
                         'mata_pelajaran_id' => $mapel->id,
-                        'guru_nip' => $pengampu[$mapel->id]->nip,
+                        'guru_nip' => $nip,
                         'hari' => $hari,
                         'jam_ke_mulai' => $mulai,
                         'jam_ke_selesai' => $selesai,
-                        // Bulk insert skips the model's saving hook, so the bell
-                        // schedule is applied here by the same helper it uses.
-                        'jam_mulai' => $waktu['jam_mulai'],
-                        'jam_selesai' => $waktu['jam_selesai'],
                         'ruangan_kode' => $kelas->ruangan_kode,
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -407,6 +474,44 @@ class DemoSeeder extends Seeder
         }
 
         return Jadwal::orderBy('id')->get()->all();
+    }
+
+    /**
+     * Take the first subject from the bag whose teachers are not all busy.
+     *
+     * The bag rotates rather than shrinks, so a subject that could not be placed
+     * now is tried again in a later slot instead of being lost.
+     *
+     * @param  array<int, MataPelajaran>  $bag
+     * @param  array<int, array<int, string>>  $pengampu
+     * @param  array<int, string>  $guruKelas
+     * @return array{0: MataPelajaran|null, 1: string|null}
+     */
+    private function pilihUntukSlot(
+        array &$bag,
+        array $pengampu,
+        array $guruKelas,
+        PenjadwalTanpaBentrok $penjadwal,
+        string $hari,
+        int $jamKe,
+    ): array {
+        for ($coba = 0; $coba < count($bag); $coba++) {
+            $mapel = array_shift($bag);
+            $bag[] = $mapel; // straight to the back, whether it fits or not
+
+            $nip = $penjadwal->pilih(
+                $pengampu[$mapel->id] ?? [],
+                $hari,
+                $jamKe,
+                $guruKelas[$mapel->id] ?? null,
+            );
+
+            if ($nip !== null) {
+                return [$mapel, $nip];
+            }
+        }
+
+        return [null, null];
     }
 
     /**

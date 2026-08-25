@@ -38,9 +38,18 @@ class CadanganData
      * triggers; on a fresh server the triggers simply rebuild it as data changes.
      */
     private const TABEL = [
+        // Ordered so a restore reads referenced tables before the ones that
+        // point at them. The restore disables foreign keys anyway, but a file
+        // that reads in dependency order is one a human can also apply by hand.
+        'jurusan',
+        'tahun_ajaran',
+        'ruangan',
         'mata_pelajaran',
-        'users',
+        'guru',
         'kelas',
+        'siswa',
+        'users',
+        'guru_mata_pelajaran',
         'jadwal',
         'jurnal',
         // presensi / presensi_log are the archived per-meeting rosters. They are
@@ -62,8 +71,12 @@ class CadanganData
      * is actually looking for.
      */
     private const TABEL_XLSX = [
+        'guru',
+        'siswa',
         'users',
         'kelas',
+        'ruangan',
+        'jurusan',
         'mata_pelajaran',
         'jadwal',
         'jurnal',

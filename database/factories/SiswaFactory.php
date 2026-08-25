@@ -25,13 +25,7 @@ class SiswaFactory extends Factory
             'nama' => fake()->name(),
             'jenis_kelamin' => fake()->randomElement(['L', 'P']),
             'kelas_id' => null,
-            'is_ketua_kelas' => false,
             'status' => 'aktif',
         ];
-    }
-
-    public function ketua(): static
-    {
-        return $this->state(fn () => ['is_ketua_kelas' => true]);
     }
 }

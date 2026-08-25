@@ -17,7 +17,7 @@ class KelasController extends Controller
     {
         $filters = $request->validate([
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:50'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -25,10 +25,10 @@ class KelasController extends Controller
             ->with('waliKelas')
             ->withCount(['siswa', 'jadwals'])
             ->when($filters['tingkat'] ?? null, fn ($q, $tingkat) => $q->where('tingkat', $tingkat))
-            ->when($filters['jurusan'] ?? null, fn ($q, $jurusan) => $q->where('jurusan', $jurusan))
+            ->when($filters['jurusan'] ?? null, fn ($q, $jurusan) => $q->where('jurusan_kode', $jurusan))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari))
             ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
-            ->orderBy('jurusan')
+            ->orderBy('jurusan_kode')
             ->orderBy('nama_kelas')
             ->paginate(20);
 

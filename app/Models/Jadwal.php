@@ -34,30 +34,8 @@ class Jadwal extends Model
         'hari',
         'jam_ke_mulai',
         'jam_ke_selesai',
-        'jam_mulai',
-        'jam_selesai',
         'ruangan_kode',
     ];
-
-    /**
-     * Model events.
-     */
-    protected static function booted(): void
-    {
-        // Clock times are derived, never typed: whatever period numbers a slot
-        // is given, its jam_mulai/jam_selesai follow from the bell schedule.
-        // Doing it on `saving` covers the web form, the API and the seeders
-        // alike, so no writer can produce a slot whose label and clock disagree.
-        static::saving(function (Jadwal $jadwal) {
-            $rentang = JamPelajaran::rentang(
-                (int) $jadwal->jam_ke_mulai,
-                (int) $jadwal->jam_ke_selesai,
-            );
-
-            $jadwal->jam_mulai = $rentang['jam_mulai'];
-            $jadwal->jam_selesai = $rentang['jam_selesai'];
-        });
-    }
 
     /**
      * The timetable rows a user may write a journal against: a guru their own

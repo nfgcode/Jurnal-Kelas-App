@@ -42,9 +42,6 @@ return new class extends Migration
             $table->string('nama');
             $table->enum('jenis_kelamin', ['L', 'P'])->nullable();
             $table->foreignId('kelas_id')->nullable()->constrained('kelas')->nullOnDelete();
-            // A class has one ketua kelas; they are the student allowed to fill
-            // the class journal on the teacher's behalf.
-            $table->boolean('is_ketua_kelas')->default(false);
             $table->string('no_hp', 20)->nullable();
             $table->text('alamat')->nullable();
             $table->enum('status', ['aktif', 'nonaktif', 'lulus'])->default('aktif');
@@ -77,12 +74,17 @@ return new class extends Migration
 
         Schema::table('kelas', function (Blueprint $table) {
             $table->foreign('wali_kelas_nip')->references('nip')->on('guru')->nullOnDelete();
+            // kelas -> siswa here and siswa -> kelas above form a cycle. Both
+            // sides are nullable, which is what lets a class be created before
+            // it has any students to chair it.
+            $table->foreign('ketua_nis')->references('nis')->on('siswa')->nullOnDelete();
         });
     }
 
     public function down(): void
     {
         Schema::table('kelas', function (Blueprint $table) {
+            $table->dropForeign(['ketua_nis']);
             $table->dropForeign(['wali_kelas_nip']);
         });
 

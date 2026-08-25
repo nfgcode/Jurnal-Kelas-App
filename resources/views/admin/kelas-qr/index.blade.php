@@ -139,7 +139,7 @@
         </button>
     </x-page-head>
 
-    @php $jurusanList = $semuaKelas->pluck('jurusan')->filter()->unique()->sort()->values(); @endphp
+    @php $jurusanList = $semuaKelas->pluck('jurusan')->filter()->unique('kode')->sortBy('nama')->values(); @endphp
 
     <x-card title="Pilih Kelas">
         {{-- Search + grade/jurusan filters that hide picker cards client-side, so a
@@ -161,7 +161,7 @@
             <select class="select-hifi" id="qrJurusan" style="width: 200px" data-searchable>
                 <option value="">Semua Jurusan</option>
                 @foreach ($jurusanList as $j)
-                    <option value="{{ $j }}">{{ $j }}</option>
+                    <option value="{{ $j->kode }}">{{ $j->nama }}</option>
                 @endforeach
             </select>
 
@@ -176,7 +176,7 @@
                     <label class="pilih-kelas__card"
                            data-nama="{{ $k->nama_kelas }}"
                            data-tingkat="{{ $k->tingkat }}"
-                           data-jurusan="{{ $k->jurusan }}">
+                           data-jurusan="{{ $k->jurusan_kode }}">
                         <input type="checkbox" name="kelas_id[]" value="{{ $k->id }}"
                                @checked(in_array($k->id, $dipilih, true))>
                         <span class="pilih-kelas__check"></span>

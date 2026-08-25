@@ -135,9 +135,11 @@ class ImporPenggunaTest extends TestCase
             'nis' => 'IMP001',
             'nama' => 'Siswa Impor Satu',
             'kelas_id' => $kelas->id,
-            'is_ketua_kelas' => true,
         ]);
-        $this->assertDatabaseHas('siswa', ['nis' => 'IMP002', 'is_ketua_kelas' => false]);
+        $this->assertDatabaseHas('siswa', ['nis' => 'IMP002']);
+        // "Ketua Kelas" in the file writes to the class, which is where the
+        // chair lives.
+        $this->assertSame('IMP001', $kelas->refresh()->ketua_nis);
     }
 
     public function test_rows_with_problems_are_reported_and_never_written(): void

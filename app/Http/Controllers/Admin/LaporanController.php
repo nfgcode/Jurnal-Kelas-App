@@ -28,7 +28,7 @@ class LaporanController extends Controller
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_nip' => ['nullable', 'exists:guru,nip'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:100'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
             'status' => ['nullable', 'in:terisi,telat'],
             'edit_lewat_hari' => ['nullable', 'in:1'],
             'q' => ['nullable', 'string', 'max:255'],
@@ -64,7 +64,7 @@ class LaporanController extends Controller
         $terisi = Jurnal::hitungPertemuan(Jurnal::manusia()->whereBetween('tanggal', $rentang));
         $otomatis = Ringkasan::otomatis($periode);
 
-        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
+        $kelasList = Kelas::with('jurusan')->orderBy('tingkat')->orderBy('nama_kelas')->get();
 
         return view('admin.laporan.jurnal', [
             'periode' => $periode,
@@ -105,7 +105,7 @@ class LaporanController extends Controller
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_nip' => ['nullable', 'exists:guru,nip'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:100'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -123,7 +123,7 @@ class LaporanController extends Controller
         $pertemuan = $pertemuan->paginate(Halaman::perHalaman())->withQueryString();
 
         $rekap = Ringkasan::presensi(null, $periode);
-        $kelasList = Kelas::orderBy('tingkat')->orderBy('nama_kelas')->get();
+        $kelasList = Kelas::with('jurusan')->orderBy('tingkat')->orderBy('nama_kelas')->get();
 
         return view('admin.laporan.presensi', [
             'periode' => $periode,
@@ -148,7 +148,7 @@ class LaporanController extends Controller
             ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
-            ->when($filters['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan', $j)))
+            ->when($filters['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan_kode', $j)))
             ->when($filters['edit_lewat_hari'] ?? null, fn ($query) => $query->where('jurnal.diedit_setelah_hari', true))
             ->when($filters['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(

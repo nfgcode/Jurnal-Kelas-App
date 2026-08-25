@@ -255,7 +255,7 @@ class PresensiController extends Controller
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:100'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
         ]);
 
         $periode = Periode::dari($request);
@@ -264,7 +264,7 @@ class PresensiController extends Controller
         $terfilter = fn () => RekapPresensi::perKelasHari($kelasIds, $periode->mulaiString(), $periode->selesaiString())
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->where('presensi_harian.kelas_id', $id))
             ->when($filters['tingkat'] ?? null, fn ($q, $t) => $q->where('kelas.tingkat', $t))
-            ->when($filters['jurusan'] ?? null, fn ($q, $j) => $q->where('kelas.jurusan', $j));
+            ->when($filters['jurusan'] ?? null, fn ($q, $j) => $q->where('kelas.jurusan_kode', $j));
 
         $baris = $terfilter();
 

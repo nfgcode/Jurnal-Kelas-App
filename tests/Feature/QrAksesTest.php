@@ -43,11 +43,10 @@ class QrAksesTest extends TestCase
 
     public function test_a_new_class_gets_a_token_automatically(): void
     {
-        $kelas = Kelas::create([
+        $kelas = $this->buatKelas([
             'nama_kelas' => 'X QR 1',
             'tingkat' => 'X',
             'kapasitas' => 30,
-            'tahun_ajaran' => '2025/2026',
         ]);
 
         $this->assertNotNull($kelas->qr_token);

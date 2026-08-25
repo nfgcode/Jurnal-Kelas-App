@@ -383,9 +383,15 @@ class ImporPengguna
                     : Siswa::updateOrCreate(['nis' => $data['nis']], [
                         'nama' => $data['nama'],
                         'kelas_id' => $data['_kelas_id'],
-                        'is_ketua_kelas' => self::boolean($data['ketua_kelas'] ?? ''),
                         'status' => $statusOrang,
                     ]);
+
+                // The chair is a property of the class, so the "Ketua Kelas"
+                // column writes there. Later rows naming a different chair for
+                // the same class simply overwrite it — one column, one holder.
+                if ($jenis === 'siswa' && self::boolean($data['ketua_kelas'] ?? '') && $data['_kelas_id']) {
+                    Kelas::whereKey($data['_kelas_id'])->update(['ketua_nis' => $orang->getKey()]);
+                }
 
                 $atribut = [
                     'username' => $data['_username'],

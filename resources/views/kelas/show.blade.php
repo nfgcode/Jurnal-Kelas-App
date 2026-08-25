@@ -42,7 +42,7 @@
                                     </span>
                                 </td>
                                 <td class="is-num">
-                                    @if ($siswa->is_ketua_kelas)
+                                    @if ($kelas->ketua_nis === $siswa->nis)
                                         <x-chip tone="solid" label="Ketua Kelas" />
                                     @endif
                                 </td>

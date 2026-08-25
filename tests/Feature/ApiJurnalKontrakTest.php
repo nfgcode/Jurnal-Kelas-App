@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Support\Ringkasan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,10 +27,9 @@ class ApiJurnalKontrakTest extends TestCase
     {
         $guru = $this->buatGuru();
 
-        $kelas = Kelas::create([
+        $kelas = $this->buatKelas([
             'nama_kelas' => 'X UJI API',
             'tingkat' => 'X',
-            'tahun_ajaran' => '2026/2027',
         ]);
 
         $mapel = new MataPelajaran;
@@ -47,8 +45,6 @@ class ApiJurnalKontrakTest extends TestCase
             'hari' => Ringkasan::HARI[Carbon::parse($tanggal)->dayOfWeekIso - 1] ?? 'Senin',
             'jam_ke_mulai' => 1,
             'jam_ke_selesai' => 2,
-            'jam_mulai' => '07:00',
-            'jam_selesai' => '08:30',
         ]);
 
         $jurnal = Jurnal::create([

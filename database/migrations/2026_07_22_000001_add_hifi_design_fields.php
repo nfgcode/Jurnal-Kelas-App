@@ -15,10 +15,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('kelas', function (Blueprint $table) {
-            $table->unsignedSmallInteger('kapasitas')->default(36)->after('jurusan');
-        });
-
         Schema::table('mata_pelajaran', function (Blueprint $table) {
             $table->enum('kelompok', ['wajib', 'peminatan', 'muatan_lokal', 'kejuruan'])
                 ->default('wajib')
@@ -82,8 +78,5 @@ return new class extends Migration
             $table->dropColumn(['kelompok', 'jp_per_minggu']);
         });
 
-        Schema::table('kelas', function (Blueprint $table) {
-            $table->dropColumn(['kapasitas']);
-        });
     }
 };

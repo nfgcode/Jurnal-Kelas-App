@@ -40,11 +40,17 @@ class JurnalOtomatisTest extends TestCase
 
     private function siswa(Kelas $kelas, bool $ketua = false): User
     {
-        return $this->buatSiswa([
+        $akun = $this->buatSiswa([
             'nis' => '2026'.str_pad((string) ++self::$seq, 6, '0', STR_PAD_LEFT),
             'kelas_id' => $kelas->id,
-            'is_ketua_kelas' => $ketua,
         ]);
+
+        // The chair is recorded on the class, not on the student.
+        if ($ketua) {
+            $kelas->update(['ketua_nis' => $akun->nis]);
+        }
+
+        return $akun;
     }
 
     private function mapel(string $nama): MataPelajaran
@@ -58,10 +64,9 @@ class JurnalOtomatisTest extends TestCase
 
     private function kelas(?User $wali = null): Kelas
     {
-        return Kelas::create([
+        return $this->buatKelas([
             'nama_kelas' => 'X UJI '.++self::$seq,
             'tingkat' => 'X',
-            'tahun_ajaran' => '2026/2027',
             'wali_kelas_nip' => $wali?->nip,
         ]);
     }

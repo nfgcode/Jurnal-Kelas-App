@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\KelasRequest;
 use App\Models\Guru;
 use App\Models\Jadwal;
+use App\Models\Jurusan;
 use App\Models\Kelas;
 use App\Models\Ruangan;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
 use App\Support\Halaman;
 use App\Support\Ringkasan;
 use App\Support\Urutan;
@@ -24,20 +26,20 @@ class KelasController extends Controller
     {
         $filters = $request->validate([
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:50'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = $request->user();
 
         $kelas = Kelas::query()
-            ->with(['waliKelas', 'ruangan'])
+            ->with(['waliKelas', 'ruangan', 'jurusan'])
             ->withCount(['siswa', 'jadwals'])
             // A guru only sees classes they actually teach in; admin sees all.
             ->when($user->isGuru(), fn ($query) => $query->whereIn('id',
                 Jadwal::where('guru_nip', $user->nip)->select('kelas_id')))
             ->when($filters['tingkat'] ?? null, fn ($query, $tingkat) => $query->where('tingkat', $tingkat))
-            ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan', $jurusan))
+            ->when($filters['jurusan'] ?? null, fn ($query, $jurusan) => $query->where('jurusan_kode', $jurusan))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cari($q));
 
         // Only columns the database can order. "Kelengkapan"/"Status" are worked
@@ -56,7 +58,7 @@ class KelasController extends Controller
         // CASE rather than MySQL's FIELD(): the test suite runs on SQLite.
         Urutan::terapkan($kelas, $request, $peta, fn ($q) => $q
             ->orderByRaw("CASE tingkat WHEN 'X' THEN 1 WHEN 'XI' THEN 2 ELSE 3 END")
-            ->orderBy('jurusan')
+            ->orderBy('jurusan_kode')
             ->orderBy('nama_kelas'));
 
         $kelas = $kelas->paginate(Halaman::perHalaman())->withQueryString();
@@ -69,7 +71,7 @@ class KelasController extends Controller
         return view('kelas.index', [
             'kelas' => $kelas,
             'kelengkapan' => $kelengkapan,
-            'jurusanList' => Kelas::whereNotNull('jurusan')->distinct()->orderBy('jurusan')->pluck('jurusan'),
+            'jurusanList' => Jurusan::aktif()->orderBy('nama')->get(),
             'filters' => $filters,
             'statistik' => [
                 'totalKelas' => $totalKelas,
@@ -95,11 +97,19 @@ class KelasController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function opsiForm(): array
+    private function opsiForm(?Kelas $kelas = null): array
     {
         return [
             'gurus' => Guru::aktif()->orderBy('nama')->get(),
             'ruanganList' => Ruangan::aktif()->orderBy('kode')->get(),
+            'jurusanList' => Jurusan::aktif()->orderBy('nama')->get(),
+            'tahunAjaranList' => TahunAjaran::orderByDesc('kode')->get(),
+            'tahunBerjalan' => TahunAjaran::berjalan()?->kode,
+            // Only this class's own students can chair it, so the dropdown is
+            // empty on the create form — there is nobody enrolled yet.
+            'siswaKelas' => $kelas
+                ? Siswa::where('kelas_id', $kelas->id)->orderBy('nama')->get()
+                : collect(),
         ];
     }
 
@@ -108,7 +118,11 @@ class KelasController extends Controller
      */
     public function store(KelasRequest $request)
     {
-        Kelas::create($request->validated());
+        $data = $request->validated();
+        // A class with no students cannot have a chair yet.
+        unset($data['ketua_nis']);
+
+        Kelas::create($data);
 
         return redirect()->route('kelas.index')
             ->with('success', 'Kelas berhasil ditambahkan.');
@@ -131,7 +145,7 @@ class KelasController extends Controller
      */
     public function edit(Kelas $kela)
     {
-        return view('kelas.edit', ['kelas' => $kela] + $this->opsiForm());
+        return view('kelas.edit', ['kelas' => $kela] + $this->opsiForm($kela));
     }
 
     /**
@@ -139,7 +153,18 @@ class KelasController extends Controller
      */
     public function update(KelasRequest $request, Kelas $kela)
     {
-        $kela->update($request->validated());
+        $data = $request->validated();
+
+        // The chair must be a student of this class. Checked here rather than in
+        // the request because the rule needs the class being edited.
+        if (! empty($data['ketua_nis'])
+            && ! Siswa::where('kelas_id', $kela->id)->whereKey($data['ketua_nis'])->exists()) {
+            return back()->withInput()->withErrors([
+                'ketua_nis' => 'Ketua kelas harus siswa dari kelas ini.',
+            ]);
+        }
+
+        $kela->update($data);
 
         return redirect()->route('kelas.index')
             ->with('success', 'Kelas berhasil diperbarui.');

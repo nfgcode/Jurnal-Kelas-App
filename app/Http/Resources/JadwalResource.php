@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Jadwal;
+use App\Support\JamPelajaran;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,8 +26,9 @@ class JadwalResource extends JsonResource
             'jam_ke_mulai' => $this->jam_ke_mulai,
             'jam_ke_selesai' => $this->jam_ke_selesai,
             'jp_label' => $this->jpLabel(),
-            'jam_mulai' => $this->jam_mulai,
-            'jam_selesai' => $this->jam_selesai,
+            // Derived from the period numbers via the bell schedule; see JamPelajaran.
+            'jam_mulai' => JamPelajaran::mulai((int) $this->jam_ke_mulai),
+            'jam_selesai' => JamPelajaran::selesai((int) $this->jam_ke_selesai),
             'ruangan_kode' => $this->ruangan_kode,
             'ruangan' => $this->whenLoaded('ruangan', fn () => [
                 'kode' => $this->ruangan->kode,

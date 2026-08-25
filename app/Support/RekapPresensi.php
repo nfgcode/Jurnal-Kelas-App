@@ -31,7 +31,7 @@ class RekapPresensi
         return DB::table('presensi_harian')
             ->join('kelas', 'presensi_harian.kelas_id', '=', 'kelas.id')
             ->selectRaw(
-                'presensi_harian.kelas_id, kelas.nama_kelas, kelas.tingkat, kelas.jurusan, presensi_harian.tanggal, '
+                'presensi_harian.kelas_id, kelas.nama_kelas, kelas.tingkat, kelas.jurusan_kode, presensi_harian.tanggal, '
                 .'COUNT(*) as total_siswa, '
                 .self::hitung('hadir').', '
                 .self::hitung('sakit').', '
@@ -44,7 +44,7 @@ class RekapPresensi
                 'presensi_harian.kelas_id',
                 'kelas.nama_kelas',
                 'kelas.tingkat',
-                'kelas.jurusan',
+                'kelas.jurusan_kode',
                 'presensi_harian.tanggal'
             );
     }

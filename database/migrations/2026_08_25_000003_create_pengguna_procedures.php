@@ -292,8 +292,8 @@ return new class extends Migration
                 END IF;
 
                 START TRANSACTION;
-                    INSERT INTO siswa (nis, nisn, nama, jenis_kelamin, kelas_id, no_hp, alamat, is_ketua_kelas, status, created_at, updated_at)
-                    VALUES (TRIM(p_nis), NULLIF(TRIM(IFNULL(p_nisn, '')), ''), p_nama, p_jenis_kelamin, p_kelas_id, p_no_hp, p_alamat, 0, 'aktif', NOW(), NOW());
+                    INSERT INTO siswa (nis, nisn, nama, jenis_kelamin, kelas_id, no_hp, alamat, status, created_at, updated_at)
+                    VALUES (TRIM(p_nis), NULLIF(TRIM(IFNULL(p_nisn, '')), ''), p_nama, p_jenis_kelamin, p_kelas_id, p_no_hp, p_alamat, 'aktif', NOW(), NOW());
 
                     INSERT INTO users (username, nama, email, role, status, nis, password, created_at, updated_at)
                     VALUES (p_username, NULL, p_email, 'siswa', 'aktif', TRIM(p_nis), p_password, NOW(), NOW());

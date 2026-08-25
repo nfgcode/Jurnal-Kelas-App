@@ -38,13 +38,14 @@ return new class extends Migration
         // Both references are nullable and release the room rather than delete
         // the class or the timetable slot: demolishing a room does not cancel
         // the lesson, it leaves it needing a new location.
+        // `kelas.ruangan_kode` is declared when the table is created; only the
+        // foreign key waits until here, because `ruangan` did not exist yet.
         Schema::table('kelas', function (Blueprint $table) {
-            $table->string('ruangan_kode', 20)->nullable()->after('jurusan');
             $table->foreign('ruangan_kode')->references('kode')->on('ruangan')->nullOnDelete();
         });
 
         Schema::table('jadwal', function (Blueprint $table) {
-            $table->string('ruangan_kode', 20)->nullable()->after('jam_selesai');
+            $table->string('ruangan_kode', 20)->nullable()->after('jam_ke_selesai');
             $table->foreign('ruangan_kode')->references('kode')->on('ruangan')->nullOnDelete();
         });
     }
@@ -58,7 +59,6 @@ return new class extends Migration
 
         Schema::table('kelas', function (Blueprint $table) {
             $table->dropForeign(['ruangan_kode']);
-            $table->dropColumn('ruangan_kode');
         });
 
         Schema::dropIfExists('ruangan');

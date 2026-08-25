@@ -63,7 +63,7 @@
                                 <span class="name-cell">
                                     <span class="avatar avatar--xs">{{ $s->inisial() }}</span>
                                     {{ $s->nama }}
-                                    @if ($s->is_ketua_kelas)
+                                    @if ($kelas->ketua_nis === $s->nis)
                                         <x-chip tone="solid" label="Ketua Kelas" />
                                     @endif
                                 </span>

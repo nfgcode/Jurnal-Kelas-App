@@ -51,14 +51,8 @@ class AdminSectionTest extends TestCase
 
     private function kelas(): Kelas
     {
-        return Kelas::firstOrCreate(
-            ['nama_kelas' => 'X IPA 1'],
-            [
-                'tingkat' => 'X',
-                'jurusan' => 'IPA',
-                'tahun_ajaran' => '2024/2025',
-            ],
-        );
+        return Kelas::where('nama_kelas', 'X IPA 1')->first()
+            ?? $this->buatKelas(['nama_kelas' => 'X IPA 1', 'tingkat' => 'X', 'jurusan_kode' => 'IPA']);
     }
 
     private function mapel(): MataPelajaran
@@ -308,7 +302,8 @@ class AdminSectionTest extends TestCase
     {
         $kelas = $this->kelas();
 
-        $lama = Siswa::factory()->create(['kelas_id' => $kelas->id, 'is_ketua_kelas' => true]);
+        $lama = Siswa::factory()->create(['kelas_id' => $kelas->id]);
+        $kelas->update(['ketua_nis' => $lama->nis]);
         $baru = Siswa::factory()->create(['kelas_id' => $kelas->id]);
         $akun = User::factory()->siswa($baru)->create();
 
@@ -324,14 +319,16 @@ class AdminSectionTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $this->assertTrue($baru->refresh()->is_ketua_kelas);
+        // One column holds the chair, so promoting one student demotes the
+        // other by construction rather than by a model hook tidying up after.
+        $this->assertSame($baru->nis, $kelas->refresh()->ketua_nis);
         $this->assertFalse($lama->refresh()->is_ketua_kelas, 'a class may have only one ketua');
     }
 
     public function test_admin_can_filter_siswa_by_class(): void
     {
         $kelas = $this->kelas();
-        $lain = Kelas::create(['nama_kelas' => 'X IPS 1', 'tingkat' => 'X', 'tahun_ajaran' => '2024/2025']);
+        $lain = $this->buatKelas(['nama_kelas' => 'X IPS 1', 'tingkat' => 'X', 'jurusan_kode' => 'IPS']);
 
         Siswa::factory()->create(['kelas_id' => $kelas->id, 'nama' => 'Siswa Satu']);
         Siswa::factory()->create(['kelas_id' => $lain->id, 'nama' => 'Siswa Dua']);

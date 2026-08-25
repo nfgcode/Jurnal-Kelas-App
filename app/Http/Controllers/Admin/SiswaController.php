@@ -26,7 +26,7 @@ class SiswaController extends Controller
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'tingkat' => ['nullable', 'in:X,XI,XII'],
-            'jurusan' => ['nullable', 'string', 'max:100'],
+            'jurusan' => ['nullable', 'string', 'max:20'],
             'status' => ['nullable', 'in:aktif,nonaktif,lulus'],
             'q' => ['nullable', 'string', 'max:255'],
         ]);
@@ -38,7 +38,7 @@ class SiswaController extends Controller
             ->when($filters['tingkat'] ?? null, fn ($q, $t) => $q
                 ->whereIn('kelas_id', Kelas::where('tingkat', $t)->select('id')))
             ->when($filters['jurusan'] ?? null, fn ($q, $j) => $q
-                ->whereIn('kelas_id', Kelas::where('jurusan', $j)->select('id')))
+                ->whereIn('kelas_id', Kelas::where('jurusan_kode', $j)->select('id')))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
         Urutan::terapkan($siswa, $request, [
@@ -53,7 +53,7 @@ class SiswaController extends Controller
         return view('admin.siswa.index', [
             'siswa' => $siswa->paginate(Halaman::perHalaman())->withQueryString(),
             'filters' => $filters,
-            'kelasList' => Kelas::orderBy('nama_kelas')->get(),
+            'kelasList' => Kelas::with('jurusan')->orderBy('nama_kelas')->get(),
             'statistik' => [
                 'total' => Siswa::count(),
                 'aktif' => Siswa::where('status', 'aktif')->count(),
@@ -61,7 +61,7 @@ class SiswaController extends Controller
                 // roster includes them. Worth surfacing, not burying.
                 'tanpaKelas' => Siswa::where('status', 'aktif')->whereNull('kelas_id')->count(),
                 'tanpaAkun' => Siswa::whereDoesntHave('akun')->count(),
-                'ketua' => Siswa::where('is_ketua_kelas', true)->count(),
+                'ketua' => Kelas::whereNotNull('ketua_nis')->count(),
             ],
         ]);
     }
@@ -77,10 +77,8 @@ class SiswaController extends Controller
 
         $siswa = $this->pendaftaran->siswa($data);
 
-        $siswa->update([
-            'is_ketua_kelas' => (bool) ($data['is_ketua_kelas'] ?? false),
-            'status' => $data['status'] ?? 'aktif',
-        ]);
+        $siswa->update(['status' => $data['status'] ?? 'aktif']);
+        $this->syncKetua($siswa, (bool) ($data['is_ketua_kelas'] ?? false));
 
         return redirect()->route('admin.siswa.index')
             ->with('success', "Siswa {$siswa->nama} berhasil ditambahkan beserta akunnya.");
@@ -101,7 +99,7 @@ class SiswaController extends Controller
 
     public function edit(Siswa $siswa)
     {
-        $siswa->load('akun');
+        $siswa->load(['akun', 'kelas']);
 
         return view('admin.siswa.edit', ['siswa' => $siswa] + $this->opsiForm());
     }
@@ -116,13 +114,13 @@ class SiswaController extends Controller
                 'nama' => $data['nama'],
                 'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
                 'kelas_id' => $data['kelas_id'] ?? null,
-                'is_ketua_kelas' => (bool) ($data['is_ketua_kelas'] ?? false),
                 'no_hp' => $data['no_hp'] ?? null,
                 'alamat' => $data['alamat'] ?? null,
                 'status' => $data['status'],
             ]);
 
             $this->simpanAkun($siswa, $data);
+            $this->syncKetua($siswa, (bool) ($data['is_ketua_kelas'] ?? false));
         });
 
         return redirect()->route('admin.siswa.show', $siswa)
@@ -159,6 +157,27 @@ class SiswaController extends Controller
     private function opsiForm(): array
     {
         return ['kelasList' => Kelas::orderBy('nama_kelas')->get()];
+    }
+
+    /**
+     * Point this student's class at them as its ketua, or release them.
+     *
+     * The chair is a property of the class, so setting it is a single UPDATE on
+     * one column — which is also what makes a second ketua impossible. Promoting
+     * someone new therefore demotes the previous holder by construction, with no
+     * model hook left to keep the two in step.
+     */
+    private function syncKetua(Siswa $siswa, bool $ketua): void
+    {
+        // Release whatever class this student used to chair; without this a
+        // student moved to another class would still chair their old one.
+        Kelas::where('ketua_nis', $siswa->nis)
+            ->when($ketua && $siswa->kelas_id, fn ($q) => $q->where('id', '!=', $siswa->kelas_id))
+            ->update(['ketua_nis' => null]);
+
+        if ($ketua && $siswa->kelas_id) {
+            Kelas::whereKey($siswa->kelas_id)->update(['ketua_nis' => $siswa->nis]);
+        }
     }
 
     /**
