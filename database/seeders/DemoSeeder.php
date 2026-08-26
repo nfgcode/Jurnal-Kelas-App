@@ -582,7 +582,6 @@ class DemoSeeder extends Seeder
                     'kehadiran_guru_alasan' => null,
                     'kehadiran_guru_ada_tugas' => $hadir <= 92 ? null : $adaTugas,
                     'kehadiran_guru_keterangan' => null,
-                    'guru_nip' => $jadwal->guru_nip,
                     'diisi_oleh_id' => null,
                     'diisi_oleh_peran' => 'guru',
                     // A late journal is one written more than a day afterwards;
@@ -621,10 +620,15 @@ class DemoSeeder extends Seeder
         // acted, not the student record, so the NIS is mapped to their login.
         $akunPerNis = User::whereNotNull('nis')->pluck('id', 'nis');
 
+        // Read the chair off the class in one query. Asking each student
+        // `is_ketua_kelas` would work, but that accessor walks back through
+        // their class — one lazy load per student, thousands of them.
+        $ketuaPerKelas = DB::table('kelas')->whereNotNull('ketua_nis')->pluck('ketua_nis', 'id');
+
         $pengisi = [];
         foreach ($siswaPerKelas as $kelasId => $daftar) {
-            $ketua = collect($daftar)->firstWhere('is_ketua_kelas', true) ?? ($daftar[0] ?? null);
-            $pengisi[$kelasId] = $ketua ? ($akunPerNis[$ketua->nis] ?? null) : null;
+            $nis = $ketuaPerKelas[$kelasId] ?? ($daftar[0]->nis ?? null);
+            $pengisi[$kelasId] = $nis ? ($akunPerNis[$nis] ?? null) : null;
         }
 
         $buffer = [];

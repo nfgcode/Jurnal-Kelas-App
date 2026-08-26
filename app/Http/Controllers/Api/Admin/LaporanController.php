@@ -128,7 +128,7 @@ class LaporanController extends Controller
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
-            ->when($filters['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
+            ->when($filters['guru_nip'] ?? null, fn ($query, $nip) => $query->diampu($nip))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? Jurnal::ekspresiTerlambat() : 'NOT ('.Jurnal::ekspresiTerlambat().')'
             ))

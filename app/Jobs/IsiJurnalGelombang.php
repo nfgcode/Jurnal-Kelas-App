@@ -59,7 +59,6 @@ class IsiJurnalGelombang implements ShouldQueue
                 'materi' => 'Diisi otomatis oleh sistem — mohon lengkapi bila perlu.',
                 'kehadiran_guru_status' => 'tidak_hadir',
                 'kehadiran_guru_ada_tugas' => false,
-                'guru_nip' => $jadwal->guru_nip,
                 'diisi_oleh_id' => null,
                 'diisi_oleh_peran' => Jurnal::PERAN_SISTEM,
             ]);

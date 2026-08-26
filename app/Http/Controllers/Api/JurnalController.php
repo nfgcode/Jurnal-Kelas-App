@@ -33,7 +33,7 @@ class JurnalController extends Controller
         $jurnals = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
             ->denganPresensiHarian()
-            ->when($user->isGuru(), fn ($q) => $q->where('guru_nip', $user->nip))
+            ->when($user->isGuru(), fn ($q) => $q->diampu($user->nip))
             ->when($user->isSiswa(), fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $user->kelas_id)))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cariTeks($q))
             ->orderBy($sort, $dir)
@@ -105,7 +105,6 @@ class JurnalController extends Controller
         }
 
         // A guru writes their own; otherwise the slot's teacher owns the entry.
-        $data['guru_nip'] = $user->isGuru() ? $user->nip : $jadwal->guru_nip;
         $data['diisi_oleh_id'] = $user->id;
         $data['diisi_oleh_peran'] = $peran;
         $data['kehadiran_guru_status'] ??= 'hadir';

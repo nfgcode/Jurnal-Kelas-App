@@ -102,7 +102,6 @@ class JurnalOtomatisTest extends TestCase
             'tanggal' => $tanggal,
             'materi' => 'Materi uji',
             'kehadiran_guru_status' => 'hadir',
-            'guru_nip' => $jadwal->guru_nip,
             // The author is an account; the NIP identifies the person, not the login.
             'diisi_oleh_id' => User::where('nip', $jadwal->guru_nip)->value('id'),
             'diisi_oleh_peran' => 'guru',

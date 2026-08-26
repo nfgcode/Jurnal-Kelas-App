@@ -17,7 +17,6 @@ return new class extends Migration
     {
         Schema::table('jurnal', function (Blueprint $table) {
             $table->index('tanggal', 'jurnal_tanggal_index');
-            $table->index(['guru_nip', 'tanggal'], 'jurnal_guru_tanggal_index');
         });
 
         Schema::table('presensi', function (Blueprint $table) {
@@ -35,7 +34,6 @@ return new class extends Migration
     {
         Schema::table('jurnal', function (Blueprint $table) {
             $table->dropIndex('jurnal_tanggal_index');
-            $table->dropIndex('jurnal_guru_tanggal_index');
         });
 
         Schema::table('presensi', function (Blueprint $table) {

@@ -156,6 +156,31 @@ class CrudPagesTest extends TestCase
         ]);
     }
 
+    /**
+     * A school year has one "XII TKJ 3". `kelas_rombel_unique` refuses a second,
+     * and this pins the validation that reports it as a message rather than
+     * letting the constraint surface as a 500.
+     */
+    public function test_a_duplicate_rombel_is_refused(): void
+    {
+        $payload = [
+            'nama_kelas' => 'XII TKJ 3',
+            'tingkat' => 'XII',
+            'jurusan_kode' => Jurusan::value('kode'),
+            'paralel' => 3,
+            'kapasitas' => 34,
+            'tahun_ajaran_kode' => TahunAjaran::value('kode'),
+        ];
+
+        $this->actingAs($this->admin)->post('/kelas', $payload)->assertSessionHasNoErrors();
+
+        $this->actingAs($this->admin)
+            ->post('/kelas', ['nama_kelas' => 'Nama lain'] + $payload)
+            ->assertSessionHasErrors('paralel');
+
+        $this->assertSame(1, Kelas::where('paralel', 3)->where('tingkat', 'XII')->count());
+    }
+
     public function test_kelas_index_shows_the_class_name(): void
     {
         $this->actingAs($this->admin)

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +51,6 @@ class Jurnal extends Model
         'kehadiran_guru_alasan',
         'kehadiran_guru_ada_tugas',
         'kehadiran_guru_keterangan',
-        'guru_nip',
         'diisi_oleh_id',
         'diisi_oleh_peran',
         'diedit_setelah_hari',
@@ -375,7 +375,11 @@ class Jurnal extends Model
             'kelas' => fn ($q, $dir) => $q->orderBy($lewatJadwal('kelas', 'nama_kelas', 'kelas_id'), $dir),
             'mapel' => fn ($q, $dir) => $q->orderBy($lewatJadwal('mata_pelajaran', 'nama', 'mata_pelajaran_id'), $dir),
             'guru' => fn ($q, $dir) => $q->orderBy(
-                Guru::select('nama')->whereColumn('guru.nip', 'jurnal.guru_nip')->limit(1), $dir
+                Guru::select('guru.nama')
+                    ->join('jadwal', 'jadwal.guru_nip', '=', 'guru.nip')
+                    ->whereColumn('jadwal.id', 'jurnal.jadwal_id')
+                    ->limit(1),
+                $dir
             ),
             // The lesson periods the meeting occupies, e.g. "JP 3 - 4".
             'jam' => fn ($q, $dir) => $q->orderBy($kolomJadwal('jam_ke_mulai'), $dir),
@@ -429,11 +433,37 @@ class Jurnal extends Model
     }
 
     /**
-     * Get the guru (teacher) who created this journal entry.
+     * The teacher of this journal's meeting.
+     *
+     * Two hops, because the journal does not carry a NIP of its own: the
+     * meeting names the teacher, and the journal names the meeting. Reading it
+     * through the timetable means a slot reassigned to another teacher carries
+     * its journals with it — which is what "this lesson's teacher" means once
+     * the column is gone.
+     *
+     * The keys read backwards from the usual hasOneThrough: `jadwal.id` is
+     * matched against `jurnal.jadwal_id`, then `guru.nip` against
+     * `jadwal.guru_nip`.
      */
-    public function guru(): BelongsTo
+    public function guru(): HasOneThrough
     {
-        return $this->belongsTo(Guru::class, 'guru_nip', 'nip');
+        return $this->hasOneThrough(
+            Guru::class, Jadwal::class,
+            'id', 'nip', 'jadwal_id', 'guru_nip',
+        );
+    }
+
+    /**
+     * Journals of the lessons one teacher is timetabled for.
+     *
+     * One definition of the join, because a dozen screens ask this question and
+     * they must all mean the same thing by it. Deliberately not called `guru`:
+     * that is the relation's name, and PHP resolves the instance method before
+     * Laravel can route the static call to a scope.
+     */
+    public function scopeDiampu($query, string $nip)
+    {
+        return $query->whereHas('jadwal', fn ($j) => $j->where('guru_nip', $nip));
     }
 
     /**

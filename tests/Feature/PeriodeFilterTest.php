@@ -99,7 +99,7 @@ class PeriodeFilterTest extends TestCase
             ->get('/jurnal?preset=tahun_ini&per=100')
             ->assertOk()
             ->assertViewHas('jurnals', fn ($jurnals) => $jurnals
-                ->every(fn ($jurnal) => $jurnal->guru_nip === $this->guru->nip));
+                ->every(fn ($jurnal) => $jurnal->jadwal->guru_nip === $this->guru->nip));
 
         // ...and a student only their own class's.
         $this->actingAs($this->siswa)

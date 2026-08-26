@@ -11,6 +11,7 @@ use App\Models\Ruangan;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Support\Halaman;
+use App\Support\PencatatanAkademik;
 use App\Support\Ringkasan;
 use App\Support\Urutan;
 use Illuminate\Http\Request;
@@ -116,13 +117,15 @@ class KelasController extends Controller
     /**
      * Store a newly created kelas in storage.
      */
-    public function store(KelasRequest $request)
+    public function store(KelasRequest $request, PencatatanAkademik $pencatatan)
     {
         $data = $request->validated();
         // A class with no students cannot have a chair yet.
         unset($data['ketua_nis']);
 
-        Kelas::create($data);
+        // Through sp_tambah_kelas, so the duplicate-rombel check and the insert
+        // are one step — two admins filing "XII TKJ 2" at once cannot both pass.
+        $pencatatan->kelas($data);
 
         return redirect()->route('kelas.index')
             ->with('success', 'Kelas berhasil ditambahkan.');

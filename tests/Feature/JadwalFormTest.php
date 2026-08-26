@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
+use App\Models\Kelas;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Database\Seeders\DemoSeeder;
@@ -49,6 +51,79 @@ class JadwalFormTest extends TestCase
         }
 
         $this->fail("Tidak menemukan tanggal untuk hari {$hari}.");
+    }
+
+    /**
+     * A timetable cannot put anyone in two places at once, and saying so must
+     * reach the admin as a message on the field — not as a crash page.
+     *
+     * The unique keys on `jadwal` refuse the clash at the database level, which
+     * used to surface as a raw 1062 error and a 500. These pin the validation
+     * that turns it into an answer.
+     */
+    private function slotKosong(): array
+    {
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $guru = Guru::has('mataPelajaran')->firstOrFail();
+
+        return [
+            'admin' => $admin,
+            'payload' => [
+                'kelas_id' => Kelas::value('id'),
+                'mata_pelajaran_id' => $guru->mataPelajaran->first()->id,
+                'guru_nip' => $guru->nip,
+                'hari' => 'Jumat',
+                // Outside the seeded blocks, so the slot starts out free.
+                'jam_ke_mulai' => 11,
+                'jam_ke_selesai' => 12,
+            ],
+        ];
+    }
+
+    public function test_a_clashing_slot_is_refused_with_a_field_error(): void
+    {
+        ['admin' => $admin, 'payload' => $payload] = $this->slotKosong();
+
+        $this->actingAs($admin)->post('/jadwal', $payload)
+            ->assertRedirect(route('jadwal.index'))
+            ->assertSessionHasNoErrors();
+
+        // Same class, same day, same period: the class would be in two rooms.
+        $this->actingAs($admin)->post('/jadwal', $payload)
+            ->assertSessionHasErrors('kelas_id');
+
+        $this->assertSame(1, Jadwal::where('jam_ke_mulai', 11)->count());
+    }
+
+    public function test_a_teacher_cannot_be_booked_into_two_classes_at_once(): void
+    {
+        ['admin' => $admin, 'payload' => $payload] = $this->slotKosong();
+
+        $this->actingAs($admin)->post('/jadwal', $payload)->assertSessionHasNoErrors();
+
+        $lain = Kelas::where('id', '!=', $payload['kelas_id'])->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post('/jadwal', ['kelas_id' => $lain->id] + $payload)
+            ->assertSessionHasErrors('guru_nip');
+
+        $this->assertSame(1, Jadwal::where('jam_ke_mulai', 11)->count());
+    }
+
+    public function test_an_overlapping_period_range_is_refused_too(): void
+    {
+        ['admin' => $admin, 'payload' => $payload] = $this->slotKosong();
+
+        $this->actingAs($admin)->post('/jadwal', $payload)->assertSessionHasNoErrors();
+
+        // JP 10-11 shares JP 11 with the slot above without sharing its start,
+        // which a unique key on (…, jam_ke_mulai) cannot see at all. JP 10 is
+        // itself free: the seeded blocks stop at 8-9.
+        $this->actingAs($admin)
+            ->post('/jadwal', ['jam_ke_mulai' => 10, 'jam_ke_selesai' => 11] + $payload)
+            ->assertSessionHasErrors('kelas_id');
+
+        $this->assertSame(1, Jadwal::where('jam_ke_mulai', '>=', 10)->count());
     }
 
     public function test_the_dropdown_only_offers_that_days_lessons(): void

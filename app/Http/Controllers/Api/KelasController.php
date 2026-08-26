@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\KelasRequest;
 use App\Http\Resources\KelasResource;
 use App\Models\Kelas;
+use App\Support\PencatatanAkademik;
 use Illuminate\Http\Request;
 
 class KelasController extends Controller
@@ -42,9 +43,11 @@ class KelasController extends Controller
         return new KelasResource($kelas);
     }
 
-    public function store(KelasRequest $request)
+    public function store(KelasRequest $request, PencatatanAkademik $pencatatan)
     {
-        $kelas = Kelas::create($request->validated());
+        // Same procedure the web form goes through, so the API cannot create a
+        // rombel the form would have refused.
+        $kelas = $pencatatan->kelas($request->validated());
 
         return (new KelasResource($kelas))->response()->setStatusCode(201);
     }

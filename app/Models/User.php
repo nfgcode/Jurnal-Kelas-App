@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -196,11 +197,15 @@ class User extends Authenticatable
     }
 
     /**
-     * The journals credited to this teacher.
+     * The journals of the lessons this teacher is timetabled for, through the
+     * timetable — the journal itself no longer carries a NIP.
      */
-    public function jurnals(): HasMany
+    public function jurnals(): HasManyThrough
     {
-        return $this->hasMany(Jurnal::class, 'guru_nip', 'nip');
+        return $this->hasManyThrough(
+            Jurnal::class, Jadwal::class,
+            'guru_nip', 'jadwal_id', 'nip', 'id',
+        );
     }
 
     /**

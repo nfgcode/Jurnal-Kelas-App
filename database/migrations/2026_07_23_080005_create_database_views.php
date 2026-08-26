@@ -27,7 +27,7 @@ return new class extends Migration
                 j.tugas,
                 j.catatan,
                 j.kehadiran_guru_status,
-                j.guru_nip,
+                jd.guru_nip,
                 g.nama              AS guru_nama,
                 jd.id               AS jadwal_id,
                 jd.hari,
@@ -41,7 +41,7 @@ return new class extends Migration
             JOIN jadwal jd          ON j.jadwal_id = jd.id
             JOIN kelas k            ON jd.kelas_id = k.id
             JOIN mata_pelajaran mp  ON jd.mata_pelajaran_id = mp.id
-            JOIN guru g             ON j.guru_nip = g.nip');
+            JOIN guru g             ON jd.guru_nip = g.nip');
 
         DB::statement("CREATE OR REPLACE VIEW v_rekap_presensi_kelas AS
             SELECT

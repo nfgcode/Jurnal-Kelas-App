@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\JadwalRequest;
 use App\Http\Resources\JadwalResource;
 use App\Models\Jadwal;
+use App\Support\PencatatanAkademik;
 use Illuminate\Http\Request;
 
 class JadwalController extends Controller
@@ -39,9 +40,9 @@ class JadwalController extends Controller
         return new JadwalResource($jadwal);
     }
 
-    public function store(JadwalRequest $request)
+    public function store(JadwalRequest $request, PencatatanAkademik $pencatatan)
     {
-        $jadwal = Jadwal::create($request->validated());
+        $jadwal = $pencatatan->jadwal($request->validated());
 
         return (new JadwalResource($jadwal->load(['kelas', 'mataPelajaran', 'guru'])))
             ->response()->setStatusCode(201);

@@ -45,7 +45,7 @@ class DashboardController extends Controller
 
         // Today's journals, indexed by schedule so each row knows its status.
         $jurnalHariIni = Jurnal::denganPresensiHarian()
-            ->where('guru_nip', $user->nip)
+            ->diampu($user->nip)
             ->whereDate('tanggal', today())
             ->get()
             ->keyBy('jadwal_id');
@@ -79,8 +79,8 @@ class DashboardController extends Controller
             // Journals this teacher wrote — not the ones the nightly backfill
             // filed under their name, which would draw a full activity chart for
             // a fortnight they actually skipped.
-            'aktivitas' => Ringkasan::harian(Jurnal::manusia()->where('guru_nip', $user->nip)),
-            'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_nip', $user->nip)),
+            'aktivitas' => Ringkasan::harian(Jurnal::manusia()->diampu($user->nip)),
+            'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::diampu($user->nip)),
             'presensiSaya' => $presensiSaya,
             'kpi' => [
                 'jadwalHariIni' => $jadwalHariIni->count(),
@@ -91,7 +91,7 @@ class DashboardController extends Controller
                 'rataKehadiran' => round($presensiSaya['hadir'] / $totalPresensi * 100),
             ],
             'jurnalTerakhir' => Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran'])
-                ->where('guru_nip', $user->nip)
+                ->diampu($user->nip)
                 ->latest('tanggal')
                 ->latest('id')
                 ->take(5)

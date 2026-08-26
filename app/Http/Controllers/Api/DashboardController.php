@@ -87,7 +87,7 @@ class DashboardController extends Controller
             ->where('hari', Ringkasan::hariIni())->count();
         // What this teacher filled in themselves — a backfill placeholder means
         // the opposite, so counting it would shrink "belum_diisi" wrongly.
-        $jurnalHariIni = Jurnal::manusia()->where('guru_nip', $user->nip)
+        $jurnalHariIni = Jurnal::manusia()->diampu($user->nip)
             ->whereDate('tanggal', today())->count();
 
         return [
@@ -96,11 +96,11 @@ class DashboardController extends Controller
                 'jadwal_hari_ini' => $jadwalHariIni,
                 'jurnal_terisi' => $jurnalHariIni,
                 'belum_diisi' => max(0, $jadwalHariIni - $jurnalHariIni),
-                'total_jurnal' => Jurnal::manusia()->where('guru_nip', $user->nip)->count(),
+                'total_jurnal' => Jurnal::manusia()->diampu($user->nip)->count(),
                 'rata_kehadiran' => round($presensiSaya['hadir'] / $total * 100),
             ],
             'presensi' => $presensiSaya,
-            'kehadiran_guru' => Ringkasan::kehadiranGuru(Jurnal::where('guru_nip', $user->nip)),
+            'kehadiran_guru' => Ringkasan::kehadiranGuru(Jurnal::diampu($user->nip)),
         ];
     }
 

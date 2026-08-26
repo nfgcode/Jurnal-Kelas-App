@@ -98,7 +98,7 @@ class DashboardPeriodeTest extends TestCase
 
     public function test_detail_lists_a_teachers_journals(): void
     {
-        $guru = $this->akunGuru(Jurnal::query()->firstOrFail()->guru_nip);
+        $guru = $this->akunGuru(Jurnal::with('jadwal')->firstOrFail()->jadwal->guru_nip);
 
         $this->actingAs($this->admin)
             ->getJson("/admin/dashboard/detail?tipe=guru&guru_nip={$guru->nip}&preset=30_hari")

@@ -72,7 +72,7 @@ class PaginationTest extends TestCase
             ->get('/jurnal?per='.max(Halaman::PILIHAN))
             ->assertOk()
             ->assertViewHas('jurnals', fn ($jurnals) => $jurnals
-                ->every(fn ($jurnal) => $jurnal->guru_nip === $this->guru->nip));
+                ->every(fn ($jurnal) => $jurnal->jadwal->guru_nip === $this->guru->nip));
     }
 
     public function test_the_admin_tables_take_the_size_too(): void

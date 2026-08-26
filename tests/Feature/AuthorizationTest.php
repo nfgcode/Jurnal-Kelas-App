@@ -92,7 +92,7 @@ class AuthorizationTest extends TestCase
         // true, which quietly picked the journal's *own* teacher and let the
         // test pass while proving nothing.
         $lain = User::where('role', 'guru')->where('nip', '!=', $this->jadwal->guru_nip)->firstOrFail();
-        $jurnal = Jurnal::where('guru_nip', $this->jadwal->guru_nip)->firstOrFail();
+        $jurnal = Jurnal::diampu($this->jadwal->guru_nip)->firstOrFail();
 
         $this->actingAs($lain)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();
     }
@@ -239,8 +239,9 @@ class AuthorizationTest extends TestCase
         $kelas->update(['wali_kelas_nip' => $wali->nip]);
 
         // A meeting of that class taught by somebody else.
-        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
-            ->where('guru_nip', '!=', $wali->nip)
+        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q
+            ->where('kelas_id', $kelas->id)
+            ->where('guru_nip', '!=', $wali->nip))
             ->firstOrFail();
 
         $this->actingAs($wali)->get("/jurnal/{$jurnal->public_id}")->assertOk();
@@ -263,7 +264,7 @@ class AuthorizationTest extends TestCase
      */
     public function test_the_numeric_journal_id_no_longer_resolves_in_web_routes(): void
     {
-        $jurnal = Jurnal::where('guru_nip', $this->guru->nip)->firstOrFail();
+        $jurnal = Jurnal::diampu($this->guru->nip)->firstOrFail();
 
         $this->actingAs($this->guru)->get("/jurnal/{$jurnal->id}")->assertNotFound();
         $this->actingAs($this->guru)->get('/jurnal/01ANGKASANGAWURXXXXXXXXXXXX')->assertNotFound();
@@ -282,8 +283,9 @@ class AuthorizationTest extends TestCase
         $wali = $this->buatGuru();
         $kelas->update(['wali_kelas_nip' => $wali->nip]);
 
-        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
-            ->where('guru_nip', '!=', $wali->nip)
+        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q
+            ->where('kelas_id', $kelas->id)
+            ->where('guru_nip', '!=', $wali->nip))
             ->firstOrFail();
 
         // The wali can open it, but is offered no way to delete it...
@@ -296,7 +298,7 @@ class AuthorizationTest extends TestCase
         $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
 
         // The teacher who wrote it may, and is shown the button.
-        $penulis = $this->akunGuru($jurnal->guru_nip);
+        $penulis = $this->akunGuru($jurnal->jadwal->guru_nip);
         $this->actingAs($penulis)->get("/jurnal/{$jurnal->public_id}")
             ->assertOk()
             ->assertSee('data-bs-target="#hapusJurnal"', false);
@@ -309,7 +311,7 @@ class AuthorizationTest extends TestCase
      */
     public function test_deleting_a_journal_leaves_the_daily_attendance_intact(): void
     {
-        $jurnal = Jurnal::where('guru_nip', $this->guru->nip)->firstOrFail();
+        $jurnal = Jurnal::diampu($this->guru->nip)->firstOrFail();
         $kelasId = $jurnal->jadwal->kelas_id;
         $tanggal = $jurnal->tanggal->toDateString();
 

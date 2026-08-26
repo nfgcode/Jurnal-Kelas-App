@@ -21,7 +21,7 @@ class JurnalPolicy
         }
 
         if ($user->isGuru()) {
-            if ($jurnal->guru_nip === $user->nip) {
+            if ($jurnal->jadwal?->guru_nip === $user->nip) {
                 return true;
             }
 
@@ -60,7 +60,7 @@ class JurnalPolicy
         }
 
         if ($user->isGuru()) {
-            return $jurnal->guru_nip === $user->nip;
+            return $jurnal->jadwal?->guru_nip === $user->nip;
         }
 
         return $user->isKetuaKelas()
@@ -72,7 +72,7 @@ class JurnalPolicy
     public function delete(User $user, Jurnal $jurnal): bool
     {
         return $user->isAdmin()
-            || ($user->isGuru() && $jurnal->guru_nip === $user->nip);
+            || ($user->isGuru() && $jurnal->jadwal?->guru_nip === $user->nip);
     }
 
     /**

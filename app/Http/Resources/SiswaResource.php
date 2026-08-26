@@ -24,7 +24,11 @@ class SiswaResource extends JsonResource
             'nama' => $this->nama,
             'jenis_kelamin' => $this->jenis_kelamin,
             'kelas_id' => $this->kelas_id,
-            'is_ketua_kelas' => (bool) $this->is_ketua_kelas,
+            // Read from the class when it is loaded; the accessor would fetch
+            // it per student otherwise, which a class roster does 36 times.
+            'is_ketua_kelas' => $this->relationLoaded('kelas')
+                ? $this->kelas?->ketua_nis === $this->nis
+                : (bool) $this->is_ketua_kelas,
             'status' => $this->status,
             'kelas' => new KelasResource($this->whenLoaded('kelas')),
         ];

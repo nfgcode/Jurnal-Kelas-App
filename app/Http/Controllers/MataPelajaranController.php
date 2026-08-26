@@ -7,6 +7,7 @@ use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\MataPelajaran;
 use App\Support\Halaman;
+use App\Support\PencatatanAkademik;
 use App\Support\Ringkasan;
 use App\Support\Urutan;
 use Illuminate\Http\Request;
@@ -86,15 +87,21 @@ class MataPelajaranController extends Controller
      */
     public function create()
     {
-        return view('mata-pelajaran.create');
+        return view('mata-pelajaran.create', [
+            'guruList' => Guru::aktif()->orderBy('nama')->get(),
+        ]);
     }
 
     /**
      * Store a newly created mata pelajaran in storage.
      */
-    public function store(MataPelajaranRequest $request)
+    public function store(MataPelajaranRequest $request, PencatatanAkademik $pencatatan)
     {
-        MataPelajaran::create($request->validated());
+        $data = $request->validated();
+
+        // The subject and the teachers certified for it are written together:
+        // a subject nobody can teach is one the schedule form refuses everyone for.
+        $pencatatan->mataPelajaran($data, $request->input('guru_nip', []));
 
         return redirect()->route('mata-pelajaran.index')
             ->with('success', 'Mata pelajaran berhasil ditambahkan.');

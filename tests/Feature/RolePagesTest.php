@@ -173,7 +173,7 @@ class RolePagesTest extends TestCase
         $this->assertTrue((bool) $jurnal->kehadiran_guru_ada_tugas);
         $this->assertNull($jurnal->kehadiran_guru_alasan);
         $this->assertNull($jurnal->kehadiran_guru_keterangan);
-        $this->assertSame($this->guru->nip, $jurnal->guru_nip);
+        $this->assertSame($this->guru->nip, $jurnal->jadwal->guru_nip);
         $this->assertSame($this->guru->id, $jurnal->diisi_oleh_id);
     }
 
@@ -200,7 +200,7 @@ class RolePagesTest extends TestCase
         $this->assertTrue((bool) $jurnal->kehadiran_guru_ada_tugas);
         $this->assertNull($jurnal->kehadiran_guru_alasan);
         $this->assertSame('Diwakili guru piket', $jurnal->kehadiran_guru_keterangan);
-        $this->assertSame($this->jadwal->guru_nip, $jurnal->guru_nip);
+        $this->assertSame($this->jadwal->guru_nip, $jurnal->jadwal->guru_nip);
         $this->assertSame($this->siswa->id, $jurnal->diisi_oleh_id);
     }
 

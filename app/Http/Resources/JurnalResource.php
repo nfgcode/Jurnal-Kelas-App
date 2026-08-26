@@ -37,7 +37,8 @@ class JurnalResource extends JsonResource
                 'chip' => $this->kehadiranGuruChip(),
             ],
             'status_pengisian' => $this->statusPengisian(),
-            'guru_nip' => $this->guru_nip,
+            // Read through the meeting; the journal has no NIP column of its own.
+            'guru_nip' => $this->jadwal?->guru_nip,
             'diisi_oleh_id' => $this->diisi_oleh_id,
             // Attendance rollups, present only when the query counted them.
             'total_siswa' => $this->whenHas('total_siswa', fn () => (int) $this->total_siswa),

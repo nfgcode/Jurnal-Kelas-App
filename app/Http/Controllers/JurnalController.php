@@ -54,7 +54,7 @@ class JurnalController extends Controller
         }
 
         if ($user->isGuru()) {
-            $query->where('guru_nip', $user->nip);
+            $query->diampu($user->nip);
         }
 
         // Grade and jurusan narrow by the meeting's class — applied only on the
@@ -70,7 +70,7 @@ class JurnalController extends Controller
         $jurnals = $query->paginate(Halaman::perHalaman())->withQueryString();
         // The stat cards count journals a person wrote, so the nightly backfill's
         // placeholders are left out — they mean the opposite of "filled in".
-        $milikSaya = ($user->isGuru() ? Jurnal::where('guru_nip', $user->nip) : Jurnal::query())->manusia();
+        $milikSaya = ($user->isGuru() ? Jurnal::diampu($user->nip) : Jurnal::query())->manusia();
 
         // A guru filters only among the classes/subjects they teach; admin all.
         $kelasList = Kelas::query()
@@ -233,7 +233,6 @@ class JurnalController extends Controller
         }
 
         $data = $this->normalize($validated, $user);
-        $data['guru_nip'] = $user->isGuru() ? $user->nip : $jadwal->guru_nip;
         $data['diisi_oleh_id'] = $user->id;
         $data['diisi_oleh_peran'] = $peran;
 
@@ -511,7 +510,7 @@ class JurnalController extends Controller
             ->whereYear('tanggal', now()->year);
 
         $rekapKehadiran = $user->isGuru()
-            ? Ringkasan::kehadiranGuru($bulanIni(Jurnal::where('guru_nip', $user->nip)))
+            ? Ringkasan::kehadiranGuru($bulanIni(Jurnal::diampu($user->nip)))
             : Ringkasan::kehadiranGuru(
                 $bulanIni(Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $user->kelas_id)))
             );

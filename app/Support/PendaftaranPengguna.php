@@ -5,11 +5,8 @@ namespace App\Support;
 use App\Models\Guru;
 use App\Models\Siswa;
 use App\Models\User;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use Throwable;
 
 /**
  * Registering a person and their login as one indivisible act.
@@ -25,13 +22,9 @@ use Throwable;
  * below, so the two implementations cannot drift apart in what the admin is
  * actually told.
  */
-class PendaftaranPengguna
+class PendaftaranPengguna extends ProsedurTersimpan
 {
     /**
-     * Which form field each failure belongs against. A duplicate NIS is not a
-     * generic error — it is a problem with the NIS box, and that is where the
-     * admin needs to see it.
-     *
      * @var array<string, array{0: string, 1: string}>
      */
     private const PESAN = [
@@ -109,27 +102,11 @@ class PendaftaranPengguna
     }
 
     /**
-     * Pick the implementation, and translate whatever it raises.
-     *
-     * The MySQL branch surfaces SIGNAL text inside a QueryException message;
-     * the portable branch throws the bare code. Matching on substring covers
-     * both without either having to know how the other reports.
+     * @return array<string, array{0: string, 1: string}>
      */
-    private function jalankan(callable $mysql, callable $portabel): void
+    protected function pesan(): array
     {
-        try {
-            DB::connection()->getDriverName() === 'mysql' ? $mysql() : $portabel();
-        } catch (ValidationException $e) {
-            throw $e;
-        } catch (QueryException|Throwable $e) {
-            foreach (self::PESAN as $kode => [$kolom, $pesan]) {
-                if (str_contains($e->getMessage(), $kode)) {
-                    throw ValidationException::withMessages([$kolom => $pesan]);
-                }
-            }
-
-            throw $e;
-        }
+        return self::PESAN;
     }
 
     /**
@@ -223,15 +200,6 @@ class PendaftaranPengguna
     {
         $this->tolakBila(User::where('username', $data['username'])->exists(), 'USERNAME_SUDAH_ADA');
         $this->tolakBila(User::where('email', $data['email'])->exists(), 'EMAIL_SUDAH_ADA');
-    }
-
-    private function tolakBila(bool $salah, string $kode): void
-    {
-        if ($salah) {
-            [$kolom, $pesan] = self::PESAN[$kode];
-
-            throw ValidationException::withMessages([$kolom => $pesan]);
-        }
     }
 
     private function kosongJadiNull(mixed $nilai): ?string

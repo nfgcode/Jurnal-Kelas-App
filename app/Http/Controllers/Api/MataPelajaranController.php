@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MataPelajaranRequest;
 use App\Http\Resources\MataPelajaranResource;
 use App\Models\MataPelajaran;
+use App\Support\PencatatanAkademik;
 use Illuminate\Http\Request;
 
 class MataPelajaranController extends Controller
@@ -34,9 +35,12 @@ class MataPelajaranController extends Controller
         return new MataPelajaranResource($mataPelajaran);
     }
 
-    public function store(MataPelajaranRequest $request)
+    public function store(MataPelajaranRequest $request, PencatatanAkademik $pencatatan)
     {
-        $mataPelajaran = MataPelajaran::create($request->validated());
+        $mataPelajaran = $pencatatan->mataPelajaran(
+            $request->validated(),
+            $request->input('guru_nip', []),
+        );
 
         return (new MataPelajaranResource($mataPelajaran))->response()->setStatusCode(201);
     }

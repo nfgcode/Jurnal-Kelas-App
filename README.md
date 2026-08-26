@@ -111,15 +111,17 @@ Skema ditelaah ulang sampai 3NF. Yang diperbaiki, beserta bukti dari data yang a
 | `jadwal.jam_mulai/jam_selesai` | ditentukan penuh oleh `jam_ke_*`; 4 pasangan unik untuk 4 nomor JP | Kolomnya dihapus, jamnya dihitung dari jadwal bel |
 | `siswa.is_ketua_kelas` | atribut relasi kelas↔siswa ditaruh di siswa; "satu ketua" cuma dijaga PHP | Pindah ke `kelas.ketua_nis` — ketua kedua jadi *tidak bisa direpresentasikan* |
 | `jadwal` tanpa kunci unik | **353 slot** dengan guru yang sama mengajar dua kelas di jam yang sama | 3 UNIQUE: (kelas, hari, JP), (guru, hari, JP), (ruangan, hari, JP) |
+| `jurnal.guru_nip` | transitif lewat `jadwal_id`; 0 beda dari 9.486 baris | Kolomnya dihapus; guru dibaca lewat `jadwal` (`hasOneThrough`, scope `Jurnal::diampu($nip)`) |
 
 Yang **sengaja tidak** dinormalisasi, karena tampak redundan padahal bukan:
 
 - **`presensi_harian.kelas_id`** seolah bisa dibaca dari `siswa.kelas_id`. Tapi itu kelas siswa **pada tanggal itu**; kalau ia pindah rombel, riwayat kehadirannya tidak boleh ikut pindah.
-- **`jurnal.guru_nip`** seolah bisa dibaca lewat `jadwal_id`. Tapi `jadwal.guru_nip` bisa diubah admin: kalau satu slot dialihkan ke guru lain, seluruh jurnal lampau akan mendadak berpindah nama. Kolom ini mencatat siapa yang **benar-benar mengajar saat itu**.
 - **`jurnal.diisi_oleh_peran`** memuat nilai `'sistem'` yang tidak ada di `users.role`, dan itulah yang dikunci indeks unik "satu jurnal per sisi".
 - **`users.role`** diskriminator; admin memang tidak punya baris orang untuk diturunkan perannya.
 
 > Aturannya sederhana: kolom yang **bisa** dihitung ulang dari kolom lain memang duplikasi — kecuali kalau nilai sumbernya bisa berubah di kemudian hari, karena kolom itu lalu berubah arti jadi "nilainya saat kejadian".
+>
+> **Konsekuensi yang disengaja untuk `jurnal.guru_nip`:** kalau admin memindahkan satu slot jadwal ke guru lain, jurnal lampau slot itu ikut berpindah nama. Itu harga dari menghapusnya — jurnal sekarang berarti "jurnal pelajaran ini", bukan "jurnal tulisan orang ini". Siapa yang **mengetik** jurnalnya tetap tercatat terpisah di `diisi_oleh_id`.
 
 ### Data Orang vs Akun Login
 Dulu semuanya satu tabel `users`: nama, NIP, NIS, kelas, dan kata sandi bercampur di satu baris, dan peran dibedakan cuma lewat kolom `role`. Sekarang dipisah jadi tiga, karena tiga hal itu memang punya umur yang berbeda:
@@ -143,6 +145,23 @@ Akibat yang terasa sehari-hari:
 Triggernya menjaga aturan itu tetap berlaku siapa pun yang menulis (aplikasi, skrip impor, atau admin yang mengetik langsung di phpMyAdmin): akun guru wajib punya NIP, akun siswa wajib punya NIS, akun admin tidak boleh punya keduanya, dan nama di akun otomatis dikosongkan untuk guru/siswa supaya tidak ada salinan kedua.
 
 > Di SQLite (database test) prosedur dan trigger itu tidak ada. `App\Support\PendaftaranPengguna` menjalankan urutan yang sama sebagai transaksi PHP, dan **menerjemahkan kode kesalahan yang sama** (`NIS_SUDAH_ADA`, `NAMA_SUDAH_ADA`, …) jadi pesan validasi — jadi dua jalur itu tidak bisa bercerai soal apa yang dilihat admin.
+
+### Stored Procedure & Transaction
+Lima penambahan data ditulis lewat prosedur database, bukan langsung dari PHP:
+
+| Prosedur | Menulis | Kenapa perlu transaksi |
+|---|---|---|
+| `sp_tambah_guru` | `guru` + `users` | Dua tabel. Guru tanpa akun tak bisa masuk; akun tanpa guru adalah kredensial yang menunjuk entah siapa |
+| `sp_tambah_siswa` | `siswa` + `users` | Sama |
+| `sp_tambah_mata_pelajaran` | `mata_pelajaran` + `guru_mata_pelajaran` | Dua tabel. Mapel tanpa pengampu adalah mapel yang ditolak formulir jadwal untuk semua guru |
+| `sp_tambah_kelas` | `kelas` | Satu INSERT — yang dibutuhkan bukan atomisitasnya, tapi agar **cek dan tulis jadi satu langkah** (`FOR UPDATE`), supaya dua admin tidak sama-sama lolos cek rombel kembar |
+| `sp_tambah_jadwal` | `jadwal` | Sama: tiga cek bentrok + cek pengampu dijalankan dalam kunci yang sama dengan insert-nya |
+
+Alasan sebenarnya menaruh aturan di database, bukan di PHP: aturannya lalu berlaku untuk **setiap penulis** yang menyentuh tabel — formulir, API, skrip impor, atau admin yang mengetik SQL di phpMyAdmin. Kegagalan dilempar sebagai `SIGNAL SQLSTATE '45000'` dengan kode pendek (`ROMBEL_SUDAH_ADA`, `GURU_BENTROK`, …), dan `App\Support\ProsedurTersimpan` menerjemahkannya jadi pesan pada field yang tepat.
+
+Cek bentroknya memakai **perbandingan rentang**, bukan kesamaan: JP 10–11 dan JP 11–12 berbagi JP 11 tanpa berbagi jam mulai — hal yang indeks unik `(…, jam_ke_mulai)` tidak bisa lihat. Indeksnya tetap ada sebagai benteng terakhir.
+
+> Di SQLite (database test) prosedur itu tidak ada. `PencatatanAkademik` menjalankan urutan yang sama sebagai transaksi PHP dan **menerjemahkan kode kesalahan yang sama**, jadi dua jalur itu tidak bisa bercerai soal apa yang dilihat pengguna.
 
 ### Guru ↔ Mata Pelajaran
 Satu guru boleh mengampu 1–3 mapel, dan satu mapel boleh dipegang beberapa guru — di SMK dengan 45 rombel, satu orang tidak mungkin memegang semuanya. Pasangannya disimpan di tabel `guru_mata_pelajaran`, terpisah dari jadwal.
@@ -641,7 +660,7 @@ Jurnal-Kelas-App/
 │       ├── XlsxExport.php        # Penulis .xlsx (OOXML) lewat ZipArchive
 │       └── XlsxReader.php        # Pembaca .xlsx/.csv buat impor (ZipArchive + SimpleXML)
 ├── database/
-│   ├── migrations/               # 40 migrasi (tabel, index, view, function, procedure, trigger)
+│   ├── migrations/               # 41 migrasi (tabel, index, view, function, procedure, trigger)
 │   └── seeders/
 │       ├── DemoSeeder.php        # Data demo default (dipakai make setup & test suite)
 │       └── SmkSeeder.php         # Simulasi SMK besar (10 jurusan, ~45 rombel), opsional, dev-only

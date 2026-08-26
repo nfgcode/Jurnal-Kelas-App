@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -103,8 +104,15 @@ class Guru extends Model
         return $this->hasMany(Jadwal::class, 'guru_nip', 'nip');
     }
 
-    public function jurnals(): HasMany
+    /**
+     * Journals of the lessons this teacher is timetabled for. Through `jadwal`,
+     * because that is where the pairing lives now.
+     */
+    public function jurnals(): HasManyThrough
     {
-        return $this->hasMany(Jurnal::class, 'guru_nip', 'nip');
+        return $this->hasManyThrough(
+            Jurnal::class, Jadwal::class,
+            'guru_nip', 'jadwal_id', 'nip', 'id',
+        );
     }
 }

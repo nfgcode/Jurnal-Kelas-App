@@ -32,6 +32,11 @@ class MataPelajaranRequest extends FormRequest
             'kelompok' => 'required|in:wajib,peminatan,muatan_lokal,kejuruan',
             'jp_per_minggu' => 'required|integer|min:1|max:12',
             'deskripsi' => 'nullable|string',
+            // Teachers certified for the subject, written with it in one
+            // transaction. A subject nobody can teach is one the schedule form
+            // then refuses every teacher for.
+            'guru_nip' => ['array'],
+            'guru_nip.*' => ['string', 'exists:guru,nip'],
         ];
     }
 }

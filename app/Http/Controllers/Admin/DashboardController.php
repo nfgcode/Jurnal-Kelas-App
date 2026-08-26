@@ -60,8 +60,11 @@ class DashboardController extends Controller
             ->whereBetween('tanggal', $rentang)
             ->where('kehadiran_guru_status', 'tidak_hadir')
             ->where(fn ($query) => $query->whereNull('kehadiran_guru_ada_tugas')->orWhere('kehadiran_guru_ada_tugas', false))
+            // Count distinct teachers through the timetable: the journal no
+            // longer carries a NIP of its own.
             ->distinct()
-            ->count('guru_nip');
+            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+            ->count('jadwal.guru_nip');
 
         // "Latest journals" stays a recency feed, not a period slice — it is the
         // newest activity whatever the filter says.
@@ -159,7 +162,7 @@ class DashboardController extends Controller
 
             case 'guru':
                 $guru = Guru::findOrFail($data['guru_nip']);
-                $query->manusia()->where('guru_nip', $guru->nip)->whereBetween('tanggal', $rentang);
+                $query->manusia()->diampu($guru->nip)->whereBetween('tanggal', $rentang);
                 $judul = 'Jurnal '.$guru->nama;
                 break;
 
@@ -303,7 +306,7 @@ class DashboardController extends Controller
             ->when($data['kelas_id'] ?? null, fn ($query, $id) => $query->where('kelas_id', $id))
             ->when($data['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('kelas', fn ($k) => $k->where('tingkat', $t)))
             ->when($data['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('kelas', fn ($k) => $k->where('jurusan_kode', $j)))
-            ->when($data['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
+            ->when($data['guru_nip'] ?? null, fn ($query, $nip) => $query->diampu($nip))
             ->get()
             ->groupBy('hari');
 
@@ -387,6 +390,6 @@ class DashboardController extends Controller
             ->when($data['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($data['tingkat'] ?? null, fn ($q, $t) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
             ->when($data['jurusan'] ?? null, fn ($q, $j) => $q->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan_kode', $j)))
-            ->when($data['guru_nip'] ?? null, fn ($q, $id) => $q->where('guru_nip', $id));
+            ->when($data['guru_nip'] ?? null, fn ($q, $nip) => $q->diampu($nip));
     }
 }

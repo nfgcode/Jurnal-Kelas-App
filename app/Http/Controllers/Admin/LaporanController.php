@@ -150,7 +150,7 @@ class LaporanController extends Controller
             ->when($filters['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
             ->when($filters['jurusan'] ?? null, fn ($query, $j) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('jurusan_kode', $j)))
             ->when($filters['edit_lewat_hari'] ?? null, fn ($query) => $query->where('jurnal.diedit_setelah_hari', true))
-            ->when($filters['guru_nip'] ?? null, fn ($query, $id) => $query->where('guru_nip', $id))
+            ->when($filters['guru_nip'] ?? null, fn ($query, $nip) => $query->diampu($nip))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->whereRaw(
                 $status === 'telat' ? $this->ekspresiTerlambat() : 'NOT ('.$this->ekspresiTerlambat().')'
             ))

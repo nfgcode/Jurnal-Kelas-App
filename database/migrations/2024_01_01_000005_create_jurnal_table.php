@@ -7,7 +7,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * The journal of one meeting.
+     *
+     * No `guru_nip`: the teacher is the teacher of the meeting this journal
+     * belongs to, reached through `jadwal_id`. Storing it here as well was a
+     * second answer to a question `jadwal` already answers.
      */
     public function up(): void
     {
@@ -18,8 +22,6 @@ return new class extends Migration
             $table->text('materi');
             $table->text('kegiatan');
             $table->text('catatan')->nullable();
-            $table->string('guru_nip', 20);
-            $table->foreign('guru_nip')->references('nip')->on('guru')->cascadeOnDelete();
             $table->timestamps();
         });
     }

@@ -42,8 +42,9 @@ return new class extends Migration
             $table->boolean('kehadiran_guru_ada_tugas')->nullable()->after('kehadiran_guru_alasan');
             $table->text('kehadiran_guru_keterangan')->nullable()->after('kehadiran_guru_ada_tugas');
 
-            // Null means the assigned guru filled it themselves.
-            $table->foreignId('diisi_oleh_id')->nullable()->after('guru_nip')->constrained('users')->nullOnDelete();
+            // Who actually typed it: null means the meeting's own teacher did.
+            // Distinct from that teacher, who is reached through `jadwal`.
+            $table->foreignId('diisi_oleh_id')->nullable()->after('kehadiran_guru_keterangan')->constrained('users')->nullOnDelete();
         });
 
         // The hi-fi journal form asks for Materi and Tugas, not Kegiatan, so

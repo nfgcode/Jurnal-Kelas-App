@@ -9,6 +9,7 @@ use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Ruangan;
 use App\Support\JamPelajaran;
+use App\Support\PencatatanAkademik;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -140,9 +141,11 @@ class JadwalController extends Controller
     /**
      * Store a newly created jadwal in storage.
      */
-    public function store(JadwalRequest $request)
+    public function store(JadwalRequest $request, PencatatanAkademik $pencatatan)
     {
-        Jadwal::create($request->validated());
+        // Through sp_tambah_jadwal: the three clash checks and the insert run as
+        // one step, so the form's own validation cannot be raced past.
+        $pencatatan->jadwal($request->validated());
 
         return redirect()->route('jadwal.index')
             ->with('success', 'Jadwal berhasil ditambahkan.');

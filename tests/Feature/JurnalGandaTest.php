@@ -108,7 +108,6 @@ class JurnalGandaTest extends TestCase
             'jadwal_id' => $this->jadwal->id,
             'tanggal' => $this->tanggal,
             'materi' => 'Tembus langsung',
-            'guru_nip' => $this->guru->nip,
             'diisi_oleh_id' => $this->guru->id,
             'diisi_oleh_peran' => 'guru',
         ]);
