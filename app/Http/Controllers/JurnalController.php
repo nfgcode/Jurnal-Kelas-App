@@ -6,7 +6,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
-use App\Models\PresensiHarian;
+use App\Models\Presensi;
 use App\Models\User;
 use App\Support\Halaman;
 use App\Support\Periode;
@@ -16,6 +16,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
@@ -41,9 +42,9 @@ class JurnalController extends Controller
 
         $query = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            // Attendance beside a journal row is the class's roll call for that
-            // day, shared by every lesson it held — see the scope's note.
-            ->denganPresensiHarian()
+            // Attendance beside a journal row is the roster its own teacher
+            // marked for that lesson — per subject, see the scope's note.
+            ->denganPresensi()
             ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
             ->when($filters['kelas_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
@@ -143,13 +144,13 @@ class JurnalController extends Controller
             ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
-        // The student's own attendance for the days the rows on this page fall
-        // on — keyed by date, because the roll call is taken once a day and not
-        // once per lesson.
-        $presensiSaya = PresensiHarian::where('siswa_nis', $user->nis)
-            ->whereIn('tanggal', $jurnals->pluck('tanggal')->map(fn ($t) => $t->toDateString())->unique()->all())
+        // The student's own mark on each meeting listed on this page — keyed by
+        // journal, because a roster now belongs to one lesson of one subject and
+        // the same day may hold several different answers.
+        $presensiSaya = Presensi::where('siswa_nis', $user->nis)
+            ->whereIn('jurnal_id', $jurnals->pluck('id')->all())
             ->get()
-            ->keyBy(fn ($p) => $p->tanggal->toDateString());
+            ->keyBy('jurnal_id');
 
         // Total and how many carried a task, in one grouped pass over the class —
         // within the selected period, so the cards match the table.
@@ -174,8 +175,9 @@ class JurnalController extends Controller
     }
 
     /**
-     * The journal form. A teacher reports their own attendance; a ketua kelas
-     * reports the teacher's, which is why the two get different forms.
+     * The journal form. The class writes it — through its ketua kelas, who gets
+     * the wording written for a student; an admin correcting a record gets the
+     * neutral form instead.
      */
     public function create(Request $request)
     {
@@ -250,9 +252,8 @@ class JurnalController extends Controller
             );
         }
 
-        // Saving a journal used to hand the teacher an attendance roster next.
-        // It no longer does: student attendance is one daily roll call taken by
-        // the ketua kelas, not something each lesson collects again.
+        // Saving a journal does not hand the writer an attendance roster next:
+        // the roster belongs to the lesson's teacher, and the class only reads it.
         return redirect()->route('jurnal.show', $jurnal)
             ->with('success', 'Jurnal tersimpan.');
     }
@@ -266,27 +267,21 @@ class JurnalController extends Controller
 
         $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh']);
 
-        // The attendance shown beside a journal is the class's roll call for
-        // that day — the one record the whole day shares — not a roster owned
-        // by this meeting.
-        $kelasId = $jurnal->jadwal?->kelas_id;
-        $tanggal = $jurnal->tanggal->toDateString();
-
-        $presensiHarian = $kelasId
-            ? PresensiHarian::with('siswa')
-                ->where('kelas_id', $kelasId)
-                ->whereDate('tanggal', $tanggal)
-                ->get()
-                ->sortBy(fn ($p) => $p->siswa?->nama ?? '')
-                ->values()
-            : collect();
+        // The attendance shown beside a journal is the roster this meeting's own
+        // teacher marked — the record that can differ from the lesson before it.
+        $presensi = Presensi::with('siswa')
+            ->where('jurnal_id', $jurnal->id)
+            ->get()
+            ->sortBy(fn ($p) => $p->siswa?->nama ?? '')
+            ->values();
 
         return view('jurnal.show', [
             'jurnal' => $jurnal,
-            'presensiHarian' => $presensiHarian,
-            'rekapHarian' => Ringkasan::presensi(
-                PresensiHarian::where('kelas_id', $kelasId ?? 0)->whereDate('tanggal', $tanggal)
-            ),
+            'presensi' => $presensi,
+            'rekap' => $this->rekapPresensi($presensi),
+            // How many students the class holds, so "12 dari 30 ditandai" can be
+            // said rather than only "12".
+            'jumlahSiswa' => $jurnal->jadwal?->kelas?->siswa()->count() ?? 0,
         ]);
     }
 
@@ -494,26 +489,22 @@ class JurnalController extends Controller
             ->orderBy('jam_ke_mulai')
             ->get();
 
-        // The class's roll call for the date being filed against — context for
-        // whoever is writing the journal, never something they edit from here.
-        $presensi = $kelas
-            ? Ringkasan::presensi(
-                PresensiHarian::where('kelas_id', $kelas->id)->whereDate('tanggal', $tanggal->toDateString())
-            )
-            : ['hadir' => 0, 'sakit' => 0, 'izin' => 0, 'alpa' => 0];
+        // The roster the meeting's teacher marked — context for whoever is
+        // writing the journal, never something they edit from here.
+        $presensi = $this->rekapPresensi(
+            $jurnal ? Presensi::where('jurnal_id', $jurnal->id)->get() : collect()
+        );
 
-        // The teacher's own attendance record, or the class's view of their
-        // teachers' — whichever the form's author is reporting on. Scoped to the
-        // current month, matching the card's "Bulan Ini" label.
-        $bulanIni = fn ($query) => $query
-            ->whereMonth('tanggal', now()->month)
-            ->whereYear('tanggal', now()->year);
-
-        $rekapKehadiran = $user->isGuru()
-            ? Ringkasan::kehadiranGuru($bulanIni(Jurnal::diampu($user->nip)))
-            : Ringkasan::kehadiranGuru(
-                $bulanIni(Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $user->kelas_id)))
-            );
+        // How the class's teachers have been turning up this month — the record
+        // the journal's author is actually reporting on. Read from the meeting's
+        // own class rather than the reader's, so an admin filling a journal for
+        // XI RPL 1 sees XI RPL 1. Scoped to the current month, matching the
+        // card's "Bulan Ini" label.
+        $rekapKehadiran = Ringkasan::kehadiranGuru(
+            Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas?->id ?? 0))
+                ->whereMonth('tanggal', now()->month)
+                ->whereYear('tanggal', now()->year)
+        );
 
         return [
             'jurnal' => $jurnal,
@@ -539,6 +530,25 @@ class JurnalController extends Controller
                     ->take(3)
                     ->get()
                 : collect(),
+        ];
+    }
+
+    /**
+     * Fold a collection of roster rows into the hadir/sakit/izin/alpa totals
+     * every journal screen renders, always with all four keys present.
+     *
+     * @param  Collection<int, Presensi>  $presensi
+     * @return array<string, int>
+     */
+    private function rekapPresensi($presensi): array
+    {
+        $per = $presensi->countBy('status');
+
+        return [
+            'hadir' => (int) ($per['hadir'] ?? 0),
+            'sakit' => (int) ($per['sakit'] ?? 0),
+            'izin' => (int) ($per['izin'] ?? 0),
+            'alpa' => (int) ($per['alpa'] ?? 0),
         ];
     }
 

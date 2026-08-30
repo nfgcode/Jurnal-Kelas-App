@@ -9,7 +9,14 @@
         title="Histori Jurnal"
         :sub="number_format($statistik['periode'], 0, ',', '.') . ' jurnal · ' . $statistik['kelas'] . ' kelas · ' . $periode->label()">
         <x-periode-filter :periode="$periode" />
-        <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
+        {{-- A guru reads this list but no longer writes it: the class journal is
+             authored by the ketua kelas, so the button only appears for admin. --}}
+        @can('create', App\Models\Jurnal::class)
+            <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
+        @endcan
+        @if (Auth::user()->isGuru())
+            <a class="btn-hifi" href="{{ route('presensi.index') }}">Isi Presensi</a>
+        @endif
     </x-page-head>
 
     <div class="grid-row grid-row--4">

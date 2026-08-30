@@ -88,11 +88,19 @@
             <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
                 <x-ikon nama="calendar3" /><span>Jadwal Kelas</span>
             </a>
-            <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.*') ? 'is-active' : '' }}">
+            <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.index', 'jurnal.show') ? 'is-active' : '' }}">
                 <x-ikon nama="journal-text" /><span>Jurnal Kelas</span>
             </a>
+            @if (Auth::user()->isKetuaKelas())
+                {{-- The ketua writes the class journal, so the action gets its own
+                     entry instead of hiding one click inside the list. --}}
+                <a href="{{ route('jurnal.create') }}"
+                   class="sidebar__link {{ request()->routeIs('jurnal.create', 'jurnal.edit') ? 'is-active' : '' }}">
+                    <x-ikon nama="journal-text" /><span>Isi Jurnal Kelas</span>
+                </a>
+            @endif
             <a href="{{ route('presensi.index') }}"
-               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*') ? 'is-active' : '' }}">
+               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*', 'presensi-jurnal.*') ? 'is-active' : '' }}">
                 <x-ikon nama="person-check" /><span>{{ Auth::user()->isKetuaKelas() ? 'Presensi Kelas' : 'Presensi Saya' }}</span>
             </a>
         @else
@@ -143,7 +151,7 @@
                 <x-ikon nama="journal-text" /><span>Jurnal</span>
             </a>
             <a href="{{ route('presensi.index') }}"
-               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*') ? 'is-active' : '' }}">
+               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*', 'presensi-jurnal.*') ? 'is-active' : '' }}">
                 <x-ikon nama="person-check" /><span>Presensi</span>
             </a>
 

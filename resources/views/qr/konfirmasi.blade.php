@@ -97,22 +97,24 @@
         <x-card title="Konfirmasi Pengisian">
             @if ($jadwals->isEmpty())
                 <p class="empty-state">
-                    Anda tidak mengajar di kelas {{ $kelas->nama_kelas }}, jadi tidak ada jurnal
+                    Anda tidak mengajar di kelas {{ $kelas->nama_kelas }}, jadi tidak ada presensi
                     yang bisa diisi dari QR ini. Pastikan Anda memindai QR ruang kelas yang benar.
                 </p>
                 <a class="btn-hifi btn-hifi--ghost" href="{{ route('dashboard') }}">Ke Dashboard</a>
             @else
                 <p class="field__hint mb-3">
                     Anda memindai QR kelas <strong>{{ $kelas->nama_kelas }}</strong>. Ketuk mata
-                    pelajaran yang Anda ajar di kelas ini, lalu lanjut mengisi jurnal. Presensi siswa
-                    diisi terpisah, sekali sehari, oleh ketua kelas.
+                    pelajaran yang Anda ajar di kelas ini, lalu lanjut menandai presensi siswa.
+                    Presensi dicatat per mata pelajaran; jurnal kelasnya ditulis oleh ketua kelas.
                 </p>
 
-                <form method="GET" action="{{ route('jurnal.create') }}">
+                <form method="POST" action="{{ route('presensi-jurnal.mulai') }}">
+                    @csrf
+                    <input type="hidden" name="tanggal" value="{{ now()->toDateString() }}">
                     <fieldset class="pick-list">
                         @foreach ($jadwals as $jadwal)
                             @php
-                                $terisi = in_array($jadwal->id, $sudahDiisi, true);
+                                $terisi = in_array($jadwal->id, $sudahDitandai, true);
                                 $isRek = $rekomendasi?->id === $jadwal->id;
                             @endphp
                             <label class="pick-card">
@@ -127,7 +129,7 @@
                                 </span>
                                 <span class="pick-card__flag">
                                     @if ($jadwal->hari === $hariIni)
-                                        <x-chip :tone="$terisi ? 'green' : 'yellow'" :label="$terisi ? 'Terisi' : 'Belum'" />
+                                        <x-chip :tone="$terisi ? 'green' : 'yellow'" :label="$terisi ? 'Ditandai' : 'Belum'" />
                                     @endif
                                 </span>
                             </label>
@@ -136,7 +138,7 @@
 
                     <div class="d-flex justify-content-end gap-2">
                         <a class="btn-hifi btn-hifi--ghost" href="{{ route('dashboard') }}">Batal</a>
-                        <button class="btn-hifi" type="submit">Isi Jurnal &amp; Presensi →</button>
+                        <button class="btn-hifi" type="submit">Isi Presensi →</button>
                     </div>
                 </form>
             @endif

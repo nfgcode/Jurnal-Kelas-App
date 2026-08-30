@@ -33,7 +33,7 @@ class LaporanController extends Controller
         ]);
 
         $jurnals = $this->kueriJurnal($filters, $periode)
-            ->denganPresensiHarian()
+            ->denganPresensi()
             ->latest('tanggal')
             ->latest('jurnal.id')
             ->paginate(18);
@@ -74,7 +74,7 @@ class LaporanController extends Controller
         ]);
 
         $pertemuan = $this->kueriJurnal($filters, $periode)
-            ->denganPresensiHarian()
+            ->denganPresensi()
             ->latest('tanggal')
             ->latest('jurnal.id')
             ->paginate(18);

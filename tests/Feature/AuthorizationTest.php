@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\PresensiHarian;
+use App\Models\Presensi;
 use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -106,24 +106,53 @@ class AuthorizationTest extends TestCase
     }
 
     /**
-     * A guru does not file attendance at all any more: the class's ketua kelas
-     * takes one roll call a day. A guru reading the recap is fine; a guru
-     * writing one must be refused even for a class they teach.
+     * Attendance is the teacher's to mark, one roster per meeting they taught.
+     * The boundary that matters is the meeting, not the class: teaching a class
+     * at JP 1 does not license marking someone else's lesson with the same class.
      */
-    public function test_a_guru_cannot_file_attendance_even_for_a_class_they_teach(): void
+    public function test_a_guru_marks_only_the_meetings_they_teach(): void
     {
-        $kelas = $this->jadwal->kelas;
+        $milik = Jurnal::diampu($this->guru->nip)->firstOrFail();
 
         $this->actingAs($this->guru)
-            ->get(route('presensi-harian.edit', $kelas))
+            ->get(route('presensi-jurnal.edit', $milik))
+            ->assertOk();
+
+        $lain = Jurnal::whereHas('jadwal', fn ($q) => $q->where('guru_nip', '<>', $this->guru->nip))
+            ->firstOrFail();
+
+        $this->actingAs($this->guru)
+            ->get(route('presensi-jurnal.edit', $lain))
+            ->assertForbidden();
+    }
+
+    /**
+     * The other half of the swap: the class writes the journal but never the
+     * roster, not even its ketua kelas.
+     */
+    public function test_a_ketua_kelas_cannot_mark_attendance(): void
+    {
+        $ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
+
+        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $ketua->kelas_id))
+            ->firstOrFail();
+
+        $sebelum = Presensi::where('jurnal_id', $jurnal->id)
+            ->orderBy('siswa_nis')->pluck('status', 'siswa_nis')->all();
+
+        $this->actingAs($ketua)
+            ->get(route('presensi-jurnal.edit', $jurnal))
             ->assertForbidden();
 
-        $this->actingAs($this->guru)
-            ->post(route('presensi-harian.store', $kelas), [
-                'tanggal' => now()->toDateString(),
-                'presensi' => [['siswa_nis' => $kelas->siswa()->value('nis'), 'status' => 'hadir']],
+        $this->actingAs($ketua)
+            ->post(route('presensi-jurnal.store', $jurnal), [
+                'presensi' => [['siswa_nis' => $jurnal->jadwal->kelas->siswa()->value('nis'), 'status' => 'alpa']],
             ])
             ->assertForbidden();
+
+        // Refused, not merely redirected: the roster is byte-for-byte unchanged.
+        $this->assertSame($sebelum, Presensi::where('jurnal_id', $jurnal->id)
+            ->orderBy('siswa_nis')->pluck('status', 'siswa_nis')->all());
     }
 
     public function test_a_guru_outside_the_class_cannot_even_read_its_attendance(): void
@@ -273,11 +302,11 @@ class AuthorizationTest extends TestCase
     }
 
     /**
-     * Deleting a journal is offered in the UI, so the boundary matters: a wali
-     * kelas may read every meeting of their class (see above) but must not be
-     * able to erase another teacher's record of it.
+     * Deleting a journal is offered in the UI, so the boundary matters. The
+     * journal is the class's record now, so the class's ketua may erase it and a
+     * guru - even the one who taught the lesson, even the wali kelas - may not.
      */
-    public function test_only_the_author_or_admin_may_delete_a_journal(): void
+    public function test_only_the_class_or_admin_may_delete_a_journal(): void
     {
         $kelas = $this->jadwal->kelas;
         $wali = $this->buatGuru();
@@ -285,7 +314,7 @@ class AuthorizationTest extends TestCase
 
         $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q
             ->where('kelas_id', $kelas->id)
-            ->where('guru_nip', '!=', $wali->nip))
+            ->where('guru_nip', '<>', $wali->nip))
             ->firstOrFail();
 
         // The wali can open it, but is offered no way to delete it...
@@ -297,33 +326,91 @@ class AuthorizationTest extends TestCase
         $this->actingAs($wali)->delete("/jurnal/{$jurnal->public_id}")->assertForbidden();
         $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
 
-        // The teacher who wrote it may, and is shown the button.
-        $penulis = $this->akunGuru($jurnal->jadwal->guru_nip);
-        $this->actingAs($penulis)->get("/jurnal/{$jurnal->public_id}")
+        // Nor may the teacher whose lesson it records: their half is the roster.
+        $pengajar = $this->akunGuru($jurnal->jadwal->guru_nip);
+        $this->actingAs($pengajar)->delete("/jurnal/{$jurnal->public_id}")->assertForbidden();
+        $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
+
+        // The class's ketua may, and is shown the button.
+        $ketua = $this->akunSiswaKelas($kelas->id, true);
+        $this->actingAs($ketua)->get("/jurnal/{$jurnal->public_id}")
             ->assertOk()
             ->assertSee('data-bs-target="#hapusJurnal"', false);
     }
 
     /**
-     * Attendance belongs to the class's day, not to a lesson, so deleting a
-     * journal must leave the roll call standing. The delete modal says so; this
-     * pins that the promise is true.
+     * A roster belongs to its meeting, so deleting the journal takes that
+     * meeting's marks with it - and the class's derived daily record is rebuilt
+     * from whatever lessons remain rather than left describing a lesson that no
+     * longer exists. The delete modal promises exactly this.
      */
-    public function test_deleting_a_journal_leaves_the_daily_attendance_intact(): void
+    public function test_deleting_a_journal_removes_its_own_roster_only(): void
     {
-        $jurnal = Jurnal::diampu($this->guru->nip)->firstOrFail();
-        $kelasId = $jurnal->jadwal->kelas_id;
-        $tanggal = $jurnal->tanggal->toDateString();
+        $kelasId = $this->jadwal->kelas_id;
+        $ketua = $this->akunSiswaKelas($kelasId, true);
+        $tanggal = now()->toDateString();
 
-        $sebelum = PresensiHarian::where('kelas_id', $kelasId)->whereDate('tanggal', $tanggal)->count();
-        $this->assertGreaterThan(0, $sebelum);
+        // Two meetings of the same class on the same day, each marked by its own
+        // teacher: one student present in the first, absent in the second.
+        [$satu, $dua] = $this->duaPertemuan($kelasId, $tanggal);
+        $nis = $this->jadwal->kelas->siswa()->value('nis');
 
-        $this->actingAs($this->guru)
-            ->delete("/jurnal/{$jurnal->public_id}")
+        $this->tandai($satu, $nis, 'hadir');
+        $this->tandai($dua, $nis, 'alpa');
+
+        // The day takes the heavier mark while both lessons stand.
+        $this->assertDatabaseHas('presensi_harian', [
+            'kelas_id' => $kelasId, 'siswa_nis' => $nis, 'status' => 'alpa',
+        ]);
+
+        $this->actingAs($ketua)
+            ->delete("/jurnal/{$dua->public_id}")
             ->assertRedirect(route('jurnal.index'));
 
-        $this->assertDatabaseMissing('jurnal', ['id' => $jurnal->id]);
-        $this->assertSame($sebelum, PresensiHarian::where('kelas_id', $kelasId)
-            ->whereDate('tanggal', $tanggal)->count());
+        // Its roster went with it; the other lesson's is untouched, and the day
+        // now reads from what is left.
+        $this->assertDatabaseMissing('presensi', ['jurnal_id' => $dua->id]);
+        $this->assertDatabaseHas('presensi', ['jurnal_id' => $satu->id, 'siswa_nis' => $nis]);
+        $this->assertDatabaseHas('presensi_harian', [
+            'kelas_id' => $kelasId, 'siswa_nis' => $nis, 'status' => 'hadir',
+        ]);
+    }
+
+    /**
+     * Two journals for one class on one date, on different teachers' slots.
+     *
+     * @return array<int, Jurnal>
+     */
+    private function duaPertemuan(int $kelasId, string $tanggal): array
+    {
+        $slots = Jadwal::where('kelas_id', $kelasId)
+            ->get()
+            ->unique('guru_nip')
+            ->take(2)
+            ->values();
+
+        $this->assertCount(2, $slots, 'Perlu dua jadwal dengan guru berbeda di kelas ini.');
+
+        return $slots->map(function ($jadwal) use ($tanggal) {
+            Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $tanggal)->delete();
+
+            return Jurnal::create([
+                'jadwal_id' => $jadwal->id,
+                'tanggal' => $tanggal,
+                'materi' => 'Pertemuan uji',
+                'kehadiran_guru_status' => 'hadir',
+                'diisi_oleh_peran' => 'siswa',
+            ]);
+        })->all();
+    }
+
+    /** Mark one student on one meeting, as that meeting's own teacher. */
+    private function tandai(Jurnal $jurnal, string $nis, string $status): void
+    {
+        $this->actingAs($this->akunGuru($jurnal->jadwal->guru_nip))
+            ->post(route('presensi-jurnal.store', $jurnal), [
+                'presensi' => [['siswa_nis' => $nis, 'status' => $status]],
+            ])
+            ->assertRedirect(route('jurnal.show', $jurnal));
     }
 }

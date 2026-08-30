@@ -32,7 +32,7 @@ class JurnalController extends Controller
 
         $jurnals = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            ->denganPresensiHarian()
+            ->denganPresensi()
             ->when($user->isGuru(), fn ($q) => $q->diampu($user->nip))
             ->when($user->isSiswa(), fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $user->kelas_id)))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cariTeks($q))

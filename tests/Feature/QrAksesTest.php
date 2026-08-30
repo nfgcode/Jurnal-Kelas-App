@@ -61,7 +61,7 @@ class QrAksesTest extends TestCase
             ->get("/qr/{$kelas->qr_token}")
             ->assertOk()
             ->assertSee($kelas->nama_kelas)
-            ->assertSee('Isi Jurnal', false);
+            ->assertSee('Isi Presensi', false);
     }
 
     public function test_the_qr_page_is_guru_only(): void

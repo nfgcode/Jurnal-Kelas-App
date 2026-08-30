@@ -5,12 +5,11 @@
 @section('content')
     @php
         $total = array_sum($rekap) ?: 1;
-        $ditandai = array_sum($rekap);
     @endphp
 
     <x-page-head
         title="Presensi Harian"
-        :sub="collect([$kelas->nama_kelas, $tanggal->translatedFormat('l, j F Y'), $pengisi ? 'diisi oleh ' . $pengisi->nama : null])->filter()->join(' · ')">
+        :sub="collect([$kelas->nama_kelas, $tanggal->translatedFormat('l, j F Y'), 'rekap dari ' . $pertemuan->count() . ' mata pelajaran'])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">← Rekap Presensi</a>
 
         <form method="GET" class="d-inline-block">
@@ -18,12 +17,15 @@
                    onchange="this.form.submit()" aria-label="Pilih tanggal">
         </form>
 
-        @if ($bolehIsi)
-            <a class="btn-hifi" href="{{ route('presensi-harian.edit', [$kelas, 'tanggal' => $tanggal->toDateString()]) }}">
-                {{ $ditandai ? 'Perbarui Presensi' : 'Isi Presensi' }}
-            </a>
-        @endif
     </x-page-head>
+
+    <p class="field__hint mb-2">
+        <x-ikon nama="info-circle" />
+        Halaman ini adalah <strong>rekap</strong>. Presensi dicatat per mata pelajaran oleh guru
+        pengajarnya; status harian di bawah diambil dari catatan paling berat hari itu — bila seorang
+        siswa alpa di satu jam pelajaran, harinya tercatat alpa. Untuk mengubah, buka mata pelajaran
+        yang bersangkutan.
+    </p>
 
     <div class="grid-row grid-row--4">
         <x-stat label="Hadir" :value="$rekap['hadir']" :caption="round($rekap['hadir'] / $total * 100) . '% dari kelas'" />
@@ -72,7 +74,8 @@
                     @empty
                         <tr>
                             <td colspan="5" class="empty-state">
-                                Presensi kelas ini belum diisi untuk {{ $tanggal->translatedFormat('j F Y') }}.
+                                Belum ada guru yang menandai presensi kelas ini pada
+                                {{ $tanggal->translatedFormat('j F Y') }}.
                             </td>
                         </tr>
                     @endforelse
@@ -86,8 +89,45 @@
         </x-slot:foot>
     </x-card>
 
+    <x-card title="Presensi per Mata Pelajaran" :meta="$tanggal->translatedFormat('j F Y')" flush>
+        <div class="tbl-wrap">
+            <table class="tbl">
+                <thead>
+                    <tr><th>Jam</th><th>Mata Pelajaran</th><th>Guru</th><th>Ditandai</th><th class="is-num">Aksi</th></tr>
+                </thead>
+                <tbody>
+                    @forelse ($pertemuan as $jurnal)
+                        <tr>
+                            <td class="is-muted is-nowrap">JP {{ $jurnal->jadwal?->jpLabel() }}</td>
+                            <td class="is-strong">{{ $jurnal->jadwal?->mataPelajaran?->nama ?? '—' }}</td>
+                            <td class="is-muted">{{ $jurnal->jadwal?->guru?->nama ?? '—' }}</td>
+                            <td>
+                                @if ($jurnal->jumlah_presensi > 0)
+                                    <x-chip tone="green" :label="$jurnal->jumlah_presensi . ' siswa'" />
+                                @else
+                                    <x-chip tone="neutral" label="Belum ditandai" />
+                                @endif
+                            </td>
+                            <td class="is-num">
+                                @can('view', $jurnal)
+                                    <a class="auth__link" href="{{ route('jurnal.show', $jurnal) }}">Lihat →</a>
+                                @endcan
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                Tidak ada pertemuan tercatat untuk kelas ini pada tanggal tersebut.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-card>
+
     @if ($riwayat->isNotEmpty())
-        <x-card title="Riwayat Pengisian" meta="Terbaru di atas" flush>
+        <x-card title="Riwayat Perubahan Rekap" meta="Terbaru di atas" flush>
             <div class="tbl-wrap">
                 <table class="tbl">
                     <thead>

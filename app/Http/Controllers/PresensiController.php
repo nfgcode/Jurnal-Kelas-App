@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Jadwal;
+use App\Models\Jurnal;
 use App\Models\Kelas;
+use App\Models\Presensi;
 use App\Models\PresensiHarian;
 use App\Models\User;
 use App\Support\Halaman;
@@ -14,14 +16,19 @@ use App\Support\Urutan;
 use App\Support\XlsxExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Reading student attendance.
  *
- * Attendance is filed once a day per class by the ketua kelas (see
- * {@see PresensiHarianController}); everything here only reads it back — the
+ * Attendance is marked lesson by lesson by the guru who taught it (see
+ * {@see PresensiJurnalController}); everything here only reads it back — the
  * class-by-day recap a guru or admin works from, a student's own record, and
  * the Excel export a guru downloads per day or per month.
+ *
+ * The recap works from the day-level rollup those rosters derive into, so a
+ * student counts once per school day however many lessons that day held. The
+ * per-subject detail is one click away on each meeting's journal.
  */
 class PresensiController extends Controller
 {
@@ -33,8 +40,8 @@ class PresensiController extends Controller
     {
         $user = $request->user();
 
-        // A regular student's own record. A ketua kelas gets the class recap
-        // instead — with the button that files today's roll call on it.
+        // A regular student's own record; a ketua kelas gets the class recap,
+        // since they answer for the class rather than only for themselves.
         if ($user->isSiswa() && ! $user->isKetuaKelas()) {
             return $this->rekapSiswa($request, $user);
         }
@@ -218,6 +225,48 @@ class PresensiController extends Controller
     }
 
     /**
+     * Today's lessons for this teacher, each with whether its roster has been
+     * marked — the worklist the recap screen leads with.
+     *
+     * A slot with no journal yet is still listed: the guru marks the roll during
+     * the lesson, often before the class has written its journal, and
+     * {@see PresensiJurnalController::mulai()} opens the record for them.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function pertemuanHariIni(User $user)
+    {
+        $jadwals = Jadwal::with(['kelas', 'mataPelajaran'])
+            ->where('guru_nip', $user->nip)
+            ->where('hari', Ringkasan::hariIni())
+            ->orderBy('jam_ke_mulai')
+            ->get();
+
+        if ($jadwals->isEmpty()) {
+            return collect();
+        }
+
+        $jurnals = Jurnal::whereIn('jadwal_id', $jadwals->pluck('id'))
+            ->whereDate('tanggal', today())
+            ->get()
+            ->keyBy('jadwal_id');
+
+        $jumlah = Presensi::jumlahPerJurnal($jurnals->pluck('id')->all());
+
+        return $jadwals->map(function ($jadwal) use ($jurnals, $jumlah) {
+            $jurnal = $jurnals->get($jadwal->id);
+            $ditandai = $jurnal ? ($jumlah[$jurnal->id] ?? 0) : 0;
+
+            return [
+                'jadwal' => $jadwal,
+                'jurnal' => $jurnal,
+                'ditandai' => $ditandai,
+                'sudah' => $ditandai > 0,
+            ];
+        });
+    }
+
+    /**
      * The student's own attendance: the totals, and the day-by-day history
      * behind them.
      */
@@ -277,9 +326,10 @@ class PresensiController extends Controller
             ->when($kelasIds !== null, fn ($q) => $q->whereIn('id', $kelasIds))
             ->orderBy('nama_kelas')->get();
 
-        // A ketua kelas opens this screen to answer one question — "have I filed
-        // today?" — so the answer is computed here rather than left to a click.
-        $kelasKetua = $user->isKetuaKelas() ? $kelasList->firstWhere('id', $user->kelas_id) : null;
+        // A guru opens this screen to answer one question — "which of today's
+        // lessons still need marking?" — so the answer is computed here rather
+        // than left to a hunt through the timetable.
+        $pertemuanHariIni = $user->isGuru() ? $this->pertemuanHariIni($user) : collect();
 
         return view('presensi.index', [
             'baris' => $baris,
@@ -290,10 +340,8 @@ class PresensiController extends Controller
                 PresensiHarian::query()->when($kelasIds !== null, fn ($q) => $q->whereIn('kelas_id', $kelasIds)),
                 $periode
             ),
-            'kelasKetua' => $kelasKetua,
-            'sudahIsiHariIni' => $kelasKetua
-                ? PresensiHarian::sudahDiisi($kelasKetua->id, today()->toDateString())
-                : false,
+            'pertemuanHariIni' => $pertemuanHariIni,
+            'belumDitandai' => $pertemuanHariIni->where('sudah', false)->count(),
             // Class-days on record in this period — the honest denominator for
             // "how much of the period has been filed". The paginator's own total
             // would move with the class filter; this one is a stable reference.

@@ -53,6 +53,12 @@ class JurnalOtomatisTest extends TestCase
         return $akun;
     }
 
+    /** The class's chair — the only student who may write its journal. */
+    private function ketua(Kelas $kelas): User
+    {
+        return $this->siswa($kelas, true);
+    }
+
     private function mapel(string $nama): MataPelajaran
     {
         $m = new MataPelajaran;
@@ -131,9 +137,9 @@ class JurnalOtomatisTest extends TestCase
     }
 
     /**
-     * The backfill fills journals, never attendance. A day either had a roll
-     * call or it did not — estimating one from a neighbouring lesson would
-     * fabricate exactly the record the daily rule exists to make trustworthy.
+     * The backfill fills journals, never attendance. A meeting either had its
+     * roster marked or it did not — estimating one from a neighbouring lesson
+     * would fabricate exactly the record attendance exists to make trustworthy.
      */
     public function test_backfill_never_invents_student_attendance(): void
     {
@@ -185,13 +191,15 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
+        $ketua = $this->ketua($kelas);
+
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
             'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
         // Without the attestation → rejected, still a system journal.
-        $this->actingAs($guru)->put(route('jurnal.update', $sistem), [
+        $this->actingAs($ketua)->put(route('jurnal.update', $sistem), [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Sebenarnya saya hadir',
@@ -208,22 +216,24 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
+        $ketua = $this->ketua($kelas);
+
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
             'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
-        $this->actingAs($guru)->put(route('jurnal.update', $sistem), [
+        $this->actingAs($ketua)->put(route('jurnal.update', $sistem), [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
-            'materi' => 'Sebenarnya saya hadir dan mengajar',
+            'materi' => 'Guru hadir dan mengajar',
             'kehadiran_guru' => 'hadir',
             'pernyataan' => '1',
         ])->assertRedirect()->assertSessionHas('success');
 
         $segar = $sistem->fresh();
-        $this->assertSame('guru', $segar->diisi_oleh_peran);      // adopted
-        $this->assertSame($guru->id, $segar->diisi_oleh_id);
+        $this->assertSame('siswa', $segar->diisi_oleh_peran);     // adopted by the class
+        $this->assertSame($ketua->id, $segar->diisi_oleh_id);
         $this->assertSame('hadir', $segar->kehadiran_guru_status);
         $this->assertFalse($segar->dibuatSistem());
         $this->assertTrue($segar->dieditSetelahHari());           // edited after the lesson day
@@ -236,11 +246,13 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
+        $ketua = $this->ketua($kelas);
+
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
-        $this->actingAs($guru)
+        $this->actingAs($ketua)
             ->get(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $tanggal]))
             ->assertRedirect(route('jurnal.edit', $sistem));
     }
@@ -252,13 +264,15 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
+        $ketua = $this->ketua($kelas);
+
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
-        // The unique index would accept this pair ('sistem' vs 'guru'), so the
+        // The unique index would accept this pair ('sistem' vs 'siswa'), so the
         // controller has to be the one that refuses a second journal.
-        $this->actingAs($guru)->post('/jurnal', [
+        $this->actingAs($ketua)->post('/jurnal', [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Jurnal kedua',
@@ -361,11 +375,13 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
+        $ketua = $this->ketua($kelas);
+
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
-        $this->actingAs($guru)->postJson('/api/jurnal', [
+        $this->actingAs($ketua)->postJson('/api/jurnal', [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Lewat API',
@@ -391,10 +407,10 @@ class JurnalOtomatisTest extends TestCase
             'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
-        $this->actingAs($guru)->putJson("/api/jurnal/{$sistem->public_id}", [
+        $this->actingAs($this->ketua($kelas))->putJson("/api/jurnal/{$sistem->public_id}", [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
-            'materi' => 'Sebenarnya saya hadir',
+            'materi' => 'Guru sebenarnya hadir',
             'kehadiran_guru_status' => 'hadir',
         ])->assertStatus(422)->assertJsonValidationErrors('pernyataan');
 
@@ -413,36 +429,39 @@ class JurnalOtomatisTest extends TestCase
             'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
-        $this->actingAs($guru)->putJson("/api/jurnal/{$sistem->public_id}", [
+        $ketua = $this->ketua($kelas);
+
+        $this->actingAs($ketua)->putJson("/api/jurnal/{$sistem->public_id}", [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
-            'materi' => 'Sebenarnya saya hadir dan mengajar',
+            'materi' => 'Guru hadir dan mengajar',
             'kehadiran_guru_status' => 'hadir',
             'pernyataan' => true,
         ])->assertOk();
 
         $segar = $sistem->fresh();
-        $this->assertSame('guru', $segar->diisi_oleh_peran);
-        $this->assertSame($guru->id, $segar->diisi_oleh_id);
+        $this->assertSame('siswa', $segar->diisi_oleh_peran);
+        $this->assertSame($ketua->id, $segar->diisi_oleh_id);
         $this->assertFalse($segar->dibuatSistem());
         // The marker is set by the model event, so the API path carries it too.
         $this->assertTrue($segar->dieditSetelahHari());
     }
 
-    public function test_api_update_cannot_move_a_journal_onto_another_gurus_slot(): void
+    public function test_api_update_cannot_move_a_journal_onto_another_class(): void
     {
         $guruA = $this->guru();
         $guruB = $this->guru();
-        $kelas = $this->kelas();
+        $kelasA = $this->kelas();
+        $kelasB = $this->kelas();
         $tanggal = $this->tanggalLampau();
 
-        $jadwalA = $this->jadwal($kelas, $this->mapel('Matematika'), $guruA, $tanggal, 1);
-        $jadwalB = $this->jadwal($kelas, $this->mapel('Fisika'), $guruB, $tanggal, 3);
+        $jadwalA = $this->jadwal($kelasA, $this->mapel('Matematika'), $guruA, $tanggal, 1);
+        $jadwalB = $this->jadwal($kelasB, $this->mapel('Fisika'), $guruB, $tanggal, 3);
         $jurnal = $this->jurnal($jadwalA, $tanggal);
 
         // jadwal_id is editable, so the destination slot must be re-authorized —
-        // otherwise A's journal lands on B's meeting while still crediting A.
-        $this->actingAs($guruA)->putJson("/api/jurnal/{$jurnal->public_id}", [
+        // otherwise A's journal lands on another class's meeting.
+        $this->actingAs($this->ketua($kelasA))->putJson("/api/jurnal/{$jurnal->public_id}", [
             'jadwal_id' => $jadwalB->id,
             'tanggal' => $tanggal,
             'materi' => 'Dipindah diam-diam',
@@ -460,7 +479,7 @@ class JurnalOtomatisTest extends TestCase
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
         $jurnal = $this->jurnal($jadwal, $tanggal);
 
-        $this->actingAs($guru)->putJson("/api/jurnal/{$jurnal->public_id}", [
+        $this->actingAs($this->ketua($kelas))->putJson("/api/jurnal/{$jurnal->public_id}", [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Diperbarui biasa',
@@ -479,10 +498,11 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
         $jurnal = $this->jurnal($jadwal, $tanggal);
+        $ketua = $this->ketua($kelas);
 
         $this->assertFalse($jurnal->dieditSetelahHari());
 
-        $this->actingAs($guru)->put(route('jurnal.update', $jurnal), [
+        $this->actingAs($ketua)->put(route('jurnal.update', $jurnal), [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Materi diperbaiki belakangan',
@@ -491,7 +511,7 @@ class JurnalOtomatisTest extends TestCase
 
         $this->assertTrue($jurnal->fresh()->dieditSetelahHari());
 
-        $this->actingAs($guru)->get(route('jurnal.show', $jurnal))
+        $this->actingAs($ketua)->get(route('jurnal.show', $jurnal))
             ->assertSee('Diedit setelah hari-H');
     }
 

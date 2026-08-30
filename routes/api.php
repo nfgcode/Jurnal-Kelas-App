@@ -52,12 +52,12 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     // Attendance percentages (stored functions)
     Route::get('statistik/kehadiran', [StatistikController::class, 'kehadiran']);
 
-    // Presensi — a roster is a class-day, so it is addressed by class and
-    // ?tanggal=, not by a journal. Writing is gated by
-    // KelasPolicy::isiPresensiHarian (the class's ketua kelas, or admin).
+    // Presensi — reads are a class-day (`presensi/{kelas}?tanggal=`), the rollup
+    // every recap works from. Writing is per meeting, gated by
+    // JurnalPolicy::isiPresensi (the guru who teaches it, or admin).
     Route::get('presensi', [PresensiController::class, 'index']);
     Route::get('presensi/{kelas}', [PresensiController::class, 'show']);
-    Route::post('presensi/{kelas}', [PresensiController::class, 'store']);
+    Route::post('jurnal/{jurnal}/presensi', [PresensiController::class, 'store']);
 
     // Admin-only management
     Route::middleware('role:admin')->group(function () {

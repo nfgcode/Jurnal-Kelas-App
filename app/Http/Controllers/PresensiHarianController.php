@@ -2,31 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Jurnal;
 use App\Models\Kelas;
+use App\Models\Presensi;
 use App\Models\PresensiHarian;
 use App\Models\PresensiHarianLog;
 use App\Support\Ringkasan;
-use App\Support\SimpanPresensiHarian;
+use App\Support\SimpanPresensiJurnal;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
 /**
- * Student attendance, taken once a day for a whole class.
+ * A class's attendance seen as a whole school day — read-only.
  *
- * The ketua kelas is the only person who files it, and only for their own class
- * and only for today — they are the one who can actually see who is in the room,
- * and pinning the fill to the current day is what keeps the record a roll call
- * rather than a reconstruction. Admin can correct any class on any date.
- *
- * A guru never lands here to write: they read the recap and export it from
- * {@see PresensiController}.
+ * Nothing writes this screen's record directly. Attendance is marked lesson by
+ * lesson by the teacher who taught it ({@see PresensiJurnalController}), and the
+ * day shown here is derived from those rosters by
+ * {@see SimpanPresensiJurnal}: one row per student, carrying the
+ * most consequential mark the day produced. Somebody asking "was this student in
+ * school on the 3rd?" gets one answer; somebody asking "were they in Fisika?"
+ * opens the lesson.
  */
 class PresensiHarianController extends Controller
 {
     /**
-     * One class's roster for one day, read-only — who was marked what, by whom.
+     * One class's day, read-only — who ended up marked what, and the trail of
+     * every lesson-save that shaped it.
      */
     public function show(Request $request, Kelas $kelas)
     {
@@ -54,88 +57,34 @@ class PresensiHarianController extends Controller
                 ->whereDate('tanggal', $tanggal)
                 ->orderByDesc('created_at')
                 ->get(),
-            'bolehIsi' => Gate::allows('isiPresensiHarian', $kelas) && $this->tanggalTerbuka($request, $tanggal),
+            // The lessons this day is built from, so a reader can go from the
+            // rollup to the subject that produced a mark.
+            'pertemuan' => $this->pertemuanHari($kelas, $tanggal),
         ]);
     }
 
     /**
-     * The roll-call form: every student of the class, with today's roster
-     * pre-selected when it has already been filed.
+     * The class's meetings on that date, each with how many students its teacher
+     * marked — the per-subject detail behind the day's single row per student.
+     *
+     * @return Collection<int, Jurnal>
      */
-    public function edit(Request $request, Kelas $kelas)
+    private function pertemuanHari(Kelas $kelas, string $tanggal)
     {
-        Gate::authorize('isiPresensiHarian', $kelas);
-
-        $tanggal = $this->tanggal($request);
-
-        // A ketua files today's roll call, not last week's. Sending them to the
-        // read-only view rather than erroring keeps the "what happened on the
-        // 3rd?" click working — they just cannot rewrite it.
-        if (! $this->tanggalTerbuka($request, $tanggal)) {
-            return redirect()
-                ->route('presensi-harian.show', [$kelas, 'tanggal' => $tanggal])
-                ->with('error', 'Presensi hanya dapat diisi untuk hari ini. Hubungi admin untuk mengoreksi tanggal lain.');
-        }
-
-        $siswaList = $kelas->siswa()->orderBy('nama')->get();
-
-        $tersimpan = PresensiHarian::where('kelas_id', $kelas->id)
+        $jurnals = Jurnal::with(['jadwal.mataPelajaran', 'jadwal.guru'])
+            ->whereHas('jadwal', fn ($q) => $q->where('kelas_id', $kelas->id))
             ->whereDate('tanggal', $tanggal)
             ->get()
-            ->keyBy('siswa_nis');
+            ->sortBy(fn ($j) => $j->jadwal?->jam_ke_mulai ?? 0)
+            ->values();
 
-        return view('presensi-harian.isi', [
-            'kelas' => $kelas,
-            'tanggal' => Carbon::parse($tanggal),
-            'siswaList' => $siswaList,
-            'tersimpan' => $tersimpan,
-            // Distinguishes "isi presensi" from "perbarui presensi" in the UI, and
-            // warns that the day already has a record — the once-a-day rule made
-            // visible rather than only enforced by the unique index.
-            'sudahDiisi' => $tersimpan->isNotEmpty(),
-        ]);
-    }
+        $jumlah = Presensi::jumlahPerJurnal($jurnals->pluck('id')->all());
 
-    /**
-     * Replace the class's whole roster for the day. Idempotent: re-submitting
-     * the form overwrites the day rather than adding a second roll call, which
-     * is the "once a day" rule the unique index also enforces underneath.
-     */
-    public function store(Request $request, Kelas $kelas)
-    {
-        Gate::authorize('isiPresensiHarian', $kelas);
-
-        $tanggal = $this->tanggal($request);
-
-        if (! $this->tanggalTerbuka($request, $tanggal)) {
-            return back()->with('error', 'Presensi hanya dapat diisi untuk hari ini.');
-        }
-
-        // Attendance may only be recorded for students actually in this class, so
-        // a crafted siswa_nis (another class's student, or a teacher) is rejected.
-        $roster = $kelas->siswa()->pluck('nis')->all();
-
-        $validated = $request->validate([
-            'presensi' => ['required', 'array', 'min:1'],
-            'presensi.*.siswa_nis' => ['required', Rule::in($roster)],
-            'presensi.*.status' => ['required', Rule::in(PresensiHarian::STATUS)],
-            'presensi.*.keterangan' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        SimpanPresensiHarian::simpan($kelas, $tanggal, $validated['presensi'], $request->user());
-
-        return redirect()
-            ->route('presensi-harian.show', [$kelas, 'tanggal' => $tanggal])
-            ->with('success', 'Presensi '.$kelas->nama_kelas.' tanggal '
-                .Carbon::parse($tanggal)->translatedFormat('j F Y').' tersimpan.');
+        return $jurnals->each(fn ($j) => $j->setAttribute('jumlah_presensi', $jumlah[$j->id] ?? 0));
     }
 
     /**
      * The date the screen is about, defaulting to today.
-     *
-     * input(), not query(): the read screens pass the date in the URL but the
-     * form posts it in the body, and reading only the query string made a save
-     * for any other date land silently on today instead.
      */
     private function tanggal(Request $request): string
     {
@@ -146,15 +95,5 @@ class PresensiHarianController extends Controller
         return $request->filled('tanggal')
             ? Carbon::parse($request->input('tanggal'))->toDateString()
             : today()->toDateString();
-    }
-
-    /**
-     * Whether $tanggal may still be written. A ketua kelas gets today only —
-     * one roll call, on the day it describes. Admin is correcting the record
-     * after the fact by definition, so no date is closed to them.
-     */
-    private function tanggalTerbuka(Request $request, string $tanggal): bool
-    {
-        return $request->user()->isAdmin() || $tanggal === today()->toDateString();
     }
 }

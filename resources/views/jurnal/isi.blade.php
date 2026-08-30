@@ -13,7 +13,7 @@
     @endphp
 
     <x-page-head
-        :title="$jurnal ? 'Ubah Jurnal Mengajar' : 'Isi Jurnal Mengajar'"
+        :title="$jurnal ? 'Ubah Jurnal Kelas' : 'Isi Jurnal Kelas'"
         :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, now()->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
         <span class="btn-hifi btn-hifi--ghost">Draf tersimpan otomatis</span>
@@ -65,13 +65,14 @@
                     </div>
                 </x-field>
 
-                {{-- Attendance is recorded per student on the presensi screen,
-                     so this block reports the tally rather than editing it. --}}
+                {{-- Attendance belongs to the meeting's teacher and is marked on
+                     their own screen, so this block reports the tally rather than
+                     editing it. --}}
                 <div>
                     <div class="d-flex align-items-baseline justify-content-between mb-2">
-                        <span class="field__label">Rekap Kehadiran Siswa</span>
+                        <span class="field__label">Presensi Pertemuan Ini</span>
                         <span class="field__hint">
-                            {{ $jumlahSiswa }} siswa terdaftar · {{ max(0, $jumlahSiswa - $ditandai) }} belum ditandai
+                            {{ $ditandai }} dari {{ $jumlahSiswa }} siswa ditandai guru pengajar
                         </span>
                     </div>
 
@@ -96,12 +97,12 @@
                     @if ($kelas)
                         <a class="auth__link d-inline-block mt-2"
                            href="{{ route('presensi-harian.show', [$kelas, 'tanggal' => $tanggalAktif->toDateString()]) }}">
-                            Lihat presensi harian kelas →
+                            Lihat rekap presensi sehari →
                         </a>
                     @endif
 
                     <span class="field__hint d-block mt-2">
-                        Presensi siswa diisi sekali sehari oleh ketua kelas, bukan per pertemuan.
+                        Presensi dicatat per mata pelajaran oleh guru pengajarnya, bukan lewat jurnal.
                     </span>
                 </div>
 
@@ -168,7 +169,7 @@
                 @endforeach
             </x-card>
 
-            <x-card title="Ringkasan Presensi Siswa" :meta="$jumlahSiswa . ' siswa'">
+            <x-card title="Ringkasan Presensi" :meta="$ditandai . ' dari ' . $jumlahSiswa . ' siswa'">
                 <x-stack-bar :hadir="$presensi['hadir']" :sakit="$presensi['sakit']"
                              :izin="$presensi['izin']" :alpa="$presensi['alpa']" />
 

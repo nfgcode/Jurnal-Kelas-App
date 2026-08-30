@@ -4,21 +4,25 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PresensiHarianResource;
+use App\Http\Resources\PresensiResource;
 use App\Models\Jadwal;
+use App\Models\Jurnal;
 use App\Models\Kelas;
+use App\Models\Presensi;
 use App\Models\PresensiHarian;
-use App\Support\SimpanPresensiHarian;
+use App\Support\SimpanPresensiJurnal;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 /**
- * Attendance over the API, in the same shape the web uses: one roll call per
- * class per day.
+ * Attendance over the API, in the same shape the web uses.
  *
- * The endpoints are addressed by class and date rather than by journal, because
- * that is what a roster is now — see {@see PresensiHarian}.
+ * Reading is addressed by class and date, because that is the question a recap
+ * asks: one row per student per school day, derived from the day's lessons.
+ * Writing is addressed by journal, because that is where a roster is actually
+ * made — one per meeting, by the guru who taught it. See {@see Presensi}.
  */
 class PresensiController extends Controller
 {
@@ -78,23 +82,21 @@ class PresensiController extends Controller
     }
 
     /**
-     * Replace a class's whole roster for a day (idempotent), mirroring the web
-     * form. Only the class's ketua kelas and admin may write it, and a ketua
-     * only for today — see KelasPolicy::isiPresensiHarian.
+     * Replace one meeting's whole roster (idempotent), mirroring the web form.
+     *
+     * Only the guru timetabled to teach the meeting may write it, and admin —
+     * see JurnalPolicy::isiPresensi. Saving also re-derives the class's day-level
+     * record from every lesson it holds.
      */
-    public function store(Request $request, Kelas $kelas)
+    public function store(Request $request, Jurnal $jurnal)
     {
-        Gate::authorize('isiPresensiHarian', $kelas);
+        Gate::authorize('isiPresensi', $jurnal);
 
-        $user = $request->user();
+        $kelas = $jurnal->jadwal?->kelas;
 
-        $tanggal = $request->filled('tanggal')
-            ? Carbon::parse($request->input('tanggal'))->toDateString()
-            : today()->toDateString();
-
-        if (! $user->isAdmin() && $tanggal !== today()->toDateString()) {
+        if ($kelas === null) {
             return response()->json([
-                'message' => 'Presensi hanya dapat diisi untuk hari ini.',
+                'message' => 'Pertemuan ini tidak terhubung ke kelas mana pun.',
             ], 422);
         }
 
@@ -102,20 +104,16 @@ class PresensiController extends Controller
         $roster = $kelas->siswa()->pluck('nis')->all();
 
         $validated = $request->validate([
-            'tanggal' => ['nullable', 'date'],
             'presensi' => ['required', 'array', 'min:1'],
             'presensi.*.siswa_nis' => ['required', Rule::in($roster)],
-            'presensi.*.status' => ['required', Rule::in(PresensiHarian::STATUS)],
+            'presensi.*.status' => ['required', Rule::in(Presensi::STATUS)],
             'presensi.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);
 
-        SimpanPresensiHarian::simpan($kelas, $tanggal, $validated['presensi'], $user);
+        SimpanPresensiJurnal::simpan($jurnal, $validated['presensi'], $request->user());
 
-        return PresensiHarianResource::collection(
-            PresensiHarian::with('siswa')
-                ->where('kelas_id', $kelas->id)
-                ->whereDate('tanggal', $tanggal)
-                ->get()
+        return PresensiResource::collection(
+            Presensi::with('siswa')->where('jurnal_id', $jurnal->id)->get()
         );
     }
 }

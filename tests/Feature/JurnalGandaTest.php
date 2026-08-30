@@ -13,16 +13,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * A meeting may carry at most two journals — the guru's own and the one a ketua
- * kelas files on their behalf — and never two from the same side. The lesson was
- * taught once, so its attendance roster lives on exactly one of them, and
- * meeting-based figures must count the meeting once.
+ * A meeting may carry at most two journals — the class's own, filed by its ketua
+ * kelas, and an administrative one — and never two from the same side. The
+ * lesson was taught once, so meeting-based figures must count it once however
+ * many journals describe it.
+ *
+ * A guru writes no journal at all now; the admin stands in for that side here,
+ * which is the only way a `guru`-side row is created any more.
  */
 class JurnalGandaTest extends TestCase
 {
     use RefreshDatabase;
 
     private Jadwal $jadwal;
+
+    private User $admin;
 
     private User $guru;
 
@@ -38,6 +43,7 @@ class JurnalGandaTest extends TestCase
         $this->seed(DemoSeeder::class);
 
         $this->jadwal = Jadwal::with('kelas')->firstOrFail();
+        $this->admin = User::where('role', 'admin')->firstOrFail();
         $this->guru = $this->akunGuru($this->jadwal->guru_nip);
         $this->ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
 
@@ -63,15 +69,23 @@ class JurnalGandaTest extends TestCase
             ->count();
     }
 
-    public function test_a_guru_cannot_file_two_journals_for_one_meeting(): void
+    public function test_an_admin_cannot_file_two_journals_for_one_meeting(): void
     {
-        $this->kirim($this->guru)->assertRedirect();
+        $this->kirim($this->admin)->assertRedirect();
         $this->assertSame(1, $this->jumlahJurnal());
 
-        $this->kirim($this->guru, ['materi' => 'Kirim kedua'])
+        $this->kirim($this->admin, ['materi' => 'Kirim kedua'])
             ->assertSessionHasErrors('jadwal_id');
 
-        $this->assertSame(1, $this->jumlahJurnal(), 'Kiriman kedua guru seharusnya ditolak.');
+        $this->assertSame(1, $this->jumlahJurnal(), 'Kiriman kedua seharusnya ditolak.');
+    }
+
+    /** The class no longer shares authorship with the teacher: they have none. */
+    public function test_a_guru_cannot_file_a_journal_at_all(): void
+    {
+        $this->kirim($this->guru)->assertForbidden();
+
+        $this->assertSame(0, $this->jumlahJurnal());
     }
 
     public function test_a_ketua_cannot_file_two_journals_for_one_meeting(): void
@@ -83,9 +97,9 @@ class JurnalGandaTest extends TestCase
         $this->assertSame(1, $this->jumlahJurnal());
     }
 
-    public function test_a_guru_and_a_ketua_may_each_file_one_for_the_same_meeting(): void
+    public function test_an_admin_and_a_ketua_may_each_file_one_for_the_same_meeting(): void
     {
-        $this->kirim($this->guru)->assertRedirect();
+        $this->kirim($this->admin)->assertRedirect();
         $this->kirim($this->ketua, ['materi' => 'Versi ketua'])->assertRedirect();
 
         $this->assertSame(2, $this->jumlahJurnal());
@@ -98,7 +112,7 @@ class JurnalGandaTest extends TestCase
 
     public function test_the_database_itself_refuses_a_duplicate(): void
     {
-        $this->kirim($this->guru);
+        $this->kirim($this->admin);
 
         // The controller check can be lost to a concurrent submit, so the unique
         // index is the real guarantee.
@@ -108,16 +122,16 @@ class JurnalGandaTest extends TestCase
             'jadwal_id' => $this->jadwal->id,
             'tanggal' => $this->tanggal,
             'materi' => 'Tembus langsung',
-            'diisi_oleh_id' => $this->guru->id,
+            'diisi_oleh_id' => $this->admin->id,
             'diisi_oleh_peran' => 'guru',
         ]);
     }
 
     public function test_the_api_rejects_a_duplicate_with_422(): void
     {
-        $this->kirim($this->guru);
+        $this->kirim($this->admin);
 
-        $this->actingAs($this->guru)
+        $this->actingAs($this->admin)
             ->postJson('/api/jurnal', [
                 'jadwal_id' => $this->jadwal->id,
                 'tanggal' => $this->tanggal,
@@ -131,36 +145,39 @@ class JurnalGandaTest extends TestCase
     }
 
     /**
-     * A meeting may still carry two journals (the guru's and the ketua's), but
-     * attendance is no longer attached to either: it is one roll call for the
-     * class's whole day. Filing it twice must land on the same single record,
-     * whichever journal the day happens to hold.
+     * A meeting may carry two journals, but only one of them is the record the
+     * teacher marks against — the class's own, if it exists. Whichever the guru
+     * is handed, the class's day must still end up with one row per student.
      */
-    public function test_only_one_attendance_roster_exists_per_class_day(): void
+    public function test_a_doubled_meeting_still_derives_one_row_per_student(): void
     {
-        $this->kirim($this->guru);
+        $this->kirim($this->admin);
         $this->kirim($this->ketua, ['materi' => 'Versi ketua']);
 
         $kelas = $this->jadwal->kelas;
         $roster = $kelas->siswa()->pluck('nis');
-        // The journals above sit a month ahead to stay clear of seeded data, but
-        // a ketua may only ever file today's roll call.
-        $hariIni = now()->toDateString();
 
-        $payload = ['tanggal' => $hariIni, 'presensi' => []];
+        $jurnals = Jurnal::where('jadwal_id', $this->jadwal->id)
+            ->whereDate('tanggal', $this->tanggal)
+            ->get();
+
+        $this->assertCount(2, $jurnals);
+
+        $payload = ['presensi' => []];
         foreach ($roster as $i => $id) {
             $payload['presensi'][$i] = ['siswa_nis' => $id, 'status' => 'hadir'];
         }
 
-        $this->actingAs($this->ketua)
-            ->post(route('presensi-harian.store', $kelas), $payload)
-            ->assertRedirect(route('presensi-harian.show', [$kelas, 'tanggal' => $hariIni]));
-
-        // A second save replaces the day rather than adding a parallel set.
-        $this->actingAs($this->ketua)->post(route('presensi-harian.store', $kelas), $payload);
+        // Both journals describe the same lesson, so marking both is possible and
+        // must not double the day.
+        foreach ($jurnals as $jurnal) {
+            $this->actingAs($this->guru)
+                ->post(route('presensi-jurnal.store', $jurnal), $payload)
+                ->assertRedirect(route('jurnal.show', $jurnal));
+        }
 
         $this->assertSame($roster->count(), PresensiHarian::where('kelas_id', $kelas->id)
-            ->whereDate('tanggal', $hariIni)->count());
+            ->whereDate('tanggal', $this->tanggal)->count());
     }
 
     public function test_a_doubled_meeting_is_counted_once(): void
@@ -178,7 +195,7 @@ class JurnalGandaTest extends TestCase
 
         $sebelum = $pertemuanKelas();
 
-        $this->kirim($this->guru);
+        $this->kirim($this->admin);
         $satu = $pertemuanKelas();
 
         $this->kirim($this->ketua, ['materi' => 'Versi ketua']);

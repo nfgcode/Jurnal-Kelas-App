@@ -11,38 +11,64 @@
         title="Rekap Presensi Siswa"
         :sub="number_format($totalHari, 0, ',', '.') . ' hari tercatat · rata-rata ' . round($rekap['hadir'] / $total * 100) . '% hadir · ' . $periode->label()">
         <x-periode-filter :periode="$periode" />
-
-        @if ($kelasKetua)
-            <a class="btn-hifi" href="{{ route('presensi-harian.edit', $kelasKetua) }}">
-                {{ $sudahIsiHariIni ? 'Perbarui Presensi Hari Ini' : 'Isi Presensi Hari Ini' }}
-            </a>
-        @endif
     </x-page-head>
 
-    @if ($kelasKetua)
-        {{-- The ketua kelas has exactly one duty on this screen; say plainly
-             whether it is done, rather than leaving them to read the table. --}}
-        <div class="grid-row">
-            <x-card :title="'Presensi ' . $kelasKetua->nama_kelas . ' hari ini'"
-                    :meta="now()->translatedFormat('l, j F Y')">
-                @if ($sudahIsiHariIni)
-                    <p class="field__hint">
-                        <x-chip tone="green" label="Sudah diisi" />
-                        Presensi hari ini sudah tercatat. Selama masih hari ini Anda bisa memperbaikinya;
-                        setelah berganti hari, koreksi dilakukan oleh admin.
-                    </p>
-                    <a class="auth__link d-inline-block mt-2"
-                       href="{{ route('presensi-harian.show', $kelasKetua) }}">Lihat presensi hari ini →</a>
+    @if ($pertemuanHariIni->isNotEmpty())
+        {{-- A guru opens this screen with one job: mark the lessons they taught
+             today. Each is its own subject, so each gets its own row and its own
+             button rather than one "isi presensi" for the whole day. --}}
+        <x-card title="Pertemuan Anda Hari Ini"
+                :meta="now()->translatedFormat('l, j F Y')" flush>
+            <x-slot:actions>
+                @if ($belumDitandai)
+                    <x-chip tone="red" :label="$belumDitandai . ' belum ditandai'" />
                 @else
-                    <p class="field__hint">
-                        <x-chip tone="red" label="Belum diisi" />
-                        Presensi kelas diisi <strong>satu kali</strong> untuk seluruh hari.
-                    </p>
-                    <a class="auth__link d-inline-block mt-2"
-                       href="{{ route('presensi-harian.edit', $kelasKetua) }}">Isi presensi sekarang →</a>
+                    <x-chip tone="green" label="Semua sudah ditandai" />
                 @endif
-            </x-card>
-        </div>
+            </x-slot:actions>
+
+            <div class="tbl-wrap">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th>Jam</th>
+                            <th>Kelas</th>
+                            <th>Mata Pelajaran</th>
+                            <th>Presensi</th>
+                            <th class="is-num">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pertemuanHariIni as $item)
+                            <tr>
+                                <td class="is-muted is-nowrap">JP {{ $item['jadwal']->jpLabel() }}</td>
+                                <td class="is-strong">{{ $item['jadwal']->kelas?->nama_kelas }}</td>
+                                <td>{{ $item['jadwal']->mataPelajaran?->nama }}</td>
+                                <td>
+                                    @if ($item['sudah'])
+                                        <x-chip tone="green" :label="$item['ditandai'] . ' siswa ditandai'" />
+                                    @else
+                                        <x-chip tone="neutral" label="Belum ditandai" />
+                                    @endif
+                                </td>
+                                <td class="is-num">
+                                    {{-- POST, not a link: opening the roster may have to create the
+                                         meeting's record when the class has not written its journal yet. --}}
+                                    <form method="POST" action="{{ route('presensi-jurnal.mulai') }}" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="jadwal_id" value="{{ $item['jadwal']->id }}">
+                                        <input type="hidden" name="tanggal" value="{{ now()->toDateString() }}">
+                                        <button class="btn-hifi {{ $item['sudah'] ? 'btn-hifi--ghost' : '' }}" type="submit">
+                                            {{ $item['sudah'] ? 'Perbarui' : 'Isi Presensi' }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </x-card>
     @endif
 
     <div class="grid-row grid-row--4">

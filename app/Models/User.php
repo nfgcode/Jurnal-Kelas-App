@@ -92,7 +92,9 @@ class User extends Authenticatable
     }
 
     /**
-     * The student allowed to fill the class journal on the teacher's behalf.
+     * The student who writes the class journal. Since the roles were split, this
+     * is the journal's author outright rather than a stand-in for the teacher —
+     * the teacher's own half of a meeting's record is its attendance roster.
      */
     public function isKetuaKelas(): bool
     {
@@ -209,7 +211,8 @@ class User extends Authenticatable
     }
 
     /**
-     * The archived per-meeting attendance for this student.
+     * The per-meeting attendance for this student — one row per lesson, marked
+     * by that lesson's teacher.
      */
     public function presensis(): HasMany
     {
@@ -217,8 +220,8 @@ class User extends Authenticatable
     }
 
     /**
-     * This student's daily attendance — the live record. {@see presensis()}
-     * above is the archived per-meeting one, kept for history only.
+     * This student's day-level attendance — one row per school day, derived
+     * from the per-lesson rosters in {@see presensis()} above.
      */
     public function presensiHarian(): HasMany
     {

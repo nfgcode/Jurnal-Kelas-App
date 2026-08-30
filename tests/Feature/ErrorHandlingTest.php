@@ -116,9 +116,11 @@ class ErrorHandlingTest extends TestCase
     public function test_a_validation_failure_still_returns_to_the_form_with_errors(): void
     {
         $jadwal = Jadwal::firstOrFail();
-        $guru = $this->akunGuru($jadwal->guru_nip);
+        // The journal form belongs to the class, so its ketua is the one who
+        // can reach it and therefore the one who can fail its validation.
+        $ketua = $this->akunSiswaKelas($jadwal->kelas_id, true);
 
-        $this->actingAs($guru)
+        $this->actingAs($ketua)
             ->from('/jurnal/create')
             ->post('/jurnal', [
                 'jadwal_id' => $jadwal->id,

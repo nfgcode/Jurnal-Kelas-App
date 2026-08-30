@@ -36,7 +36,7 @@ class LaporanController extends Controller
 
         // The class's roll call for the journal's date — attendance is taken
         // once a day now, so every lesson of that class reports the same figures.
-        $terisiCount = fn ($query) => $query->denganPresensiHarian();
+        $terisiCount = fn ($query) => $query->denganPresensi();
 
         // Same filtered rows the table shows, as an Excel workbook.
         if ($request->query('ekspor') === 'xlsx') {
@@ -109,7 +109,7 @@ class LaporanController extends Controller
             'q' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $rekapCount = fn ($query) => $query->denganPresensiHarian();
+        $rekapCount = fn ($query) => $query->denganPresensi();
 
         if ($request->query('ekspor') === 'xlsx') {
             return $this->eksporPresensi($rekapCount($this->kueriJurnal($filters, $periode)), $periode);

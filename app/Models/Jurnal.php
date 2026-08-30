@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\DbDriver;
+use App\Support\SimpanPresensiJurnal;
 use App\Support\Urutan;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,15 @@ class Jurnal extends Model
      * A human editing it "adopts" the row, flipping the peran to guru/siswa.
      */
     public const PERAN_SISTEM = 'sistem';
+
+    /**
+     * The `materi` a placeholder journal carries. `materi` is NOT NULL, and a
+     * meeting's record sometimes has to exist before anybody has described it —
+     * the nightly backfill files one for a lesson that ended unjournalled, and a
+     * guru taking the roll opens one when the class has not written theirs yet.
+     * The "Otomatis" status chip comes from the peran, not from this text.
+     */
+    public const MATERI_PLACEHOLDER = 'Diisi otomatis oleh sistem — mohon lengkapi bila perlu.';
 
     /**
      * The table associated with the model.
@@ -76,6 +86,13 @@ class Jurnal extends Model
                 $jurnal->diedit_setelah_hari = true;
             }
         });
+
+        // A deleted meeting takes its roster with it (the FK cascades), so the
+        // class's derived daily record has to be recomputed without it —
+        // otherwise the day would keep reporting marks no lesson stands behind.
+        static::deleted(function (self $jurnal) {
+            SimpanPresensiJurnal::segarkanHarian($jurnal, auth()->user());
+        });
     }
 
     /**
@@ -92,8 +109,12 @@ class Jurnal extends Model
 
     /**
      * Which side of a meeting a journal was written from. A meeting may hold one
-     * journal per side — the guru's own, and the one a ketua kelas files on their
-     * behalf — enforced by the unique index (jadwal_id, tanggal, diisi_oleh_peran).
+     * journal per side — the class's own, filed by its ketua kelas, and an
+     * administrative one — enforced by the unique index
+     * (jadwal_id, tanggal, diisi_oleh_peran).
+     *
+     * A guru writes no journal at all now, so the 'guru' side is only ever
+     * reached by an admin correcting the record.
      */
     public static function peranPengisi(User $user): string
     {
@@ -208,29 +229,25 @@ class Jurnal extends Model
     }
 
     /**
-     * Attach the class's attendance for the journal's own date as the
-     * total_siswa / hadir_count / sakit_count / izin_count / alpa_count aliases
-     * every journal table and export already reads.
+     * Attach the meeting's own attendance as the total_siswa / hadir_count /
+     * sakit_count / izin_count / alpa_count aliases every journal table and
+     * export already reads.
      *
-     * These used to be withCount() over the journal's own presensi rows. A
-     * roster is no longer per meeting, so the figures are pulled from the day's
-     * roll call instead — every lesson a class had on a date reports the same
-     * attendance, which is exactly what taking it once a day means.
+     * Counted from the roster the guru marked for *this* lesson, so two subjects
+     * on the same afternoon report their own figures instead of both echoing one
+     * roll call. A meeting whose teacher has not marked it yet reports zeroes —
+     * which is the honest answer, and what the "belum ditandai" chips render.
      *
-     * DATE() on both sides because MySQL stores `tanggal` as a DATE while SQLite
-     * keeps "Y-m-d H:i:s"; a bare column comparison would silently match nothing
-     * on the test database. No bindings are used, so paginate()'s count query
-     * cannot trip over them.
+     * A correlated subquery rather than withCount() so the caller's own joins,
+     * filters and ordering are untouched. No bindings are used, so paginate()'s
+     * count query cannot trip over them.
      */
-    public function scopeDenganPresensiHarian($query)
+    public function scopeDenganPresensi($query)
     {
         $hitung = function (?string $status) {
-            $filter = $status ? " AND ph.status = '{$status}'" : '';
+            $filter = $status ? " AND p.status = '{$status}'" : '';
 
-            return '(SELECT COUNT(*) FROM presensi_harian ph'
-                .' JOIN jadwal jd ON jd.id = jurnal.jadwal_id'
-                .' WHERE ph.kelas_id = jd.kelas_id'
-                .' AND DATE(ph.tanggal) = DATE(jurnal.tanggal)'.$filter.')';
+            return '(SELECT COUNT(*) FROM presensi p WHERE p.jurnal_id = jurnal.id'.$filter.')';
         };
 
         return $query->selectRaw(
@@ -402,13 +419,13 @@ class Jurnal extends Model
             // "Tepat/Telat" is a SQL predicate, so the chip can be sorted on too.
             'status' => fn ($q, $dir) => $q->orderByRaw(self::ekspresiTerlambat()." {$dir}"),
         ] + ($siswa === null ? [] : [
-            // How this particular student was marked on the lesson's day — the
-            // one roll call the whole day shares. Per-reader, so it only exists
-            // when a student is the one looking.
+            // How this particular student was marked in *this* lesson — the
+            // roster its teacher filled, not the day's rollup. Per-reader, so it
+            // only exists when a student is the one looking.
             'presensi_saya' => fn ($q, $dir) => $q->orderBy(
-                PresensiHarian::select('status')
-                    ->whereRaw('DATE(presensi_harian.tanggal) = DATE(jurnal.tanggal)')
-                    ->where('presensi_harian.siswa_nis', $siswa->nis)
+                Presensi::select('status')
+                    ->whereColumn('presensi.jurnal_id', 'jurnal.id')
+                    ->where('presensi.siswa_nis', $siswa->nis)
                     ->limit(1),
                 $dir
             ),
@@ -467,11 +484,11 @@ class Jurnal extends Model
     }
 
     /**
-     * The archived per-meeting attendance rows this journal used to own.
+     * The meeting's own attendance roster — one row per student, marked by the
+     * guru who taught this lesson.
      *
-     * Nothing writes them any more — a roster is a class-day, not a lesson (see
-     * {@see PresensiHarian}). Kept so the history recorded before that change is
-     * still reachable, and so deleting a journal still cascades it away.
+     * Deleting the journal cascades these away, and the class's derived daily
+     * record is rebuilt without them by the `deleted` hook above.
      */
     public function presensis(): HasMany
     {

@@ -49,9 +49,9 @@ class JurnalResource extends JsonResource
             'jadwal' => new JadwalResource($this->whenLoaded('jadwal')),
             'guru' => new GuruResource($this->whenLoaded('guru')),
             'diisi_oleh' => new UserResource($this->whenLoaded('diisiOleh')),
-            // Attendance is no longer carried by a journal: it is one roll call
-            // per class per day, read from /api/presensi. The per-meeting counts
-            // below still describe the class's attendance on the lesson's date.
+            // The roster itself is not inlined: it is a row per student, fetched
+            // and written at /api/jurnal/{jurnal}/presensi. The counts above are
+            // this meeting's own summary of it.
             'presensi' => null,
         ];
     }

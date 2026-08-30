@@ -113,7 +113,8 @@ class Siswa extends Model
     }
 
     /**
-     * This student's daily attendance — the live record.
+     * This student's day-level attendance — one row per school day, derived
+     * from the per-lesson rosters in {@see presensis()}.
      */
     public function presensiHarian(): HasMany
     {
@@ -121,7 +122,8 @@ class Siswa extends Model
     }
 
     /**
-     * The archived per-meeting attendance, kept for history only.
+     * This student's per-meeting attendance — the record each lesson's teacher
+     * marked, and the one place a per-subject answer can be read.
      */
     public function presensis(): HasMany
     {

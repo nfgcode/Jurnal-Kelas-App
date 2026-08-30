@@ -53,11 +53,11 @@ class RolePagesTest extends TestCase
         $expectations = [
             '/dashboard' => 'Dashboard Guru',
             '/jurnal' => 'Histori Jurnal',
-            '/jurnal/create' => 'Isi Jurnal Mengajar',
-            "/jurnal/{$jurnal->public_id}/edit" => 'Ubah Jurnal Mengajar',
+            // A guru's own write screen is the roster, not the journal.
+            route('presensi-jurnal.edit', $jurnal) => 'Simpan Presensi',
             '/presensi' => 'Rekap Presensi Siswa',
             route('presensi-harian.show', [$this->jadwal->kelas_id, 'tanggal' => $jurnal->tanggal->toDateString()]) => 'Presensi Harian',
-            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa Hari Itu',
+            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa',
         ];
 
         foreach ($expectations as $url => $penanda) {
@@ -76,11 +76,12 @@ class RolePagesTest extends TestCase
             '/dashboard' => 'Dashboard Siswa',
             '/jurnal' => 'Riwayat Jurnal Kelas',
             '/jurnal/create' => 'Mengisi Jurnal Kelas',
-            // A ketua kelas files the class roll call, so /presensi is the class
+            "/jurnal/{$jurnal->public_id}/edit" => 'Ubah Jurnal Kelas',
+            // A ketua kelas answers for the class, so /presensi is the class
             // recap rather than the personal record a regular siswa sees.
             '/presensi' => 'Rekap Presensi Siswa',
-            route('presensi-harian.edit', $this->jadwal->kelas_id) => 'Presensi Hari Ini',
-            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa Hari Itu',
+            route('presensi-harian.show', $this->jadwal->kelas_id) => 'Presensi Harian',
+            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa',
         ];
 
         foreach ($expectations as $url => $penanda) {
@@ -118,8 +119,8 @@ class RolePagesTest extends TestCase
     }
 
     /**
-     * A wali kelas oversees attendance but does not file it, so their screen
-     * must not offer a way in.
+     * A wali kelas oversees attendance but marks none of it — that belongs to
+     * each meeting's own teacher — so their screen must not offer a way in.
      */
     public function test_the_wali_kelas_attendance_screen_offers_no_way_to_fill_it(): void
     {
@@ -130,7 +131,7 @@ class RolePagesTest extends TestCase
         $this->actingAs($wali)
             ->get('/wali-kelas/presensi')
             ->assertOk()
-            ->assertDontSee(route('presensi-harian.edit', $kelas), false);
+            ->assertDontSee(route('presensi-jurnal.mulai'), false);
     }
 
     public function test_the_admin_import_screen_renders(): void
@@ -152,29 +153,23 @@ class RolePagesTest extends TestCase
     }
 
     /**
-     * A guru reports whether work was left behind, and nothing else: no reason
-     * and no free-text keterangan end up on the record.
+     * A guru no longer authors journals at all: their record of a lesson is the
+     * roster. The form and the post are both closed to them.
      */
-    public function test_guru_reports_their_own_attendance_as_ada_tugas(): void
+    public function test_a_guru_cannot_author_a_journal(): void
     {
+        $this->actingAs($this->guru)->get('/jurnal/create')->assertForbidden();
+
         $this->actingAs($this->guru)
             ->post('/jurnal', [
                 'jadwal_id' => $this->jadwal->id,
                 'tanggal' => now()->toDateString(),
                 'materi' => 'Turunan fungsi aljabar',
-                'tugas' => 'Kerjakan LKS halaman 12.',
                 'kehadiran_guru' => 'ada_tugas',
             ])
-            ->assertSessionHasNoErrors();
+            ->assertForbidden();
 
-        $jurnal = Jurnal::latest('id')->firstOrFail();
-
-        $this->assertSame('tidak_hadir', $jurnal->kehadiran_guru_status);
-        $this->assertTrue((bool) $jurnal->kehadiran_guru_ada_tugas);
-        $this->assertNull($jurnal->kehadiran_guru_alasan);
-        $this->assertNull($jurnal->kehadiran_guru_keterangan);
-        $this->assertSame($this->guru->nip, $jurnal->jadwal->guru_nip);
-        $this->assertSame($this->guru->id, $jurnal->diisi_oleh_id);
+        $this->assertDatabaseMissing('jurnal', ['materi' => 'Turunan fungsi aljabar']);
     }
 
     /**
@@ -205,10 +200,11 @@ class RolePagesTest extends TestCase
     }
 
     /**
-     * Both roles now share one vocabulary — hadir / ada_tugas / tanpa_tugas.
-     * The retired reason options are rejected for either of them.
+     * Both authors — the class's ketua and admin — share one vocabulary:
+     * hadir / ada_tugas / tanpa_tugas. The retired reason options are rejected
+     * for either of them.
      */
-    public function test_both_roles_share_one_attendance_vocabulary(): void
+    public function test_both_authors_share_one_attendance_vocabulary(): void
     {
         $payload = [
             'jadwal_id' => $this->jadwal->id,
@@ -216,7 +212,9 @@ class RolePagesTest extends TestCase
             'materi' => 'Materi apa saja',
         ];
 
-        foreach ([$this->guru, $this->siswa] as $pengguna) {
+        $admin = User::where('role', 'admin')->firstOrFail();
+
+        foreach ([$this->siswa, $admin] as $pengguna) {
             // The vocabulary both roles now share.
             $this->actingAs($pengguna)
                 ->post('/jurnal', $payload + ['kehadiran_guru' => 'tanpa_tugas'])

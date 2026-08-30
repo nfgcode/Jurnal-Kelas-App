@@ -17,8 +17,9 @@
     </x-page-head>
 
     <p class="field__hint mb-2">
-        <x-ikon nama="info-circle" /> Presensi siswa diisi sekali sehari oleh ketua kelas.
-        Halaman ini untuk memantau; koreksi tanggal yang sudah lewat dilakukan oleh admin.
+        <x-ikon nama="info-circle" /> Presensi siswa ditandai per mata pelajaran oleh guru pengajarnya.
+        Angka harian di bawah adalah rekap dari seluruh mapel hari itu. Halaman ini untuk memantau;
+        koreksi dilakukan lewat mata pelajaran yang bersangkutan.
     </p>
 
     <div class="grid-row grid-row--4">

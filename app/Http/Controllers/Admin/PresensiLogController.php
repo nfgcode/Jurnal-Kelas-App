@@ -13,8 +13,12 @@ class PresensiLogController extends Controller
 {
     /**
      * The attendance-edit audit trail, newest first. Behind role:admin, so only
-     * an admin can see who filed which class's daily roll call, when, and whether
-     * it was the first filing of the day or a later correction.
+     * an admin can see who changed which class's day, when, and whether it was
+     * the first roster filed that day or a later correction.
+     *
+     * One entry per lesson saved: the day-level record is rebuilt from the
+     * meeting rosters on every save, so this is the trail of teachers marking
+     * their own lessons rather than of one person filing the whole day.
      */
     public function index(Request $request)
     {

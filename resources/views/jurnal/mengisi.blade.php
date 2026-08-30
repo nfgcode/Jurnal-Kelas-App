@@ -15,7 +15,11 @@
         :title="$jurnal ? 'Ubah Jurnal Kelas' : 'Mengisi Jurnal Kelas'"
         :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, now()->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
-        <span class="btn-hifi btn-hifi--ghost">Draf tersimpan otomatis</span>
+        {{-- The primary action, repeated at the top: on a long form the only
+             submit used to be below the fold. --}}
+        <button class="btn-hifi" type="submit" form="formJurnalKelas">
+            {{ $jurnal ? 'Simpan Perubahan' : 'Kirim Jurnal' }}
+        </button>
     </x-page-head>
 
     <div class="grid-row grid-row--editor">
@@ -24,7 +28,7 @@
                 <span class="card-hifi__meta">* wajib diisi</span>
             </x-slot:actions>
 
-            <form method="POST" action="{{ $aksi }}" class="form-grid">
+            <form method="POST" action="{{ $aksi }}" class="form-grid" id="formJurnalKelas">
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
@@ -49,7 +53,7 @@
                 </x-field>
 
                 <x-field label="Kehadiran Guru" name="kehadiran_guru" required
-                         hint="Tandai kehadiran guru yang mengajar jam ini.">
+                         hint="Tandai kehadiran guru yang mengajar jam ini. Kehadiran siswa bukan bagian dari jurnal — guru pengajar yang menandainya.">
                     <div class="form-grid form-grid--3">
                         @foreach ([
                             'hadir' => 'Hadir',
@@ -72,9 +76,13 @@
 
                 <div>
                     <div class="d-flex align-items-baseline justify-content-between mb-2">
-                        <span class="field__label">Rekap Kehadiran Siswa</span>
+                        <span class="field__label">Presensi Siswa (dari guru pengajar)</span>
                         <span class="field__hint">
-                            {{ $jumlahSiswa }} siswa terdaftar · {{ max(0, $jumlahSiswa - $ditandai) }} belum ditandai
+                            @if ($ditandai)
+                                {{ $ditandai }} dari {{ $jumlahSiswa }} siswa sudah ditandai guru
+                            @else
+                                belum ditandai guru — hanya tampilan, bukan isian Anda
+                            @endif
                         </span>
                     </div>
 
@@ -162,7 +170,7 @@
                 @endforeach
             </x-card>
 
-            <x-card title="Ringkasan Presensi Siswa" :meta="$jumlahSiswa . ' siswa'">
+            <x-card title="Presensi Pertemuan Ini" :meta="$ditandai . ' dari ' . $jumlahSiswa . ' siswa'">
                 <x-stack-bar :hadir="$presensi['hadir']" :sakit="$presensi['sakit']"
                              :izin="$presensi['izin']" :alpa="$presensi['alpa']" />
 
@@ -179,6 +187,11 @@
                         </div>
                     @endforeach
                 </div>
+
+                <p class="field__hint mt-3 mb-0">
+                    Presensi mata pelajaran ini ditandai oleh guru pengajarnya, bukan lewat jurnal.
+                    Angka di atas hanya menampilkan apa yang sudah beliau catat.
+                </p>
             </x-card>
 
             <x-card title="Sebelum Menyimpan">
@@ -186,7 +199,7 @@
                     @foreach ([
                         'Kehadiran guru sudah ditandai' => true,
                         'Materi sesuai yang diajarkan' => filled(old('materi', $jurnal?->materi)),
-                        'Kehadiran siswa sudah dihitung' => $ditandai >= $jumlahSiswa && $jumlahSiswa > 0,
+                        'Tugas dicatat bila ada' => true,
                         'Konfirmasi ke guru sebelum kirim' => false,
                     ] as $label => $selesai)
                         <div class="checklist__item {{ $selesai ? 'checklist__item--done' : 'checklist__item--todo' }}">

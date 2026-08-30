@@ -126,7 +126,7 @@ class WaliKelasController extends Controller
 
         $jurnals = $this->jurnalKelas($kelas)
             ->with(['jadwal.mataPelajaran', 'guru'])
-            ->denganPresensiHarian()
+            ->denganPresensi()
             ->when($filters['mata_pelajaran_id'] ?? null, fn ($q, $id) => $q->whereHas('jadwal', fn ($j) => $j->where('mata_pelajaran_id', $id)))
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 

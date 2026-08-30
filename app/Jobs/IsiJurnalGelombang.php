@@ -14,10 +14,10 @@ use Illuminate\Support\Facades\DB;
  * meeting that ended without one. Dispatched in staggered waves by
  * {@see IsiJurnalOtomatis} so a large backlog never lands on the database at once.
  *
- * It no longer estimates a roster. Student attendance is a single daily roll call
- * filed by the ketua kelas, and a day either had one or it did not — inventing one
- * from a neighbouring lesson would fabricate the very record the daily rule exists
- * to make trustworthy. A day with no roster reads as "belum diisi", which is true.
+ * It never estimates a roster. Attendance is what the lesson's teacher marked,
+ * and a meeting either has it or it does not — inventing one from a neighbouring
+ * lesson would fabricate the very record the roster exists to make trustworthy.
+ * A meeting with no roster reads as "belum ditandai", which is true.
  */
 class IsiJurnalGelombang implements ShouldQueue
 {
@@ -53,10 +53,7 @@ class IsiJurnalGelombang implements ShouldQueue
             Jurnal::create([
                 'jadwal_id' => $jadwal->id,
                 'tanggal' => $tanggal,
-                // materi is NOT NULL; a clear placeholder also tells a guru who
-                // later opens it that this was a system fill to be completed. The
-                // "Otomatis" status chip comes from the peran, not this text.
-                'materi' => 'Diisi otomatis oleh sistem — mohon lengkapi bila perlu.',
+                'materi' => Jurnal::MATERI_PLACEHOLDER,
                 'kehadiran_guru_status' => 'tidak_hadir',
                 'kehadiran_guru_ada_tugas' => false,
                 'diisi_oleh_id' => null,

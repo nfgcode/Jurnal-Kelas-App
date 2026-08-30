@@ -61,7 +61,7 @@ class ImporPengguna
         return $umum + [
             'nis' => ['judul' => 'NIS', 'wajib' => true, 'petunjuk' => 'Harus unik. Dipakai untuk login.'],
             'kelas' => ['judul' => 'Kelas', 'wajib' => true, 'petunjuk' => 'Nama kelas persis seperti terdaftar, contoh: XII RPL 1.'],
-            'ketua_kelas' => ['judul' => 'Ketua Kelas', 'wajib' => false, 'petunjuk' => 'Isi "ya" bila siswa ini ketua kelas. Ketua kelas yang mengisi presensi harian kelasnya.'],
+            'ketua_kelas' => ['judul' => 'Ketua Kelas', 'wajib' => false, 'petunjuk' => 'Isi "ya" bila siswa ini ketua kelas. Ketua kelas yang mengisi jurnal kelasnya.'],
         ] + $penutup;
     }
 

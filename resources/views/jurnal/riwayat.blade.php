@@ -64,9 +64,10 @@
                         @php
                             $chip = $jurnal->kehadiranGuruChip();
                             $status = $jurnal->statusPengisian();
-                            // Keyed by date: the roll call is taken once a day
-                            // for the class, not once per lesson.
-                            $saya = $presensiSaya[$jurnal->tanggal->toDateString()] ?? null;
+                            // Keyed by meeting: the roster belongs to one lesson
+                            // of one subject, so the same day may hold several
+                            // different answers for the same student.
+                            $saya = $presensiSaya[$jurnal->id] ?? null;
                             $tonePresensi = match ($saya?->status) {
                                 'hadir' => 'green',
                                 'sakit' => 'khaki',

@@ -6,10 +6,9 @@
     @php
         $chip = $jurnal->kehadiranGuruChip();
         $status = $jurnal->statusPengisian();
-        // The class's roll call for this lesson's date, not a roster this
-        // meeting owns: attendance is taken once a day by the ketua kelas.
-        $rekap = $rekapHarian;
-        $jumlahTercatat = $presensiHarian->count();
+        // This meeting's own roster, marked by the teacher who taught it — the
+        // figures here describe this subject, not the whole school day.
+        $jumlahTercatat = $presensi->count();
         $total = $jumlahTercatat ?: 1;
     @endphp
 
@@ -22,10 +21,19 @@
         @if ($jurnal->jadwal?->kelas)
             <a class="btn-hifi btn-hifi--ghost"
                href="{{ route('presensi-harian.show', [$jurnal->jadwal->kelas_id, 'tanggal' => $jurnal->tanggal->toDateString()]) }}">
-                Presensi Hari Itu
+                Rekap Sehari
             </a>
         @endif
-        <a class="btn-hifi" href="{{ route('jurnal.edit', $jurnal) }}">Ubah Jurnal</a>
+        {{-- The two halves of a meeting, each offered to the person who owns it:
+             the class edits the journal, the teacher marks the roster. --}}
+        @can('isiPresensi', $jurnal)
+            <a class="btn-hifi" href="{{ route('presensi-jurnal.edit', $jurnal) }}">
+                {{ $jumlahTercatat ? 'Perbarui Presensi' : 'Isi Presensi' }}
+            </a>
+        @endcan
+        @can('update', $jurnal)
+            <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.edit', $jurnal) }}">Ubah Jurnal</a>
+        @endcan
         @can('delete', $jurnal)
             <button type="button" class="btn-hifi btn-hifi--danger"
                     data-bs-toggle="modal" data-bs-target="#hapusJurnal">Hapus</button>
@@ -33,9 +41,9 @@
     </x-page-head>
 
     @can('delete', $jurnal)
-        {{-- Deleting a journal no longer takes any attendance with it: the roll
-             call belongs to the class's day, not to this meeting, and survives
-             untouched. Only the archived per-meeting rows still cascade. --}}
+        {{-- Deleting a journal takes this meeting's roster with it (the foreign
+             key cascades), and the class's daily rollup is recomputed without
+             it. Other subjects that day keep their own attendance. --}}
         <div class="modal fade" id="hapusJurnal" tabindex="-1" aria-labelledby="hapusJurnalJudul" aria-hidden="true">
             <div class="modal-dialog modal-dialog-scrollable">
                 <div class="modal-content">
@@ -52,8 +60,9 @@
                         </p>
 
                         <p class="field__hint mb-0">
-                            Presensi harian kelas tidak ikut terhapus — presensi dicatat per hari,
-                            bukan per pertemuan. Tindakan ini tidak dapat dibatalkan.
+                            Presensi <strong>mata pelajaran ini</strong> ikut terhapus; presensi
+                            mata pelajaran lain di hari yang sama tidak terpengaruh.
+                            Tindakan ini tidak dapat dibatalkan.
                         </p>
                     </div>
 
@@ -89,10 +98,10 @@
                 </p>
             </x-card>
 
-            <x-card title="Kehadiran Siswa Hari Itu" flush>
+            <x-card :title="'Kehadiran Siswa — ' . ($jurnal->jadwal?->mataPelajaran?->nama ?? 'Pertemuan Ini')" flush>
                 <x-slot:actions>
                     <span class="card-hifi__meta">
-                        {{ $jumlahTercatat }} siswa · presensi harian kelas
+                        {{ $jumlahTercatat }} dari {{ $jumlahSiswa }} siswa ditandai
                     </span>
                 </x-slot:actions>
 
@@ -102,9 +111,9 @@
                             <tr><th>No</th><th>NIS</th><th>Nama Siswa</th><th>Status</th><th class="is-num">Keterangan</th></tr>
                         </thead>
                         <tbody>
-                            @forelse ($presensiHarian as $presensi)
+                            @forelse ($presensi as $baris)
                                 @php
-                                    $tone = match ($presensi->status) {
+                                    $tone = match ($baris->status) {
                                         'hadir' => 'green',
                                         'sakit' => 'khaki',
                                         'izin' => 'yellow',
@@ -113,21 +122,25 @@
                                 @endphp
                                 <tr>
                                     <td class="is-muted">{{ $loop->iteration }}</td>
-                                    <td class="is-muted">{{ $presensi->siswa?->nis }}</td>
+                                    <td class="is-muted">{{ $baris->siswa?->nis }}</td>
                                     <td>
                                         <span class="name-cell">
-                                            <span class="avatar avatar--xs">{{ $presensi->siswa?->inisial() }}</span>
-                                            {{ $presensi->siswa?->nama }}
+                                            <span class="avatar avatar--xs">{{ $baris->siswa?->inisial() }}</span>
+                                            {{ $baris->siswa?->nama }}
                                         </span>
                                     </td>
-                                    <td><x-chip :tone="$tone" :label="ucfirst($presensi->status)" /></td>
-                                    <td class="is-num is-muted">{{ $presensi->keterangan ?: '—' }}</td>
+                                    <td><x-chip :tone="$tone" :label="ucfirst($baris->status)" /></td>
+                                    <td class="is-num is-muted">{{ $baris->keterangan ?: '—' }}</td>
                                 </tr>
                             @empty
                                 <tr>
                                     <td colspan="5" class="empty-state">
-                                        Ketua kelas belum mengisi presensi untuk
+                                        {{ $jurnal->guru?->nama ?? 'Guru pengajar' }} belum menandai presensi
+                                        {{ $jurnal->jadwal?->mataPelajaran?->nama }} pada
                                         {{ $jurnal->tanggal->translatedFormat('j F Y') }}.
+                                        @can('isiPresensi', $jurnal)
+                                            <a class="auth__link" href="{{ route('presensi-jurnal.edit', $jurnal) }}">Isi sekarang →</a>
+                                        @endcan
                                     </td>
                                 </tr>
                             @endforelse
@@ -173,7 +186,7 @@
                 @endif
             </x-card>
 
-            <x-card title="Ringkasan Presensi" :meta="$jumlahTercatat . ' siswa'">
+            <x-card title="Ringkasan Presensi" :meta="$jumlahTercatat . ' dari ' . $jumlahSiswa . ' siswa'">
                 <x-stack-bar :hadir="$rekap['hadir'] ?? 0" :sakit="$rekap['sakit'] ?? 0"
                              :izin="$rekap['izin'] ?? 0" :alpa="$rekap['alpa'] ?? 0" />
 

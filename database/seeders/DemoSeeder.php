@@ -11,6 +11,7 @@ use App\Models\Ruangan;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\User;
+use App\Support\SimpanPresensiJurnal;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -605,70 +606,120 @@ class DemoSeeder extends Seeder
     }
 
     /**
-     * One roll call per class per school day — the shape attendance actually has
-     * (see the presensi_harian table). The days come from the journals already
-     * seeded, so a class only has attendance on days it had lessons.
+     * One roster per meeting, marked by the teacher who taught it — plus the
+     * class-day rollup those rosters derive into, so the recaps and exports have
+     * something to read.
+     *
+     * A student's day usually looks the same in every lesson: they were in
+     * school or they were not. So a base status is drawn per class-day and each
+     * lesson mostly repeats it, deviating occasionally the way a real timetable
+     * does — which is the whole reason a roster hangs off the meeting. The daily
+     * row then takes the most consequential mark of the day, exactly as
+     * {@see SimpanPresensiJurnal} computes it at runtime.
      *
      * @param  array<int, array<int, Siswa>>  $siswaPerKelas
      */
     private function seedPresensi(array $siswaPerKelas): void
     {
         $keterangan = ['sakit' => 'Surat dokter', 'izin' => 'Izin keluarga', 'alpa' => 'Tanpa keterangan'];
+        $bobot = ['hadir' => 0, 'sakit' => 1, 'izin' => 2, 'alpa' => 3];
         $now = now();
 
-        // The ketua kelas files it. `diisi_oleh_id` records the *account* that
-        // acted, not the student record, so the NIS is mapped to their login.
-        $akunPerNis = User::whereNotNull('nis')->pluck('id', 'nis');
+        // `diisi_oleh_id` records the *account* that acted, not the person row,
+        // so the meeting's NIP is mapped to its teacher's login.
+        $akunPerNip = User::whereNotNull('nip')->pluck('id', 'nip');
 
-        // Read the chair off the class in one query. Asking each student
-        // `is_ketua_kelas` would work, but that accessor walks back through
-        // their class — one lazy load per student, thousands of them.
-        $ketuaPerKelas = DB::table('kelas')->whereNotNull('ketua_nis')->pluck('ketua_nis', 'id');
+        $simpan = function (array $pertemuan) use ($siswaPerKelas, $keterangan, $bobot, $akunPerNip, $now) {
+            if ($pertemuan === []) {
+                return;
+            }
 
-        $pengisi = [];
-        foreach ($siswaPerKelas as $kelasId => $daftar) {
-            $nis = $ketuaPerKelas[$kelasId] ?? ($daftar[0]->nis ?? null);
-            $pengisi[$kelasId] = $nis ? ($akunPerNis[$nis] ?? null) : null;
-        }
+            $kelasId = (int) $pertemuan[0]->kelas_id;
+            $tanggal = substr((string) $pertemuan[0]->tanggal, 0, 10);
+            $terakhir = $pertemuan[count($pertemuan) - 1];
 
-        $buffer = [];
+            $perPertemuan = [];
+            $harian = [];
 
-        DB::table('jurnal')
-            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
-            ->selectRaw('DISTINCT jadwal.kelas_id, jurnal.tanggal')
-            ->orderBy('jadwal.kelas_id')
-            ->orderBy('jurnal.tanggal')
-            ->chunk(500, function ($hari) use ($siswaPerKelas, $keterangan, $pengisi, $now, &$buffer) {
-                foreach ($hari as $baris) {
-                    foreach ($siswaPerKelas[$baris->kelas_id] ?? [] as $siswa) {
-                        $roll = mt_rand(1, 100);
+            foreach ($siswaPerKelas[$kelasId] ?? [] as $siswa) {
+                $roll = mt_rand(1, 100);
 
-                        $status = match (true) {
-                            $roll <= 88 => 'hadir',
-                            $roll <= 94 => 'sakit',
-                            $roll <= 97 => 'izin',
-                            default => 'alpa',
-                        };
+                $dasar = match (true) {
+                    $roll <= 88 => 'hadir',
+                    $roll <= 94 => 'sakit',
+                    $roll <= 97 => 'izin',
+                    default => 'alpa',
+                };
 
-                        $buffer[] = [
-                            'kelas_id' => $baris->kelas_id,
-                            'tanggal' => substr((string) $baris->tanggal, 0, 10),
-                            'siswa_nis' => $siswa->nis,
-                            'status' => $status,
-                            'keterangan' => $keterangan[$status] ?? null,
-                            'diisi_oleh_id' => $pengisi[$baris->kelas_id] ?? null,
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
+                $terberat = $dasar;
+
+                foreach ($pertemuan as $baris) {
+                    $status = mt_rand(1, 100) <= 94
+                        ? $dasar
+                        : ['hadir', 'sakit', 'izin', 'alpa'][mt_rand(0, 3)];
+
+                    $perPertemuan[] = [
+                        'jurnal_id' => $baris->jurnal_id,
+                        'siswa_nis' => $siswa->nis,
+                        'status' => $status,
+                        'keterangan' => $keterangan[$status] ?? null,
+                        'diisi_oleh_id' => $akunPerNip[$baris->guru_nip] ?? null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+
+                    if ($bobot[$status] > $bobot[$terberat]) {
+                        $terberat = $status;
                     }
                 }
 
-                foreach (array_chunk($buffer, 1000) as $chunk) {
-                    DB::table('presensi_harian')->insertOrIgnore($chunk);
-                }
+                $harian[] = [
+                    'kelas_id' => $kelasId,
+                    'tanggal' => $tanggal,
+                    'siswa_nis' => $siswa->nis,
+                    'status' => $terberat,
+                    'keterangan' => $keterangan[$terberat] ?? null,
+                    'diisi_oleh_id' => $akunPerNip[$terakhir->guru_nip] ?? null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
 
-                $buffer = [];
-            });
+            foreach (array_chunk($perPertemuan, 1000) as $chunk) {
+                DB::table('presensi')->insertOrIgnore($chunk);
+            }
+
+            foreach (array_chunk($harian, 1000) as $chunk) {
+                DB::table('presensi_harian')->insertOrIgnore($chunk);
+            }
+        };
+
+        // Ordered by class then date, so one pass can gather each class-day's
+        // meetings together without holding the whole timetable in memory.
+        $baris = DB::table('jurnal')
+            ->join('jadwal', 'jurnal.jadwal_id', '=', 'jadwal.id')
+            ->select(['jurnal.id as jurnal_id', 'jurnal.tanggal', 'jadwal.kelas_id', 'jadwal.guru_nip'])
+            ->orderBy('jadwal.kelas_id')
+            ->orderBy('jurnal.tanggal')
+            ->orderBy('jurnal.id')
+            ->lazy(500);
+
+        $kunci = null;
+        $kumpulan = [];
+
+        foreach ($baris as $row) {
+            $ini = $row->kelas_id.'|'.substr((string) $row->tanggal, 0, 10);
+
+            if ($kunci !== null && $ini !== $kunci) {
+                $simpan($kumpulan);
+                $kumpulan = [];
+            }
+
+            $kunci = $ini;
+            $kumpulan[] = $row;
+        }
+
+        $simpan($kumpulan);
     }
 
     private function slug(string $name): string

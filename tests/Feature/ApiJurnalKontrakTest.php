@@ -57,7 +57,12 @@ class ApiJurnalKontrakTest extends TestCase
             'diisi_oleh_peran' => 'guru',
         ]);
 
-        return [$guru, $jadwal, $jurnal, $tanggal];
+        // The class's chair: journals are written and updated by the class now,
+        // so a write round trip has to be made as them.
+        $ketua = $this->buatSiswa(['nis' => '2026000777', 'kelas_id' => $kelas->id]);
+        $kelas->update(['ketua_nis' => $ketua->nis]);
+
+        return [$guru, $jadwal, $jurnal, $tanggal, $ketua];
     }
 
     public function test_the_api_exposes_the_public_id_it_binds_on(): void
@@ -76,15 +81,15 @@ class ApiJurnalKontrakTest extends TestCase
 
     public function test_a_client_can_update_using_only_what_the_api_returned(): void
     {
-        [$guru, $jadwal, $jurnal, $tanggal] = $this->jurnalUji();
+        [, $jadwal, $jurnal, $tanggal, $ketua] = $this->jurnalUji();
 
         // Read it back the way a real client would, then write using the id the
         // response carried — no out-of-band knowledge of the numeric key.
-        $dibaca = $this->actingAs($guru)->getJson("/api/jurnal/{$jurnal->public_id}")
+        $dibaca = $this->actingAs($ketua)->getJson("/api/jurnal/{$jurnal->public_id}")
             ->assertOk()
             ->json('data');
 
-        $this->actingAs($guru)->putJson("/api/jurnal/{$dibaca['public_id']}", [
+        $this->actingAs($ketua)->putJson("/api/jurnal/{$dibaca['public_id']}", [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Materi diperbarui lewat API',

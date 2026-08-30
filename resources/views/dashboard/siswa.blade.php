@@ -18,27 +18,30 @@
         {{-- A label, not a control — see dashboard/guru.blade.php. --}}
         <x-chip tone="neutral" :label="now()->translatedFormat('F Y')" />
         @if ($isKetua && $kelas)
-            <a class="btn-hifi {{ $sudahIsiHariIni ? 'btn-hifi--ghost' : '' }}"
-               href="{{ route('presensi-harian.edit', $kelas) }}">
-                {{ $sudahIsiHariIni ? 'Perbarui Presensi Hari Ini' : 'Isi Presensi Hari Ini' }}
+            {{-- The ketua's one standing duty, and the only write action on this
+                 screen: the class's journal. Presensi is the teachers' to mark. --}}
+            <a class="btn-hifi" href="{{ route('jurnal.create') }}">
+                {{ $belumDitulis ? 'Isi Jurnal Kelas' : 'Tambah Jurnal Kelas' }}
             </a>
-            <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>
+            <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">Lihat Presensi Kelas</a>
         @endif
     </x-page-head>
 
-    @if ($isKetua && $kelas && ! $sudahIsiHariIni)
-        {{-- One duty a day, and it is this one. Said plainly at the top rather
-             than left for the ketua to remember. --}}
+    @if ($isKetua && $kelas && $belumDitulis)
+        {{-- One duty, said plainly at the top rather than left for the ketua to
+             remember: the lessons today whose journal the class still owes. --}}
         <p class="banner banner--bahaya mb-2">
-            Presensi {{ $kelas->nama_kelas }} untuk {{ now()->translatedFormat('l, j F Y') }} belum diisi.
-            <a class="auth__link" href="{{ route('presensi-harian.edit', $kelas) }}">Isi sekarang →</a>
+            {{ $belumDitulis }} pertemuan {{ $kelas->nama_kelas }} pada
+            {{ now()->translatedFormat('l, j F Y') }} belum ada jurnal kelasnya.
+            <a class="auth__link" href="{{ route('jurnal.create') }}">Isi sekarang →</a>
         </p>
     @endif
 
     <div class="grid-row grid-row--6">
         <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar" :caption="now()->translatedFormat('l')" />
         <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$datar" caption="hari ini" />
-        <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar" caption="menunggu guru" />
+        <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar"
+               :caption="$isKetua ? 'jurnal kelas' : 'belum ada jurnal'" />
         <x-kpi :label="$kehadiranLabel" :value="$kpi['kehadiran'] . '%'" :spark="$datar" caption="semester berjalan" />
         <x-kpi label="Hadir" :value="number_format($kpi['hadir'], 0, ',', '.')" :spark="$datar" caption="hari sekolah" />
         <x-kpi label="Alpa" :value="$kpi['alpa']" :spark="$datar" caption="tanpa keterangan" />

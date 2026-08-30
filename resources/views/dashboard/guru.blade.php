@@ -16,14 +16,16 @@
              so there is no period to choose. Styled as a chip so it never looks
              like a dropdown that refuses to open. --}}
         <x-chip tone="neutral" :label="now()->translatedFormat('F Y')" />
-        <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal</a>
+        {{-- A guru's daily duty is the roster, not the journal: the class writes
+             the journal, and the recap screen lists every lesson still to mark. --}}
+        <a class="btn-hifi" href="{{ route('presensi.index') }}">Isi Presensi</a>
     </x-page-head>
 
     <div class="grid-row grid-row--6">
         <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar"
                :caption="now()->translatedFormat('l')" />
         <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$sparkAktivitas" caption="hari ini" />
-        <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar" caption="segera lengkapi" />
+        <x-kpi label="Belum Ditandai" :value="$kpi['belumDitandai']" :spark="$datar" caption="presensi hari ini" />
         <x-kpi label="Kelas Diampu" :value="$kpi['kelasDiampu']" :spark="$datar" caption="rombongan belajar" />
         <x-kpi label="Siswa Diampu" :value="number_format($kpi['siswaDiampu'], 0, ',', '.')" :spark="$datar" caption="seluruh kelas" />
         <x-kpi label="Rata Kehadiran" :value="$kpi['rataKehadiran'] . '%'" :spark="$datar" caption="siswa di kelas Anda" />
@@ -44,8 +46,8 @@
                             <th>Mata Pelajaran</th>
                             <th>Ruang</th>
                             <th>Hadir Guru</th>
-                            <th>Hadir Siswa</th>
-                            <th class="is-num">Status</th>
+                            <th>Presensi Siswa</th>
+                            <th class="is-num">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -65,18 +67,23 @@
                                     @endif
                                 </td>
                                 <td>
+                                    @php $ditandai = $jurnal ? ($ditandaiHariIni[$jurnal->id] ?? 0) : 0; @endphp
                                     <span class="meter-cell">
                                         <x-meter :percent="$jurnal && $jurnal->total_siswa ? $jurnal->hadir_count / $jurnal->total_siswa * 100 : 0" />
-                                        <span class="is-muted">{{ $jurnal?->hadir_count ?? 0 }}/{{ $jurnal?->total_siswa ?? 0 }}</span>
+                                        <span class="is-muted">{{ $jurnal?->hadir_count ?? 0 }}/{{ $ditandai }}</span>
                                     </span>
                                 </td>
                                 <td class="is-num">
-                                    @if ($jurnal)
-                                        @php $status = $jurnal->statusPengisian(); @endphp
-                                        <x-chip :tone="$status['tone']" :label="$status['label']" />
-                                    @else
-                                        <a class="btn-hifi btn-hifi--sm" href="{{ route('jurnal.create', ['jadwal_id' => $jadwal->id]) }}">Isi →</a>
-                                    @endif
+                                    {{-- POST, not a link: the roster may have to open the meeting's
+                                         record when the class has not written its journal yet. --}}
+                                    <form method="POST" action="{{ route('presensi-jurnal.mulai') }}" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="jadwal_id" value="{{ $jadwal->id }}">
+                                        <input type="hidden" name="tanggal" value="{{ now()->toDateString() }}">
+                                        <button class="btn-hifi btn-hifi--sm {{ $ditandai ? 'btn-hifi--ghost' : '' }}" type="submit">
+                                            {{ $ditandai ? 'Ubah' : 'Tandai →' }}
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         @empty

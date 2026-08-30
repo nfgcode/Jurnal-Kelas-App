@@ -69,7 +69,7 @@ class DashboardController extends Controller
         // "Latest journals" stays a recency feed, not a period slice — it is the
         // newest activity whatever the filter says.
         $jurnalTerbaru = Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            ->denganPresensiHarian()
+            ->denganPresensi()
             ->latest('tanggal')
             ->latest('id')
             ->take(7)
@@ -142,7 +142,7 @@ class DashboardController extends Controller
 
         $query = Jurnal::query()
             ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
-            ->denganPresensiHarian()
+            ->denganPresensi()
             ->latest('tanggal')
             ->latest('id');
 

@@ -8,6 +8,7 @@ use App\Models\Jurnal;
 use App\Models\Jurusan;
 use App\Models\Kelas;
 use App\Models\MataPelajaran;
+use App\Models\Presensi;
 use App\Models\PresensiHarian;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
@@ -121,7 +122,7 @@ class CrudPagesTest extends TestCase
             "/jurnal/{$jurnal->public_id}",
             "/jurnal/{$jurnal->public_id}/edit",
             route('presensi-harian.show', [$kelas, 'tanggal' => $jurnal->tanggal->toDateString()]),
-            route('presensi-harian.edit', [$kelas, 'tanggal' => $jurnal->tanggal->toDateString()]),
+            route('presensi-jurnal.edit', $jurnal),
             "/admin/siswa/{$siswa->nis}",
             "/admin/siswa/{$siswa->nis}/edit",
             "/admin/guru/{$jadwal->guru_nip}",
@@ -225,11 +226,11 @@ class CrudPagesTest extends TestCase
 
     public function test_presensi_can_be_submitted_with_the_form_field_names(): void
     {
-        $kelas = Kelas::first();
+        $jurnal = $this->jurnalDenganKelas();
+        $kelas = $jurnal->jadwal->kelas;
         $siswa = $kelas->siswa;
-        $tanggal = now()->toDateString();
 
-        $payload = ['tanggal' => $tanggal, 'presensi' => []];
+        $payload = ['presensi' => []];
 
         foreach ($siswa as $i => $s) {
             $payload['presensi'][$i] = [
@@ -240,31 +241,43 @@ class CrudPagesTest extends TestCase
         }
 
         $this->actingAs($this->admin)
-            ->post(route('presensi-harian.store', $kelas), $payload)
-            ->assertRedirect(route('presensi-harian.show', [$kelas, 'tanggal' => $tanggal]))
+            ->post(route('presensi-jurnal.store', $jurnal), $payload)
+            ->assertRedirect(route('jurnal.show', $jurnal))
             ->assertSessionHasNoErrors();
 
         $this->assertSame(
             $siswa->count(),
+            Presensi::where('jurnal_id', $jurnal->id)->where('status', 'hadir')->count(),
+        );
+
+        // The class's day follows from the meeting, so the recaps still work:
+        // exactly one row per student, whatever the day's other lessons marked.
+        $this->assertSame(
+            $siswa->count(),
             PresensiHarian::where('kelas_id', $kelas->id)
-                ->whereDate('tanggal', $tanggal)
-                ->where('status', 'hadir')
+                ->whereDate('tanggal', $jurnal->tanggal->toDateString())
                 ->count(),
         );
     }
 
     public function test_presensi_form_lists_the_students_and_a_submit_button(): void
     {
-        $kelas = Kelas::first();
-        $siswa = $kelas->siswa->first();
+        $jurnal = $this->jurnalDenganKelas();
+        $siswa = $jurnal->jadwal->kelas->siswa->first();
 
         $this->actingAs($this->admin)
-            ->get(route('presensi-harian.edit', $kelas))
+            ->get(route('presensi-jurnal.edit', $jurnal))
             ->assertOk()
             ->assertSee($siswa->nama)
             ->assertSee($siswa->nis)
             ->assertSee('Simpan Presensi')
             ->assertSee('presensi[0][siswa_nis]', false);
+    }
+
+    /** A journal whose class actually has students to mark. */
+    private function jurnalDenganKelas(): Jurnal
+    {
+        return Jurnal::whereHas('jadwal.kelas.siswa')->with('jadwal.kelas')->firstOrFail();
     }
 
     /**

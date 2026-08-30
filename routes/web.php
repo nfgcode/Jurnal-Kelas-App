@@ -20,6 +20,7 @@ use App\Http\Controllers\LaporanErrorController;
 use App\Http\Controllers\MataPelajaranController;
 use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\PresensiHarianController;
+use App\Http\Controllers\PresensiJurnalController;
 use App\Http\Controllers\QrController;
 use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\WaliKelasController;
@@ -93,15 +94,11 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('jadwal', JadwalController::class)->only(['index', 'show']);
 
-    // Jurnal management — index/show scoped per role in the controller; writes
-    // are gated per-record by JurnalPolicy inside the controller actions.
-    Route::resource('jurnal', JurnalController::class);
-
     /*
     |----------------------------------------------------------------------
-    | Presensi. Reading and writing are two different screens now, because
-    | they are two different jobs: a roster is filed once a day for a whole
-    | class by its ketua kelas, and everyone else reads the recap.
+    | Presensi. Reading and writing are two different screens, because they
+    | are two different jobs: a roster is marked lesson by lesson by the guru
+    | who taught it, and everyone else reads the recap.
     |----------------------------------------------------------------------
     */
 
@@ -111,14 +108,31 @@ Route::middleware('auth')->group(function () {
     Route::get('/presensi/ekspor', [PresensiController::class, 'ekspor'])
         ->middleware('role:guru,admin')->name('presensi.ekspor');
 
-    // Write side — one roster per class per day, gated by
-    // KelasPolicy::isiPresensiHarian (ketua kelas of that class, or admin).
-    // `isi` is registered before the bare show route so it is never read as a date.
-    Route::prefix('presensi-harian/{kelas}')->name('presensi-harian.')->group(function () {
-        Route::get('/isi', [PresensiHarianController::class, 'edit'])->name('edit');
-        Route::post('/', [PresensiHarianController::class, 'store'])->name('store');
-        Route::get('/', [PresensiHarianController::class, 'show'])->name('show');
-    });
+    // Write side — one roster per meeting, hanging off the journal that records
+    // it, gated per-record by JurnalPolicy::isiPresensi (the guru timetabled to
+    // teach it, or admin). Registered before the jurnal resource so the literal
+    // `presensi` segment is never read as a journal action.
+    Route::get('/jurnal/{jurnal}/presensi', [PresensiJurnalController::class, 'edit'])
+        ->name('presensi-jurnal.edit');
+    Route::post('/jurnal/{jurnal}/presensi', [PresensiJurnalController::class, 'store'])
+        ->name('presensi-jurnal.store');
+
+    // Entry from a timetable slot instead of a journal: a guru takes the roll
+    // during the lesson, often before the class has written its journal, so the
+    // meeting's record is opened for them if it does not exist yet. POST because
+    // it may create that record. Guru/admin only, ownership checked in the action.
+    Route::post('/presensi/mulai', [PresensiJurnalController::class, 'mulai'])
+        ->middleware('role:guru,admin')->name('presensi-jurnal.mulai');
+
+    // The class's day as a whole, read-only: the rollup derived from every
+    // lesson's roster. Nothing writes it directly — see SimpanPresensiJurnal.
+    Route::get('/presensi-harian/{kelas}', [PresensiHarianController::class, 'show'])
+        ->name('presensi-harian.show');
+
+    // Jurnal management — index/show scoped per role in the controller; writes
+    // are gated per-record by JurnalPolicy inside the controller actions
+    // (a class's ketua kelas, or admin).
+    Route::resource('jurnal', JurnalController::class);
 
     // Error report a guru/siswa submits from the friendly error page. Throttled
     // and deduped in the controller; technical details come from the session.

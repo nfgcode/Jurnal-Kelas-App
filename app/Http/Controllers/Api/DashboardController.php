@@ -76,8 +76,8 @@ class DashboardController extends Controller
      */
     private function guru(User $user): array
     {
-        // The classes this teacher takes, not a roster they own: attendance is
-        // one daily roll call per class, filed by its ketua kelas.
+        // The classes this teacher takes, read from the day-level record so a
+        // class counts once per school day rather than once per lesson it held.
         $presensiSaya = Ringkasan::presensi(
             PresensiHarian::whereIn('kelas_id', Jadwal::where('guru_nip', $user->nip)->select('kelas_id'))
         );

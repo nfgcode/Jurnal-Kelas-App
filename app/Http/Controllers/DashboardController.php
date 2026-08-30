@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
+use App\Models\Presensi;
 use App\Models\PresensiHarian;
 use App\Models\Siswa;
 use App\Models\User;
@@ -44,7 +45,7 @@ class DashboardController extends Controller
             ->get();
 
         // Today's journals, indexed by schedule so each row knows its status.
-        $jurnalHariIni = Jurnal::denganPresensiHarian()
+        $jurnalHariIni = Jurnal::denganPresensi()
             ->diampu($user->nip)
             ->whereDate('tanggal', today())
             ->get()
@@ -54,9 +55,21 @@ class DashboardController extends Controller
             ->orderBy('nama_kelas')
             ->get();
 
-        // Attendance across the classes this teacher takes, not "their" roster:
-        // the roll call belongs to the class's day, and several teachers share
-        // the same one. It is oversight, which is all a guru needs of it now.
+        // How many students this teacher has actually marked on each of today's
+        // meetings — the "belum ditandai" count their dashboard leads with.
+        $ditandaiHariIni = Presensi::jumlahPerJurnal($jurnalHariIni->pluck('id')->all());
+
+        $belumDitandai = $jadwalHariIni
+            ->reject(function ($jadwal) use ($jurnalHariIni, $ditandaiHariIni) {
+                $jurnal = $jurnalHariIni->get($jadwal->id);
+
+                return $jurnal && ($ditandaiHariIni[$jurnal->id] ?? 0) > 0;
+            })
+            ->count();
+
+        // Attendance across the classes this teacher takes, read from the daily
+        // rollup so a class counts once per school day however many lessons it
+        // held. It is oversight; the marking itself happens per meeting.
         $kelasIds = $kelasDiampu->pluck('id');
 
         $presensiSaya = Ringkasan::presensi(PresensiHarian::whereIn('kelas_id', $kelasIds));
@@ -74,6 +87,7 @@ class DashboardController extends Controller
         return view('dashboard.guru', [
             'jadwalHariIni' => $jadwalHariIni,
             'jurnalHariIni' => $jurnalHariIni,
+            'ditandaiHariIni' => $ditandaiHariIni,
             'kelasDiampu' => $kelasDiampu,
             'kehadiranPerKelas' => $kehadiranPerKelas,
             // Journals this teacher wrote — not the ones the nightly backfill
@@ -85,7 +99,7 @@ class DashboardController extends Controller
             'kpi' => [
                 'jadwalHariIni' => $jadwalHariIni->count(),
                 'jurnalTerisi' => $jurnalHariIni->count(),
-                'belumDiisi' => max(0, $jadwalHariIni->count() - $jurnalHariIni->count()),
+                'belumDitandai' => $belumDitandai,
                 'kelasDiampu' => $kelasDiampu->count(),
                 'siswaDiampu' => Siswa::whereIn('kelas_id', $kelasDiampu->pluck('id'))->count(),
                 'rataKehadiran' => round($presensiSaya['hadir'] / $totalPresensi * 100),
@@ -152,9 +166,9 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // Attendance broken down per month, most recent first. It used to be per
-        // subject; a roll call is taken once for the whole day, so it belongs to
-        // no subject in particular and splitting it by one would be a fiction.
+        // Attendance broken down per month, most recent first — read from the
+        // day-level record, so a month of school days is what the student sees
+        // rather than a count that grows with how many lessons a day held.
         $kehadiranPerBulan = $this->kehadiranPerBulan($user);
 
         return view('dashboard.siswa', [
@@ -165,10 +179,13 @@ class DashboardController extends Controller
             'kehadiran' => $kehadiran,
             'kehadiranLabel' => $kehadiranLabel,
             'kehadiranPerBulan' => $kehadiranPerBulan,
-            // The one action a ketua kelas owes the school each day.
-            'sudahIsiHariIni' => $isKetua && $kelas
-                ? PresensiHarian::sudahDiisi($kelas->id, today()->toDateString())
-                : false,
+            // The one action a ketua kelas owes the school each day: the class's
+            // own journal for every lesson it had. Counted from journals written
+            // from the class's side — a teacher's or the nightly placeholder does
+            // not discharge it.
+            'belumDitulis' => $isKetua
+                ? max(0, $jadwalHariIni->count() - $jurnalHariIni->where('diisi_oleh_peran', 'siswa')->count())
+                : 0,
             'kpi' => [
                 'jadwalHariIni' => $jadwalHariIni->count(),
                 'jurnalTerisi' => $jurnalHariIni->count(),

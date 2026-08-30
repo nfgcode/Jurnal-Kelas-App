@@ -5,7 +5,7 @@
 @section('content')
     <x-page-head
         title="Log Pengisian Presensi"
-        :sub="'Jejak audit siapa mengisi presensi harian tiap kelas · ' . number_format($log->total(), 0, ',', '.') . ' entri'" />
+        :sub="'Jejak audit siapa mengubah presensi tiap kelas · ' . number_format($log->total(), 0, ',', '.') . ' entri'" />
 
     <form class="filter-bar" method="GET">
         <x-query-hidden />
