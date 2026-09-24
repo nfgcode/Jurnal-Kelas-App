@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
 use App\Support\LoginResolver;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -28,11 +27,13 @@ class AuthController extends Controller
             'device_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $user = LoginResolver::resolve($credentials['user'], $credentials['role'] ?? null);
+        // Password-aware: without a role the identifier may match several
+        // accounts, and the one the password unlocks is the one meant.
+        $user = LoginResolver::resolve($credentials['user'], $credentials['role'] ?? null, $credentials['password']);
 
         // Generic message whether the account is missing or the password wrong,
         // so the endpoint never confirms which identifiers exist.
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        if (! $user) {
             throw ValidationException::withMessages([
                 'user' => 'NIP/NIS atau password salah.',
             ]);

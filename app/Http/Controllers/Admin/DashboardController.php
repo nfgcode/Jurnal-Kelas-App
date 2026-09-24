@@ -18,10 +18,12 @@ use Illuminate\Http\Request;
 class DashboardController extends Controller
 {
     /**
-     * School-wide overview: headline counts, the period's fill trend, the
-     * attendance and teacher-attendance rollups, and the per-class completeness
-     * grid — every flow figure confined to the selected {@see Periode} so its
-     * label and its number tell the same story.
+     * School-wide overview: four action cards into the admin's daily jobs,
+     * headline counts, the period's fill trend and the attendance and
+     * teacher-attendance rollups — every flow figure confined to the selected
+     * {@see Periode} so its label and its number tell the same story. (The
+     * "guru teraktif" list and the per-class heatmap were dropped in the Figma
+     * MoSCoW review.)
      */
     public function index(Request $request)
     {
@@ -75,35 +77,25 @@ class DashboardController extends Controller
             ->take(7)
             ->get();
 
-        // Maps that let a heatmap cell drill down: its row label back to a
-        // kelas id, and its column label back to the real date. The label rule
-        // is shared with Ringkasan::heatmapJurnal so the keys line up exactly.
-        $hariSekolah = $periode->hariSekolah();
-        $lintasBulan = $hariSekolah !== [] && $hariSekolah[0]->format('Y-m') !== end($hariSekolah)->format('Y-m');
-        $petaTanggal = [];
-        foreach ($hariSekolah as $tanggal) {
-            $petaTanggal[Ringkasan::labelTanggal($tanggal, $lintasBulan)] = $tanggal->toDateString();
-        }
+        // The action row leads with today's gap: timetabled lessons that still
+        // have no journal written by a person.
+        $jadwalHariIni = Jadwal::padaHariDari(today())->count();
+        $berjurnalHariIni = Jurnal::manusia()
+            ->whereDate('tanggal', today())
+            ->distinct()
+            ->count('jadwal_id');
 
         return view('admin.dashboard', [
             'periode' => $periode,
-            'petaKelas' => $kelasList->pluck('id', 'nama_kelas')->all(),
-            'petaTanggal' => $petaTanggal,
+            'jadwalHariIni' => $jadwalHariIni,
+            'belumBerjurnal' => max(0, $jadwalHariIni - $berjurnalHariIni),
             'kpi' => $kpi,
             'trenJurnal' => $trenJurnal,
             'pengisian' => Ringkasan::harian(Jurnal::manusia(), $periode),
             'presensi' => Ringkasan::presensi(null, $periode),
             'kehadiranGuru' => Ringkasan::kehadiranGuru(null, $periode),
             'guruPerluPerhatian' => $guruPerluPerhatian,
-            // "Most active" must credit teachers for what they wrote themselves,
-            // never for journals the nightly job filed under their name.
-            'guruTeraktif' => Guru::query()
-                ->withCount(['jurnals' => fn ($query) => $query->manusia()->whereBetween('tanggal', $rentang)])
-                ->orderByDesc('jurnals_count')
-                ->take(5)
-                ->get(),
             'jurnalTerbaru' => $jurnalTerbaru,
-            'heatmap' => Ringkasan::heatmapJurnal($kelasList, $periode),
         ]);
     }
 

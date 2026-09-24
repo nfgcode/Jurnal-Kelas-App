@@ -114,7 +114,9 @@ class DashboardPeriodeTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('data-detail-tipe="presensi"', false)
-            ->assertSee('data-detail-tipe="kelas"', false);
+            // The per-class heatmap left the dashboard in the Figma MoSCoW
+            // review; the fill chart's bars are the remaining day drill.
+            ->assertSee('data-detail-tipe="jurnal"', false);
     }
 
     public function test_detail_lists_student_attendance_for_a_status(): void

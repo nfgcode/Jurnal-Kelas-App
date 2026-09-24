@@ -4,14 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Jadwal;
 use App\Models\Jurnal;
-use App\Models\Kelas;
 use App\Models\Presensi;
-use App\Models\PresensiHarian;
-use App\Models\Siswa;
 use App\Models\User;
 use App\Support\Ringkasan;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
@@ -27,240 +24,185 @@ class DashboardController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
+        $tanggal = $this->tanggalDipilih($request);
+
         return $user->isGuru()
-            ? $this->dashboardGuru($user)
-            : $this->dashboardSiswa($user);
+            ? $this->dashboardGuru($user, $tanggal)
+            : $this->dashboardSiswa($user, $tanggal);
     }
 
     /**
-     * A teacher's own load: today's timetable, how much of it is journalled,
-     * and how their own attendance is tracking.
+     * A teacher's day, trimmed to what MoSCoW kept: the one duty (marking each
+     * lesson's roster) as an action card, the chosen day's timetable with one
+     * button per row, and the week around it so another day is a click away.
      */
-    private function dashboardGuru(User $user)
+    private function dashboardGuru(User $user, Carbon $tanggal)
     {
-        $jadwalHariIni = Jadwal::with(['kelas', 'mataPelajaran'])
+        $jadwal = Jadwal::with(['kelas', 'mataPelajaran'])
             ->where('guru_nip', $user->nip)
-            ->where('hari', Ringkasan::hariIni())
+            ->padaHariDari($tanggal)
             ->orderBy('jam_ke_mulai')
             ->get();
 
-        // Today's journals, indexed by schedule so each row knows its status.
-        $jurnalHariIni = Jurnal::denganPresensi()
-            ->diampu($user->nip)
-            ->whereDate('tanggal', today())
+        // That day's journals, indexed by schedule so each row knows its status.
+        $jurnal = Jurnal::diampu($user->nip)
+            ->whereDate('tanggal', $tanggal)
             ->get()
             ->keyBy('jadwal_id');
 
-        $kelasDiampu = Kelas::whereIn('id', Jadwal::where('guru_nip', $user->nip)->select('kelas_id'))
-            ->orderBy('nama_kelas')
-            ->get();
+        // How many students were marked on each of those meetings: a row whose
+        // roster is still empty is the "Tandai Presensi" the screen leads with.
+        $ditandai = Presensi::jumlahPerJurnal($jurnal->pluck('id')->all());
 
-        // How many students this teacher has actually marked on each of today's
-        // meetings — the "belum ditandai" count their dashboard leads with.
-        $ditandaiHariIni = Presensi::jumlahPerJurnal($jurnalHariIni->pluck('id')->all());
-
-        $belumDitandai = $jadwalHariIni
-            ->reject(function ($jadwal) use ($jurnalHariIni, $ditandaiHariIni) {
-                $jurnal = $jurnalHariIni->get($jadwal->id);
-
-                return $jurnal && ($ditandaiHariIni[$jurnal->id] ?? 0) > 0;
-            })
+        $belumDitandai = $jadwal
+            ->reject(fn ($j) => ($ditandai[$jurnal->get($j->id)?->id] ?? 0) > 0)
             ->count();
 
-        // Attendance across the classes this teacher takes, read from the daily
-        // rollup so a class counts once per school day however many lessons it
-        // held. It is oversight; the marking itself happens per meeting.
-        $kelasIds = $kelasDiampu->pluck('id');
-
-        $presensiSaya = Ringkasan::presensi(PresensiHarian::whereIn('kelas_id', $kelasIds));
-        $totalPresensi = array_sum($presensiSaya) ?: 1;
-
-        // Attendance per class taught, so a struggling class stands out.
-        $kehadiranPerKelas = PresensiHarian::query()
-            ->selectRaw('kelas_id, status, COUNT(*) as total')
-            ->whereIn('kelas_id', $kelasIds)
-            ->groupBy('kelas_id', 'status')
-            ->get()
-            ->groupBy('kelas_id')
-            ->map(fn ($rows) => $rows->pluck('total', 'status'));
+        // The week calendar: lessons per weekday and, for days already reached,
+        // how many of them have a marked roster.
+        [$senin, $batas] = $this->rentangMinggu($tanggal);
+        $jurnalMinggu = Jurnal::diampu($user->nip)
+            ->whereBetween('tanggal', [$senin->toDateString(), $batas->toDateString()])
+            ->get(['id', 'jadwal_id', 'tanggal']);
+        $ditandaiMinggu = Presensi::jumlahPerJurnal($jurnalMinggu->pluck('id')->all());
+        $selesaiPerTanggal = $jurnalMinggu
+            ->filter(fn ($j) => ($ditandaiMinggu[$j->id] ?? 0) > 0)
+            ->groupBy(fn ($j) => $j->tanggal->toDateString())
+            ->map(fn ($rows) => $rows->unique('jadwal_id')->count());
 
         return view('dashboard.guru', [
-            'jadwalHariIni' => $jadwalHariIni,
-            'jurnalHariIni' => $jurnalHariIni,
-            'ditandaiHariIni' => $ditandaiHariIni,
-            'kelasDiampu' => $kelasDiampu,
-            'kehadiranPerKelas' => $kehadiranPerKelas,
-            // Journals this teacher wrote — not the ones the nightly backfill
-            // filed under their name, which would draw a full activity chart for
-            // a fortnight they actually skipped.
-            'aktivitas' => Ringkasan::harian(Jurnal::manusia()->diampu($user->nip)),
-            'kehadiranGuru' => Ringkasan::kehadiranGuru(Jurnal::diampu($user->nip)),
-            'presensiSaya' => $presensiSaya,
-            'kpi' => [
-                'jadwalHariIni' => $jadwalHariIni->count(),
-                'jurnalTerisi' => $jurnalHariIni->count(),
-                'belumDitandai' => $belumDitandai,
-                'kelasDiampu' => $kelasDiampu->count(),
-                'siswaDiampu' => Siswa::whereIn('kelas_id', $kelasDiampu->pluck('id'))->count(),
-                'rataKehadiran' => round($presensiSaya['hadir'] / $totalPresensi * 100),
-            ],
-            'jurnalTerakhir' => Jurnal::with(['jadwal.kelas', 'jadwal.mataPelajaran'])
-                ->diampu($user->nip)
-                ->latest('tanggal')
-                ->latest('id')
-                ->take(5)
-                ->get(),
-            'heatmap' => Ringkasan::heatmapJurnal($kelasDiampu),
+            'tanggal' => $tanggal,
+            'jadwal' => $jadwal,
+            'jurnal' => $jurnal,
+            'ditandai' => $ditandai,
+            'belumDitandai' => $belumDitandai,
+            'minggu' => $this->mingguKalender(
+                $tanggal,
+                $this->jadwalPerHari(Jadwal::where('guru_nip', $user->nip)),
+                $selesaiPerTanggal->all(),
+            ),
         ]);
     }
 
     /**
-     * A student's own class: today's lessons, whether each was journalled, and
-     * their personal attendance record.
+     * A student's day: the ketua's one duty (the class journal) and the class's
+     * attendance as action cards, the chosen day's lessons with one button per
+     * row, and the week around it.
      */
-    private function dashboardSiswa(User $user)
+    private function dashboardSiswa(User $user, Carbon $tanggal)
     {
         $kelas = $user->kelas;
 
         // A student with no class sees their own (empty) view, never every
         // class's schedule/journals. kelas_id 0 never matches a real row.
         $kelasId = $kelas?->id ?? 0;
+        $isKetua = $user->isKetuaKelas();
 
-        $jadwalHariIni = Jadwal::with(['mataPelajaran', 'guru'])
+        $jadwal = Jadwal::with(['mataPelajaran', 'guru'])
             ->where('kelas_id', $kelasId)
-            ->where('hari', Ringkasan::hariIni())
+            ->padaHariDari($tanggal)
             ->orderBy('jam_ke_mulai')
             ->get();
 
-        $jurnalHariIni = Jurnal::whereIn('jadwal_id', $jadwalHariIni->pluck('id'))
-            ->whereDate('tanggal', today())
+        // The ketua's duty is discharged only by a journal written from the
+        // class's side — a teacher's entry or the nightly placeholder does not
+        // count. Everyone else just needs to know whether there is one to read.
+        $jurnal = Jurnal::whereIn('jadwal_id', $jadwal->pluck('id'))
+            ->whereDate('tanggal', $tanggal)
+            ->when($isKetua, fn ($q) => $q->where('diisi_oleh_peran', 'siswa'))
             ->get()
             ->keyBy('jadwal_id');
 
-        // A ketua kelas represents the whole class, so their attendance summary
-        // is the class's, not just their own; a regular siswa sees their own.
-        $isKetua = $user->isKetuaKelas();
-        $kehadiran = $isKetua
-            ? Ringkasan::presensi(PresensiHarian::where('kelas_id', $kelasId))
-            : Ringkasan::presensi(PresensiHarian::where('siswa_nis', $user->nis));
-        $kehadiranLabel = $isKetua ? 'Kehadiran Kelas' : 'Kehadiran Saya';
-        $totalKehadiran = array_sum($kehadiran) ?: 1;
-
-        // One aggregate pass instead of hydrating every journal of the class:
-        // "Terisi" = materi filled and not filed late — the same definition
-        // statusPengisian() renders, expressed in SQL.
-        $agregatJurnal = Jurnal::untukKelas($kelasId)
-            ->selectRaw(
-                "COUNT(*) as total, SUM(CASE WHEN materi IS NOT NULL AND materi <> '' "
-                .'AND NOT ('.Jurnal::ekspresiTerlambat().') THEN 1 ELSE 0 END) as tepat'
-            )
-            ->first();
-
-        $totalJurnal = (int) $agregatJurnal->total;
-        $tepatWaktu = (int) $agregatJurnal->tepat;
-
-        $riwayatJurnal = Jurnal::with(['jadwal.mataPelajaran', 'guru'])
-            ->untukKelas($kelasId)
-            ->latest('tanggal')
-            ->latest('id')
-            ->take(5)
-            ->get();
-
-        // Attendance broken down per month, most recent first — read from the
-        // day-level record, so a month of school days is what the student sees
-        // rather than a count that grows with how many lessons a day held.
-        $kehadiranPerBulan = $this->kehadiranPerBulan($user);
+        [$senin, $batas] = $this->rentangMinggu($tanggal);
+        $selesaiPerTanggal = Jurnal::untukKelas($kelasId)
+            ->whereBetween('tanggal', [$senin->toDateString(), $batas->toDateString()])
+            ->when($isKetua, fn ($q) => $q->where('diisi_oleh_peran', 'siswa'))
+            ->get(['jadwal_id', 'tanggal'])
+            ->groupBy(fn ($j) => $j->tanggal->toDateString())
+            ->map(fn ($rows) => $rows->unique('jadwal_id')->count());
 
         return view('dashboard.siswa', [
+            'tanggal' => $tanggal,
             'kelas' => $kelas,
-            'jadwalHariIni' => $jadwalHariIni,
-            'jurnalHariIni' => $jurnalHariIni,
             'isKetua' => $isKetua,
-            'kehadiran' => $kehadiran,
-            'kehadiranLabel' => $kehadiranLabel,
-            'kehadiranPerBulan' => $kehadiranPerBulan,
-            // The one action a ketua kelas owes the school each day: the class's
-            // own journal for every lesson it had. Counted from journals written
-            // from the class's side — a teacher's or the nightly placeholder does
-            // not discharge it.
-            'belumDitulis' => $isKetua
-                ? max(0, $jadwalHariIni->count() - $jurnalHariIni->where('diisi_oleh_peran', 'siswa')->count())
-                : 0,
-            'kpi' => [
-                'jadwalHariIni' => $jadwalHariIni->count(),
-                'jurnalTerisi' => $jurnalHariIni->count(),
-                'belumDiisi' => max(0, $jadwalHariIni->count() - $jurnalHariIni->count()),
-                'kehadiran' => round($kehadiran['hadir'] / $totalKehadiran * 100),
-                'hadir' => $kehadiran['hadir'],
-                'alpa' => $kehadiran['alpa'],
-            ],
-            'jurnalStatus' => [
-                'kelengkapan' => $kelas ? Ringkasan::kelengkapanKelas($kelas->id) : 0,
-                'tepatWaktu' => $tepatWaktu,
-                'terlambat' => $totalJurnal - $tepatWaktu,
-                'total' => $totalJurnal,
-            ],
-            'riwayatJurnal' => $riwayatJurnal,
-            'heatmap' => $this->heatmapKehadiran($user),
+            'jadwal' => $jadwal,
+            'jurnal' => $jurnal,
+            'belumDitulis' => max(0, $jadwal->count() - $jurnal->count()),
+            'minggu' => $this->mingguKalender(
+                $tanggal,
+                $this->jadwalPerHari(Jadwal::where('kelas_id', $kelasId)),
+                $selesaiPerTanggal->all(),
+            ),
         ]);
     }
 
     /**
-     * The student's own attendance as an attendance book: one row per month, one
-     * cell per day of that month, shaded by the status recorded.
-     *
-     * A calendar is the natural shape now that the roll call is daily — the old
-     * per-subject grid could only exist while every lesson took its own roster.
-     *
-     * @return array<string, array<string, string|int>>
+     * The day the dashboard shows: ?tanggal= from the date picker or the week
+     * calendar, otherwise today.
      */
-    private function heatmapKehadiran(User $user, int $bulan = 3): array
+    private function tanggalDipilih(Request $request): Carbon
     {
-        $awal = today()->copy()->startOfMonth()->subMonthsNoOverflow($bulan - 1);
+        $request->validate(['tanggal' => ['nullable', 'date']]);
 
-        $catatan = PresensiHarian::query()
-            ->where('siswa_nis', $user->nis)
-            ->where('tanggal', '>=', $awal->toDateString())
-            ->get()
-            ->keyBy(fn ($p) => $p->tanggal->toDateString());
-
-        $rows = [];
-
-        for ($i = 0; $i < $bulan; $i++) {
-            $kursor = $awal->copy()->addMonthsNoOverflow($i);
-            $cells = [];
-
-            // Every row spans 1-31 so the grid's columns stay aligned; days a
-            // month does not have, and days with no record, read as empty.
-            for ($hari = 1; $hari <= 31; $hari++) {
-                $tanggal = $kursor->copy()->startOfMonth()->addDays($hari - 1);
-
-                $cells[(string) $hari] = $tanggal->month === $kursor->month
-                    ? ($catatan[$tanggal->toDateString()]->status ?? 0)
-                    : 0;
-            }
-
-            $rows[$kursor->translatedFormat('F Y')] = $cells;
-        }
-
-        return $rows;
+        return $request->filled('tanggal')
+            ? Carbon::parse($request->query('tanggal'))->startOfDay()
+            : today();
     }
 
     /**
-     * The student's attendance rolled up per month, newest first.
+     * Monday of the chosen week, and the last day of it whose work can already
+     * be outstanding (today, when the week is the current one).
      *
-     * @return Collection<string, Collection<string, int>>
+     * @return array{0: Carbon, 1: Carbon}
      */
-    private function kehadiranPerBulan(User $user, int $bulan = 6)
+    private function rentangMinggu(Carbon $tanggal): array
     {
-        $awal = today()->copy()->startOfMonth()->subMonthsNoOverflow($bulan - 1);
+        $senin = $tanggal->copy()->startOfWeek(Carbon::MONDAY);
 
-        return PresensiHarian::query()
-            ->where('siswa_nis', $user->nis)
-            ->where('tanggal', '>=', $awal->toDateString())
-            ->get()
-            ->groupBy(fn ($p) => $p->tanggal->translatedFormat('F Y'))
-            ->map(fn ($rows) => $rows->groupBy('status')->map->count())
-            ->reverse();
+        return [$senin, $senin->copy()->addDays(6)->min(today())];
+    }
+
+    /**
+     * Timetabled lessons per weekday name.
+     *
+     * @return array<string, int>
+     */
+    private function jadwalPerHari($query): array
+    {
+        return $query->selectRaw('hari, COUNT(*) as jumlah')
+            ->groupBy('hari')
+            ->pluck('jumlah', 'hari')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+    }
+
+    /**
+     * Monday to Sunday around $tanggal for the week calendar: how many lessons
+     * each day holds and, for days already reached, how many are still open.
+     *
+     * @param  array<string, int>  $jadwalPerHari  weekday name => lessons
+     * @param  array<string, int>  $selesaiPerTanggal  Y-m-d => lessons done
+     * @return array<int, array{tanggal: Carbon, jumlah: int, belum: ?int}>
+     */
+    private function mingguKalender(Carbon $tanggal, array $jadwalPerHari, array $selesaiPerTanggal): array
+    {
+        $senin = $tanggal->copy()->startOfWeek(Carbon::MONDAY);
+        $hari = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            $t = $senin->copy()->addDays($i);
+            // Ringkasan::HARI stops at Sabtu — Minggu is never timetabled.
+            $jumlah = $jadwalPerHari[Ringkasan::HARI[$i] ?? ''] ?? 0;
+
+            $hari[] = [
+                'tanggal' => $t,
+                'jumlah' => $jumlah,
+                'belum' => $t->lte(today())
+                    ? max(0, $jumlah - ($selesaiPerTanggal[$t->toDateString()] ?? 0))
+                    : null,
+            ];
+        }
+
+        return $hari;
     }
 }

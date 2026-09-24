@@ -63,13 +63,22 @@ class AdminSectionTest extends TestCase
         );
     }
 
-    public function test_landing_page_is_publicly_accessible(): void
+    public function test_the_root_sends_a_guest_to_the_login_page(): void
     {
-        $this->get('/')
+        // There is no landing page any more: "/" is the way in.
+        $this->get('/')->assertRedirect('/login');
+
+        $this->get('/login')
             ->assertOk()
-            ->assertSee('Jurnal Kelas')
             ->assertSee('Catat jurnal mengajar')
             ->assertSee('Masuk ke akun Anda');
+    }
+
+    public function test_the_root_sends_a_signed_in_user_to_their_dashboard(): void
+    {
+        $this->actingAs($this->admin())
+            ->get('/')
+            ->assertRedirect('/dashboard');
     }
 
     public function test_admin_can_view_dashboard(): void

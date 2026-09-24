@@ -4,211 +4,107 @@
 
 @section('content')
     @php
-        $datar = array_fill(0, 12, 0);
-        $totalPresensi = array_sum($kehadiran) ?: 1;
-        $totalJurnal = $jurnalStatus['total'] ?: 1;
-        $sapaan = Auth::user()->isKetuaKelas()
+        $sapaan = $isKetua
             ? 'Selamat Datang, Ketua Kelas ' . ($kelas?->nama_kelas ?? '') . '!'
             : 'Selamat Datang, ' . Auth::user()->nama . '!';
+        $hariIni = $tanggal->isToday();
+        // "Hari Ini" only when it is; another day is already named by the
+        // date picker and the table's date chip.
+        $sufiks = $hariIni ? ' Hari Ini' : '';
+        $kapan = $hariIni ? 'hari ini' : 'pada ' . $tanggal->translatedFormat('l, j F');
+        // A day that has not come yet has nothing to write or read.
+        $akanDatang = $tanggal->isAfter(today());
     @endphp
 
-    <x-page-head
-        :title="$sapaan"
-        :sub="'Ringkasan kelas dan kehadiran Anda · Semester Gasal ' . now()->year . '/' . (now()->year + 1) . ' · ' . now()->translatedFormat('j F Y')">
-        {{-- A label, not a control — see dashboard/guru.blade.php. --}}
-        <x-chip tone="neutral" :label="now()->translatedFormat('F Y')" />
-        @if ($isKetua && $kelas)
-            {{-- The ketua's one standing duty, and the only write action on this
-                 screen: the class's journal. Presensi is the teachers' to mark. --}}
-            <a class="btn-hifi" href="{{ route('jurnal.create') }}">
-                {{ $belumDitulis ? 'Isi Jurnal Kelas' : 'Tambah Jurnal Kelas' }}
-            </a>
-            <a class="btn-hifi btn-hifi--ghost" href="{{ route('presensi.index') }}">Lihat Presensi Kelas</a>
-        @endif
-    </x-page-head>
+    {{-- Figma "Dashboard Siswa" (MoSCoW): greeting + date, two action cards,
+         the day's lessons with one action each, and the week beside them. --}}
+    <div class="dash dash--lega">
+        <div class="card-hifi dash-head">
+            <div>
+                <h2 class="page-head__title">{{ $sapaan }}</h2>
+                <p class="page-head__sub">
+                    Ringkasan harian kelas {{ $kelas?->nama_kelas ?? '—' }}
+                    · Semester Gasal {{ now()->year }}/{{ now()->year + 1 }}
+                </p>
+            </div>
+            <x-pilih-tanggal :tanggal="$tanggal" />
+        </div>
 
-    @if ($isKetua && $kelas && $belumDitulis)
-        {{-- One duty, said plainly at the top rather than left for the ketua to
-             remember: the lessons today whose journal the class still owes. --}}
-        <p class="banner banner--bahaya mb-2">
-            {{ $belumDitulis }} pertemuan {{ $kelas->nama_kelas }} pada
-            {{ now()->translatedFormat('l, j F Y') }} belum ada jurnal kelasnya.
-            <a class="auth__link" href="{{ route('jurnal.create') }}">Isi sekarang →</a>
-        </p>
-    @endif
+        <div class="aksi-row aksi-row--2">
+            @if ($isKetua)
+                <x-aksi-card :href="route('jurnal.create', ['tanggal' => $tanggal->toDateString()])"
+                             :judul="'Isi Jurnal Kelas' . $sufiks" ikon="book" warna="hijau" cta="Isi Jurnal"
+                             :deskripsi="$belumDitulis
+                                 ? $belumDitulis . ' jurnal kelas belum diisi. Catat sekarang.'
+                                 : 'Catat dan pantau jurnal kelas ' . $kapan . '.'" />
+            @else
+                <x-aksi-card :href="route('jurnal.index')"
+                             :judul="'Jurnal Kelas' . $sufiks" ikon="book" warna="hijau" cta="Lihat Jurnal"
+                             deskripsi="Baca jurnal pelajaran kelasmu." />
+            @endif
 
-    <div class="grid-row grid-row--6">
-        <x-kpi label="Jadwal Hari Ini" :value="$kpi['jadwalHariIni']" :spark="$datar" :caption="now()->translatedFormat('l')" />
-        <x-kpi label="Jurnal Terisi" :value="$kpi['jurnalTerisi']" :spark="$datar" caption="hari ini" />
-        <x-kpi label="Belum Diisi" :value="$kpi['belumDiisi']" :spark="$datar"
-               :caption="$isKetua ? 'jurnal kelas' : 'belum ada jurnal'" />
-        <x-kpi :label="$kehadiranLabel" :value="$kpi['kehadiran'] . '%'" :spark="$datar" caption="semester berjalan" />
-        <x-kpi label="Hadir" :value="number_format($kpi['hadir'], 0, ',', '.')" :spark="$datar" caption="hari sekolah" />
-        <x-kpi label="Alpa" :value="$kpi['alpa']" :spark="$datar" caption="tanpa keterangan" />
-    </div>
+            <x-aksi-card :href="route('presensi.index')"
+                         :judul="$isKetua ? 'Presensi Kelas' . $sufiks : 'Kehadiran Saya'"
+                         ikon="calendar3" warna="oranye" cta="Lihat Presensi"
+                         :deskripsi="$isKetua
+                             ? 'Lihat riwayat dan status presensi kelas.'
+                             : 'Lihat riwayat kehadiranmu di kelas.'" />
+        </div>
 
-    <div class="grid-row grid-row--split">
-        <x-card title="Jadwal Kelas Hari Ini" flush>
-            <x-slot:actions>
-                <span class="card-hifi__meta">{{ now()->translatedFormat('l, j F Y') }}</span>
-            </x-slot:actions>
+        <div class="dash-jadwal">
+            <x-card :title="'Jadwal Kelas' . $sufiks" flush class="dash-jadwal__tabel">
+                <x-slot:actions>
+                    <span class="chip chip--solid-lembut">{{ $tanggal->translatedFormat('l, j F Y') }}</span>
+                    <a class="auth__link" href="{{ route('jadwal.index') }}">Lihat semua →</a>
+                </x-slot:actions>
 
-            <div class="tbl-wrap">
-                <table class="tbl">
-                    <thead>
-                        <tr>
-                            <th>Jam</th>
-                            <th>Mata Pelajaran</th>
-                            <th>Guru</th>
-                            <th>Hadir Guru</th>
-                            <th>Ruang</th>
-                            <th class="is-num">Jurnal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($jadwalHariIni as $jadwal)
-                            @php $jurnal = $jurnalHariIni[$jadwal->id] ?? null; @endphp
+                <div class="tbl-wrap">
+                    <table class="tbl tbl--lega tbl--kartu">
+                        <thead>
                             <tr>
-                                <td class="is-muted">{{ $jadwal->jpLabel() }}</td>
-                                <td class="is-strong">{{ $jadwal->mataPelajaran?->nama }}</td>
-                                <td>{{ $jadwal->guru?->nama }}</td>
-                                <td>
-                                    @if ($jurnal)
-                                        @php $chip = $jurnal->kehadiranGuruChip(); @endphp
-                                        <x-chip :tone="$chip['tone']" :label="$chip['label']" />
-                                    @else
-                                        <span class="is-muted">—</span>
-                                    @endif
-                                </td>
-                                <td class="is-muted">{{ $jadwal->ruang ?? $kelas?->ruang ?? '—' }}</td>
-                                <td class="is-num">
-                                    @if ($jurnal)
-                                        @php $status = $jurnal->statusPengisian(); @endphp
-                                        <x-chip :tone="$status['tone']" :label="$status['label']" />
-                                    @else
-                                        <x-chip tone="neutral" label="Belum" />
-                                    @endif
-                                </td>
+                                <th>Jam</th>
+                                <th>Mata Pelajaran</th>
+                                <th>Guru</th>
+                                <th>Ruang</th>
+                                <th class="is-num">Aksi</th>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="empty-state">Tidak ada jadwal hari ini.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </x-card>
-
-        <x-card :title="$kehadiranLabel" :meta="now()->translatedFormat('F Y')">
-            <p class="card-hifi__meta mb-2">{{ number_format($totalPresensi, 0, ',', '.') }} pertemuan tercatat</p>
-            <x-breakdown
-                :items="['Hadir' => $kehadiran['hadir'], 'Sakit' => $kehadiran['sakit'], 'Izin' => $kehadiran['izin'], 'Alpa' => $kehadiran['alpa']]"
-                :tones="['Hadir' => 'hadir', 'Sakit' => 'sakit', 'Izin' => 'izin', 'Alpa' => 'alpa']" />
-        </x-card>
-
-        <x-card title="Jurnal Kelas" :meta="now()->translatedFormat('F Y')">
-            <div class="text-center my-2">
-                <div style="font-size: 28px; font-weight: 700; letter-spacing: -0.02em">
-                    {{ round($jurnalStatus['kelengkapan']) }}%
+                        </thead>
+                        <tbody>
+                            @forelse ($jadwal as $j)
+                                @php $ada = $jurnal[$j->id] ?? null; @endphp
+                                <tr>
+                                    <td class="is-muted sel-jam"><span class="sel-jam__awal">Jam </span>{{ $j->jpLabel() }}</td>
+                                    <td class="is-strong sel-judul">{{ $j->mataPelajaran?->nama }}</td>
+                                    <td class="sel-sub">{{ $j->guru?->nama }}</td>
+                                    <td class="is-muted sel-ruang">{{ $j->ruang ?? $kelas?->ruang ?? '—' }}</td>
+                                    <td class="is-num sel-aksi">
+                                        {{-- One button per lesson; its label carries the state. --}}
+                                        @if ($ada)
+                                            <a class="btn-hifi btn-hifi--ghost btn-hifi--baris" href="{{ route('jurnal.show', $ada) }}">Lihat Jurnal</a>
+                                        @elseif ($akanDatang)
+                                            <span class="btn-hifi btn-hifi--baris is-nonaktif" aria-disabled="true">Belum dimulai</span>
+                                        @elseif ($isKetua)
+                                            <a class="btn-hifi btn-hifi--baris"
+                                               href="{{ route('jurnal.create', ['jadwal_id' => $j->id, 'tanggal' => $tanggal->toDateString()]) }}">Isi Jurnal</a>
+                                        @else
+                                            <span class="btn-hifi btn-hifi--baris is-nonaktif" aria-disabled="true">Belum diisi</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="5" class="empty-state">Tidak ada jadwal pada hari ini.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-                <div class="kpi__caption">{{ $jurnalStatus['total'] }} jurnal tercatat</div>
-            </div>
-            <span class="meter" style="width: 100%">
-                <span class="meter__fill" style="width: {{ $jurnalStatus['kelengkapan'] }}%"></span>
-            </span>
 
-            <div class="mt-3 d-flex flex-column gap-2">
-                @foreach ([
-                    ['Tepat waktu', $jurnalStatus['tepatWaktu'], 'var(--green-200)'],
-                    ['Terlambat', $jurnalStatus['terlambat'], 'var(--yellow-200)'],
-                ] as [$label, $nilai, $warna])
-                    <div class="d-flex align-items-center justify-content-between" style="font-size: 11px">
-                        <span class="legend__item">
-                            <span class="legend__dot" style="background: {{ $warna }}"></span>{{ $label }}
-                        </span>
-                        <span class="breakdown__value">{{ $nilai }}</span>
-                    </div>
-                @endforeach
-            </div>
-        </x-card>
+                <x-slot:foot>
+                    <span>{{ $jadwal->count() }} jadwal pada {{ $tanggal->translatedFormat('l, j F Y') }}</span>
+                </x-slot:foot>
+            </x-card>
+
+            <x-kalender-mini :minggu="$minggu" :tanggal="$tanggal" satuan="jadwal"
+                             :belum-label="$isKetua ? '%d jurnal belum diisi' : '%d belum ada jurnal'" />
+        </div>
     </div>
-
-    <div class="grid-row grid-row--2">
-        <x-card title="Kehadiran per Bulan" meta="6 bulan terakhir">
-            <x-legend class="mb-2" :items="[
-                'Hadir' => 'var(--green-200)',
-                'Sakit' => 'var(--s-300)',
-                'Izin' => 'var(--yellow-200)',
-                'Alpa' => 'var(--red-100)',
-            ]" />
-
-            @forelse ($kehadiranPerBulan as $bulan => $rekap)
-                @php
-                    $hadir = (int) ($rekap['hadir'] ?? 0);
-                    $total = $rekap->sum() ?: 1;
-                @endphp
-                <div class="breakdown breakdown--wide mb-2">
-                    <span class="breakdown__label">{{ $bulan }}</span>
-                    <x-stack-bar :hadir="$hadir" :sakit="$rekap['sakit'] ?? 0"
-                                 :izin="$rekap['izin'] ?? 0" :alpa="$rekap['alpa'] ?? 0" />
-                    <span class="breakdown__value">{{ round($hadir / $total * 100) }}%</span>
-                    <span class="breakdown__pct">{{ $total }}</span>
-                </div>
-            @empty
-                <p class="empty-state">Belum ada catatan kehadiran.</p>
-            @endforelse
-        </x-card>
-
-        <x-card title="Riwayat Jurnal Kelas" flush>
-            <x-slot:actions>
-                <a class="auth__link" href="{{ route('jurnal.index') }}">Lihat semua →</a>
-            </x-slot:actions>
-
-            <div class="tbl-wrap">
-                <table class="tbl">
-                    <thead>
-                        <tr>
-                            <th>Tanggal</th>
-                            <th>Mata Pelajaran</th>
-                            <th>Guru</th>
-                            <th>Hadir Guru</th>
-                            <th>Materi</th>
-                            <th class="is-num">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($riwayatJurnal as $jurnal)
-                            @php
-                                $chip = $jurnal->kehadiranGuruChip();
-                                $status = $jurnal->statusPengisian();
-                            @endphp
-                            <tr>
-                                <td class="is-muted">{{ $jurnal->tanggal->format('d/m') }}</td>
-                                <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                                <td class="is-muted is-nowrap">{{ $jurnal->guru?->nama }}</td>
-                                <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
-                                <td class="is-muted is-nowrap">{{ Str::limit($jurnal->materi, 18) }}</td>
-                                <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="6" class="empty-state">Belum ada jurnal kelas.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </x-card>
-    </div>
-
-    <x-card title="Riwayat Kehadiran Saya">
-        <x-slot:actions>
-            <x-legend :swatch="true" :items="[
-                'Hadir' => 'var(--p-300)',
-                'Izin' => 'var(--yellow-100)',
-                'Sakit' => 'var(--s-100)',
-                'Alpa' => 'var(--red-100)',
-                'Tidak ada jadwal' => 'var(--n-200)',
-            ]" />
-        </x-slot:actions>
-
-        <x-heatmap :rows="$heatmap" :labelWidth="120" />
-    </x-card>
 @endsection

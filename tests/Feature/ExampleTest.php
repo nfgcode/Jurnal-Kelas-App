@@ -2,22 +2,15 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
-    // The landing page computes its KPI figures from the database, so the
-    // tables must exist (empty is fine — the page falls back to zeros).
-    use RefreshDatabase;
-
     /**
-     * A basic test example.
+     * The root has no page of its own: it hands a guest to the login form.
      */
     public function test_the_application_returns_a_successful_response(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect('/login');
     }
 }

@@ -1,0 +1,489 @@
+/* =========================================================================
+   Dashboards — Figma "High Fidelity 2" MoSCoW layout (Sep 2026)
+
+   Greeting card with a date picker, gradient action cards (the card itself is
+   the link), the day's timetable with one button per row, and a week calendar
+   beside it. Guru and siswa screens are wrapped in .dash--lega: their users
+   asked for larger type, so everything inside runs ~5px above the app default.
+   ========================================================================= */
+.dash { display: flex; flex-direction: column; gap: 14px; }
+
+.dash-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px 20px;
+}
+
+.dash--lega {
+    .page-head__title { font-size: 25px; }
+    .page-head__sub { font-size: 16px; }
+    .card-hifi__title { font-size: 18px; }
+    .card-hifi__head { gap: 10px 16px; }
+    .card-hifi__head > .card-hifi__title { margin-right: auto; }
+    .card-hifi__head .chip { font-size: 13px; height: auto; padding: 3px 10px; }
+    .card-hifi__foot { font-size: 14px; }
+    .auth__link { font-size: 15px; font-weight: 600; color: var(--p-400); }
+    .empty-state { font-size: 15px; }
+}
+
+.chip--solid-lembut { background: rgba(59, 93, 50, 0.1); color: var(--p-400); }
+
+/* ---- Action cards -------------------------------------------------------- */
+.aksi-row { display: grid; gap: 14px; }
+.aksi-row--1 { grid-template-columns: minmax(0, 1fr); }
+.aksi-row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.aksi-row--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+
+.aksi-card {
+    --aksi-badge: var(--p-400);
+    --aksi-desk: #4a6e42;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid var(--n-300);
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.03);
+    // Fixed dark ink, not var(--n-900): the gradients stay light in the dark
+    // theme, where the neutral tokens flip to light and the title would vanish.
+    color: #2d2d2d;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover { color: #2d2d2d; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
+    &:focus-visible { outline: 3px solid var(--p-300); outline-offset: 2px; }
+}
+
+.aksi-card--hijau { background: linear-gradient(90deg, #e8f5e3 0%, #c8e6c0 50%, #fff 100%); }
+
+.aksi-card--oranye {
+    --aksi-badge: #e87c3e;
+    --aksi-desk: #a05a2c;
+    background: linear-gradient(90deg, #fdf0e8 0%, #fad7bc 50%, #fff 100%);
+}
+
+.aksi-card--khaki {
+    --aksi-badge: #877129;
+    --aksi-desk: #6e5c21;
+    background: linear-gradient(90deg, #f9f4e4 0%, var(--s-100) 50%, #fff 100%);
+}
+
+.aksi-card--sage {
+    --aksi-badge: var(--p-300);
+    --aksi-desk: #3c5a34;
+    background: linear-gradient(90deg, #eef3ec 0%, #d6e2d1 50%, #fff 100%);
+}
+
+.aksi-card__top { display: flex; align-items: center; gap: 16px; }
+
+.aksi-card__badge {
+    width: 44px;
+    height: 44px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--aksi-badge);
+    color: #fff;
+    font-size: 20px;
+}
+
+.aksi-card__judul { flex: 1; min-width: 0; font-size: 23px; font-weight: 700; line-height: 1.25; }
+.aksi-card__desk { font-size: 19px; line-height: 1.4; color: var(--aksi-desk); }
+
+.aksi-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--p-400);
+}
+
+.aksi-card__chev { display: inline-flex; color: var(--p-400); font-size: 20px; }
+
+// With a verb label the chevron only appears once the label is hidden (phones).
+.aksi-card__chev--sempit { display: none; }
+
+// Admin's four-up cards: smaller type, title under the badge row.
+.aksi-card--ringkas {
+    gap: 10px;
+    padding: 16px;
+    border-radius: 14px;
+
+    .aksi-card__top { justify-content: space-between; }
+    .aksi-card__badge { width: 40px; height: 40px; border-radius: 10px; font-size: 18px; }
+    .aksi-card__judul { flex: none; font-size: 16px; }
+    .aksi-card__desk { font-size: 12px; }
+}
+
+/* ---- Date picker --------------------------------------------------------- */
+.pilih-tanggal { display: flex; align-items: center; gap: 8px; margin: 0; }
+
+.pilih-tanggal__grup {
+    display: flex;
+    align-items: stretch;
+    height: 44px;
+    border: 1px solid var(--n-300);
+    border-radius: var(--radius-control);
+    background: var(--n-100);
+    overflow: hidden;
+}
+
+.pilih-tanggal__panah {
+    width: 42px;
+    display: grid;
+    place-items: center;
+    color: var(--n-700);
+    font-size: 15px;
+    text-decoration: none;
+
+    &:hover { background: var(--n-200); color: var(--n-900); }
+}
+
+.pilih-tanggal__aktif {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0 14px;
+    border-left: 1px solid var(--n-300);
+    border-right: 1px solid var(--n-300);
+    color: var(--n-800);
+    font-size: 16px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+
+    svg { color: var(--p-400); }
+}
+
+.pilih-tanggal__label--pendek { display: none; }
+
+// The native date input sits invisibly over the label: tapping the date opens
+// the platform's own calendar, and app.js submits the form on change.
+.pilih-tanggal__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.pilih-tanggal__hari-ini {
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 16px;
+    border-radius: var(--radius-control);
+    background: rgba(59, 93, 50, 0.1);
+    color: var(--p-400);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover { background: rgba(59, 93, 50, 0.18); color: var(--p-500); }
+    &.is-aktif { background: var(--n-200); color: var(--n-700); }
+}
+
+/* ---- Timetable + week calendar row --------------------------------------- */
+.dash-jadwal {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 12px;
+    align-items: stretch;
+
+    > * { min-width: 0; }
+}
+
+// Larger-type table for the dashboards.
+.tbl--lega {
+    thead th { font-size: 13px; padding: 9px 14px; }
+    tbody td { font-size: 16px; padding: 10px 14px; vertical-align: middle; }
+}
+
+.btn-hifi--baris {
+    height: 36px;
+    min-width: 150px;
+    justify-content: center;
+    font-size: 15px;
+    padding: 0 16px;
+}
+
+.btn-hifi.is-nonaktif,
+.btn-hifi.is-nonaktif:hover {
+    background: var(--n-200);
+    border-color: var(--n-200);
+    color: var(--n-500);
+    cursor: not-allowed;
+}
+
+.sel-jam { white-space: nowrap; }
+.sel-jam__awal { display: none; }
+
+/* ---- Week calendar ------------------------------------------------------- */
+.kalender-mini { display: flex; flex-direction: column; overflow: hidden; }
+
+.kalender-mini__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 12px 12px 16px;
+    border-bottom: 1px solid var(--n-200);
+}
+
+.kalender-mini__judul { margin: 0; font-size: 18px; font-weight: 600; }
+.kalender-mini__rentang { font-size: 14px; color: var(--n-600); }
+
+.kalender-mini__nav {
+    display: flex;
+    gap: 4px;
+
+    a {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--n-300);
+        border-radius: 7px;
+        color: var(--n-700);
+        text-decoration: none;
+
+        &:hover { background: var(--n-200); }
+    }
+}
+
+.kalender-mini__daftar { display: flex; flex-direction: column; flex: 1; }
+
+.kalender-mini__hari {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--n-200);
+    color: var(--n-900);
+    text-decoration: none;
+
+    &:hover { background: rgba(229, 229, 229, 0.5); color: var(--n-900); }
+
+    &.is-dipilih {
+        background: rgba(59, 93, 50, 0.1);
+        box-shadow: inset 4px 0 0 var(--p-400);
+    }
+
+    &.is-libur { color: var(--n-500); }
+}
+
+.kalender-mini__tgl {
+    position: relative;
+    width: 42px;
+    height: 44px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    line-height: 1.1;
+
+    .is-dipilih & { background: var(--p-400); color: #fff; }
+    // Today, when another day is on screen, keeps a ring so it stays findable.
+    .is-hari-ini:not(.is-dipilih) & { box-shadow: inset 0 0 0 2px var(--p-300); }
+}
+
+.kalender-mini__dow { font-size: 11px; font-weight: 600; text-transform: uppercase; opacity: 0.75; }
+.kalender-mini__num { font-size: 17px; font-weight: 700; }
+
+// Shown only in the folded strip, where the status text is gone.
+.kalender-mini__titik {
+    position: absolute;
+    bottom: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: none;
+}
+
+.kalender-mini__titik--hijau { background: var(--green-200); }
+.kalender-mini__titik--kuning { background: var(--yellow-200); }
+.kalender-mini__titik--merah { background: var(--red-100); }
+
+.kalender-mini__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.kalender-mini__jumlah { font-size: 15px; font-weight: 500; }
+
+.kalender-mini__status {
+    font-size: 13px;
+    color: var(--n-600);
+
+    &.is-kuning { color: var(--s-500); font-weight: 600; }
+    &.is-merah { color: #b3121f; font-weight: 600; }
+    &.is-hijau { color: #1a7a45; }
+}
+
+.kalender-mini__chev { color: var(--n-500); font-size: 13px; }
+
+.kalender-mini__foot {
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--n-600);
+}
+
+/* ---- Admin analytics row: chart + two breakdowns ------------------------ */
+.grid-row--analitik-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (max-width: 1199.98px) {
+    // The chart takes a full row; the two breakdowns share the next.
+    .grid-row--analitik-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-row--analitik-3 > :first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 767.98px) {
+    .grid-row--analitik-3 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---- Bar chart traffic light -------------------------------------------- */
+.barchart { position: relative; }
+.barchart__bar--baik { background: var(--green-200); }
+.barchart__bar--waspada { background: var(--yellow-200); }
+.barchart__bar--kurang { background: var(--red-100); }
+.barchart__bar--kosong { background: var(--n-300); }
+
+// A month of daily bars: tight gaps, and every other date label only.
+.barchart--padat { gap: 2px; min-width: 0; overflow: hidden; }
+.barchart--padat .barchart__col:nth-child(even) .barchart__tick { visibility: hidden; }
+
+.barchart__target {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--n-700);
+    pointer-events: none;
+    z-index: 1;
+}
+
+// Hangs below the line: when the target is the chart's peak the line sits at
+// the very top, and a label above it would be clipped.
+.barchart__target-label {
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    padding: 0 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.85);
+    color: var(--n-700);
+    font-size: 9px;
+    font-weight: 500;
+}
+
+/* ---- Breakpoints --------------------------------------------------------- */
+// Below full desktop two cards share a row with too little room for a verb
+// label beside the title, so the card falls back to its chevron.
+@media (max-width: 1399.98px) {
+    .aksi-row--2 .aksi-card__cta { display: none; }
+    .aksi-row--2 .aksi-card__chev--sempit { display: inline-flex; }
+}
+
+@media (max-width: 1199.98px) {
+    .aksi-row--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .aksi-card__judul { font-size: 20px; }
+    .aksi-card__desk { font-size: 17px; }
+}
+
+// Below full desktop the week calendar folds into a seven-pill strip above the
+// table (the Figma mobile frames), so the day's lessons keep the full width —
+// beside a 290px column the table had to scroll sideways already at 1024px.
+@media (max-width: 1199.98px) {
+    .dash-jadwal { grid-template-columns: minmax(0, 1fr); }
+    .dash-jadwal .kalender-mini { order: -1; }
+
+    .kalender-mini__daftar {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+        padding: 12px;
+    }
+
+    .kalender-mini__hari {
+        justify-content: center;
+        padding: 0;
+        border: 1px solid var(--n-200);
+        border-radius: 10px;
+
+        &.is-dipilih { box-shadow: none; background: none; border-color: var(--p-400); }
+    }
+
+    .kalender-mini__tgl { width: 100%; height: 58px; }
+    .kalender-mini__titik { display: block; }
+
+    .kalender-mini__info,
+    .kalender-mini__chev,
+    .kalender-mini__foot { display: none; }
+}
+
+@media (max-width: 767.98px) {
+    .aksi-row--2 { grid-template-columns: minmax(0, 1fr); }
+
+    .dash-head { flex-direction: column; align-items: stretch; }
+    .pilih-tanggal { flex-direction: column; align-items: stretch; }
+    .pilih-tanggal__aktif { flex: 1; justify-content: center; }
+    .pilih-tanggal__hari-ini { justify-content: center; height: 40px; }
+
+    // The day's lessons become a list of cards (Figma mobile): jam and ruang on
+    // top, the title, the sub line, then one full-width action button.
+    .tbl.tbl--kartu {
+        min-width: 0;
+
+        thead { display: none; }
+
+        tbody tr {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            grid-template-areas: "jam ruang" "judul judul" "sub sub" "aksi aksi";
+            gap: 4px 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--n-200);
+            background: none;
+        }
+
+        tbody td { padding: 0; border: 0; }
+        .sel-jam { grid-area: jam; font-size: 14px; font-weight: 600; color: var(--n-700); }
+        .sel-jam__awal { display: inline; }
+        .sel-ruang { grid-area: ruang; font-size: 14px; text-align: right; }
+        .sel-judul { grid-area: judul; font-size: 17px; }
+        .sel-sub { grid-area: sub; font-size: 15px; color: var(--n-600); }
+        .sel-aksi { grid-area: aksi; margin-top: 6px; text-align: left; }
+
+        .sel-aksi form,
+        .sel-aksi .btn-hifi { display: flex; width: 100%; }
+
+        .btn-hifi--baris { height: 44px; font-size: 16px; }
+        .empty-state { display: block; }
+    }
+}
+
+@media (max-width: 575.98px) {
+    .dash--lega .page-head__title { font-size: 22px; }
+    .dash--lega .page-head__sub { font-size: 15px; }
+
+    .pilih-tanggal__label { display: none; }
+    .pilih-tanggal__label--pendek { display: inline; }
+
+    // On a phone the whole card is the target: the verb label gives way to the
+    // chevron and the text drops to the Figma mobile scale.
+    .aksi-card { padding: 16px; }
+    .aksi-card__judul { font-size: 19px; }
+    .aksi-card__desk { font-size: 16px; }
+    .aksi-card__cta { display: none; }
+    .aksi-card__chev--sempit { display: inline-flex; }
+    .aksi-row--4 { grid-template-columns: minmax(0, 1fr); }
+
+    .kalender-mini__daftar { padding: 10px; }
+    .kalender-mini__tgl { height: 54px; }
+    .kalender-mini__dow { font-size: 10px; }
+}

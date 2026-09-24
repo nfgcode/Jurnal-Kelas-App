@@ -10,23 +10,13 @@
 </head>
 <body>
 
-@php
-    // The tab drives the identifier label, so it must survive a failed attempt.
-    $peran = old('role', 'guru');
-
-    $identitas = [
-        'admin' => ['label' => 'Email', 'placeholder' => 'admin@sekolah.sch.id'],
-        'guru' => ['label' => 'NIP', 'placeholder' => '19850412 200604 1 012'],
-        'siswa' => ['label' => 'NIS', 'placeholder' => '20261079'],
-    ];
-@endphp
-
 <div class="auth">
     <section class="auth__brand">
-        <a class="sidebar__brand p-0" href="{{ route('landing') }}">
+        {{-- Plain brand, not a link: there is no landing page to go back to. --}}
+        <div class="sidebar__brand p-0">
             <span class="sidebar__mark"><x-ikon nama="journal-text" /></span>
             <span class="sidebar__wordmark">Jurnal Kelas</span>
-        </a>
+        </div>
 
         <div class="my-auto">
             <h1 class="auth__headline">Catat jurnal mengajar<br>tanpa ribet.</h1>
@@ -54,15 +44,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="auth__stats">
-            @foreach ($ringkasan as $label => $nilai)
-                <div>
-                    <div class="auth__stat-value">{{ number_format($nilai, 0, ',', '.') }}</div>
-                    <div class="auth__stat-label">{{ $label }}</div>
-                </div>
-            @endforeach
-        </div>
     </section>
 
     <section class="auth__panel">
@@ -77,21 +58,13 @@
             <h2 class="auth__title">Masuk ke akun Anda</h2>
             <p class="auth__sub">Masuk dengan username, email, NIP (guru), atau NIS (siswa).</p>
 
-            <div class="role-tabs">
-                @foreach (['admin' => 'Administrator', 'guru' => 'Guru', 'siswa' => 'Siswa'] as $value => $label)
-                    <label class="role-tabs__opt">
-                        <input type="radio" name="role" value="{{ $value }}" @checked($peran === $value) data-role-tab>
-                        {{ $label }}
-                    </label>
-                @endforeach
-            </div>
-
+            {{-- One identifier field, no role picker (Figma login): the server
+                 works out whose NIP, NIS, username or email this is. --}}
             <div class="auth__field">
-                <label class="field__label d-block mb-1" for="user" id="userLabel">
-                    {{ $identitas[$peran]['label'] }}
-                </label>
+                <label class="field__label d-block mb-1" for="user">NIP / NIS / Username</label>
                 <input class="input-hifi" type="text" id="user" name="user" value="{{ old('user') }}"
-                       placeholder="{{ $identitas[$peran]['placeholder'] }}" autofocus required>
+                       placeholder="Masukkan NIP, NIS, username, atau email" autocomplete="username"
+                       autofocus required>
                 @error('user')<span class="field__error">{{ $message }}</span>@enderror
             </div>
 
@@ -101,9 +74,12 @@
                     <span class="auth__link">Lupa kata sandi?</span>
                 </div>
                 <div class="password-wrap">
-                    <input class="input-hifi" type="password" id="password" name="password" required>
-                    <button class="password-toggle" type="button" id="togglePassword" aria-label="Tampilkan kata sandi">
-                        <x-ikon nama="eye" />
+                    <input class="input-hifi" type="password" id="password" name="password"
+                           autocomplete="current-password" required>
+                    <button class="password-toggle" type="button" id="togglePassword"
+                            aria-label="Tampilkan kata sandi" aria-pressed="false">
+                        <span data-ikon-tampil><x-ikon nama="eye" /></span>
+                        <span data-ikon-sembunyi hidden><x-ikon nama="eye-slash" /></span>
                     </button>
                 </div>
                 @error('password')<span class="field__error">{{ $message }}</span>@enderror
@@ -122,25 +98,17 @@
 </div>
 
 <script>
-    // Keep the identifier field labelled for whichever role tab is selected.
-    const labels = @json(collect($identitas)->map(fn ($i) => [$i['label'], $i['placeholder']]));
-    const userLabel = document.getElementById('userLabel');
-    const userInput = document.getElementById('user');
+    // Show/hide the password. The icons are inline SVGs now (no more <i> from
+    // the old icon font), so both ship in the markup and one is hidden.
     const passwordInput = document.getElementById('password');
-
-    document.querySelectorAll('[data-role-tab]').forEach((tab) => {
-        tab.addEventListener('change', () => {
-            const [label, placeholder] = labels[tab.value];
-            userLabel.textContent = label;
-            userInput.placeholder = placeholder;
-        });
-    });
-
     const toggle = document.getElementById('togglePassword');
     toggle?.addEventListener('click', () => {
-        const hidden = passwordInput.type === 'password';
-        passwordInput.type = hidden ? 'text' : 'password';
-        toggle.querySelector('i').className = hidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+        const tampil = passwordInput.type === 'password';
+        passwordInput.type = tampil ? 'text' : 'password';
+        toggle.setAttribute('aria-pressed', String(tampil));
+        toggle.setAttribute('aria-label', tampil ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+        toggle.querySelector('[data-ikon-tampil]').hidden = tampil;
+        toggle.querySelector('[data-ikon-sembunyi]').hidden = !tampil;
     });
 </script>
 

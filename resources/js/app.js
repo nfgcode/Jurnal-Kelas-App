@@ -303,3 +303,19 @@ document.addEventListener('keydown', (event) => {
 
     document.querySelectorAll('select[data-searchable]').forEach(enhance);
 })();
+
+// Dashboard date picker (components/pilih-tanggal): the native date input lies
+// invisibly over the date label. A click opens the platform calendar where the
+// browser supports it, and picking a day reloads the dashboard on that date.
+document.addEventListener('click', (e) => {
+    const input = e.target.closest('.pilih-tanggal__input');
+    if (input && typeof input.showPicker === 'function') {
+        try { input.showPicker(); } catch { /* not user-activated / unsupported */ }
+    }
+});
+
+document.addEventListener('change', (e) => {
+    if (e.target.matches('[data-kirim-otomatis]') && e.target.value) {
+        e.target.form.requestSubmit();
+    }
+});

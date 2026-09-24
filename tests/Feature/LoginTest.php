@@ -142,6 +142,55 @@ class LoginTest extends TestCase
         $this->assertSame('siswa', Auth::user()->role);
     }
 
+    public function test_login_form_has_no_role_picker(): void
+    {
+        // The Figma login has one identifier field; the server works out the role.
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('NIP / NIS / Username')
+            ->assertDontSee('name="role"', false)
+            // Nor does the public page announce the school's head counts.
+            ->assertDontSee('Siswa aktif')
+            ->assertDontSee('Jurnal tercatat');
+    }
+
+    /**
+     * Without a role picker the same digits can match two accounts. Each person
+     * still reaches their own account, chosen by the password they typed.
+     */
+    public function test_a_shared_identifier_signs_in_whoever_the_password_belongs_to(): void
+    {
+        $guru = $this->buatGuru(
+            ['nip' => '20240001', 'nama' => 'Guru Kembar'],
+            ['username' => 'guru.kembar', 'email' => 'kembar@jurnalkelas.app', 'password' => Hash::make('sandi-guru')],
+        );
+        $siswa = $this->siswa();   // NIS 20240001, password "password"
+
+        $this->post('/login', ['user' => '20240001', 'password' => 'sandi-guru'])
+            ->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($guru);
+
+        Auth::logout();
+
+        $this->post('/login', ['user' => '20240001', 'password' => 'password'])
+            ->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($siswa);
+    }
+
+    public function test_an_inactive_account_is_only_named_to_whoever_knows_its_password(): void
+    {
+        $guru = $this->guru();
+        $guru->update(['status' => 'nonaktif']);
+
+        $this->post('/login', ['user' => '198501012010011001', 'password' => 'salah'])
+            ->assertSessionHasErrors(['user' => 'NIP/NIS atau password salah.']);
+
+        $this->post('/login', ['user' => '198501012010011001', 'password' => 'password'])
+            ->assertSessionHasErrors(['user' => 'Akun ini nonaktif. Hubungi admin sekolah.']);
+
+        $this->assertGuest();
+    }
+
     public function test_nip_must_be_unique_across_guru(): void
     {
         $this->guru();

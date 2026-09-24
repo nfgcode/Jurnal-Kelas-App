@@ -8,6 +8,14 @@
         // divide, so this figure needs no "?: 1" fudge that would print "1".
         $totalPresensi = array_sum($presensi);
         $nilaiPengisian = array_column($pengisian, 'value');
+        // The chart's traffic light: every timetabled lesson should get a
+        // journal, so the target is the lessons of an average school day — or
+        // of a whole week once Ringkasan::harian() rolls a long range up weekly.
+        $mingguan = $periode->jumlahHari() > 31;
+        $hariSekolah = count(\App\Support\Ringkasan::HARI);
+        $targetPengisian = $mingguan ? $kpi['jadwal'] : (int) round($kpi['jadwal'] / $hariSekolah);
+        $hariTerisi = array_filter($nilaiPengisian);
+        $rataPengisian = (int) round(array_sum($hariTerisi) / max(1, count($hariTerisi)));
         $sparkJurnal = $nilaiPengisian;
         // Master-data counts have no daily series behind them, so their tiles
         // carry a deliberately flat track rather than an invented trend.
@@ -20,6 +28,21 @@
         <x-periode-filter :periode="$periode" />
         <a class="btn-hifi" href="{{ route('admin.laporan.jurnal') }}">Ekspor Data</a>
     </x-page-head>
+
+    {{-- Action cards (Figma "Row / Aksi Cepat"): the admin's four daily jobs,
+         each card itself the link — no button inside. --}}
+    <div class="aksi-row aksi-row--4">
+        <x-aksi-card :href="route('admin.laporan.jurnal')" judul="Cek Jurnal Hari Ini" ikon="book" warna="hijau" ringkas
+                     :deskripsi="$jadwalHariIni
+                         ? $belumBerjurnal . ' dari ' . $jadwalHariIni . ' jadwal belum berjurnal.'
+                         : 'Tidak ada jadwal hari ini.'" />
+        <x-aksi-card :href="route('admin.laporan.presensi')" judul="Pantau Kehadiran" ikon="people" warna="oranye" ringkas
+                     deskripsi="Hadir, izin, sakit, dan alpa siswa hari ini." />
+        <x-aksi-card :href="route('admin.akun.index')" judul="Kelola Pengguna" ikon="person-plus" warna="khaki" ringkas
+                     deskripsi="Tambah atau impor akun guru dan siswa." />
+        <x-aksi-card :href="route('jadwal.index')" judul="Atur Jadwal" ikon="calendar3" warna="sage" ringkas
+                     deskripsi="Susun jadwal pelajaran untuk tiap kelas." />
+    </div>
 
     {{-- KPI row --}}
     <div class="grid-row grid-row--6">
@@ -35,9 +58,9 @@
     </div>
 
     {{-- Analytics row --}}
-    <div class="grid-row grid-row--analitik">
-        <x-card title="Pengisian Jurnal" :meta="$periode->label() . ' · rata-rata ' . round(array_sum($nilaiPengisian) / max(1, count($nilaiPengisian))) . '/titik'">
-            <x-barchart :series="$pengisian" drill="jurnal" />
+    <div class="grid-row grid-row--analitik-3">
+        <x-card title="Pengisian Jurnal" :meta="$periode->label() . ' · rata-rata ' . $rataPengisian . ($mingguan ? '/minggu' : '/hari')">
+            <x-barchart :series="$pengisian" drill="jurnal" :target="$targetPengisian" />
         </x-card>
 
         <x-card title="Presensi Siswa" :meta="$periode->label()">
@@ -64,36 +87,7 @@
                 </div>
             @endif
         </x-card>
-
-        <x-card title="Guru Teraktif" :meta="$periode->label()">
-            @php $puncak = max(1, $guruTeraktif->max('jurnals_count') ?? 1); @endphp
-            @foreach ($guruTeraktif as $guru)
-                <div class="breakdown mb-2 is-clickable" role="button" tabindex="0"
-                     data-detail-tipe="guru" data-detail-guru="{{ $guru->id }}">
-                    <span class="avatar avatar--xs">{{ $guru->inisial() }}</span>
-                    <span class="breakdown__label" style="width: 88px">{{ $guru->nama }}</span>
-                    <span class="stack"><span class="stack__seg--hadir" style="width: {{ $guru->jurnals_count / $puncak * 100 }}%"></span></span>
-                    <span class="breakdown__value">{{ $guru->jurnals_count }}</span>
-                </div>
-            @endforeach
-        </x-card>
     </div>
-
-    {{-- Journal completeness heatmap --}}
-    <x-card title="Kelengkapan Jurnal per Kelas">
-        <x-slot:actions>
-            <x-legend :swatch="true" :items="[
-                'Belum diisi' => 'var(--n-200)',
-                '' => 'var(--s-100)',
-                ' ' => 'var(--p-100)',
-                '  ' => 'var(--p-200)',
-                'Lengkap' => 'var(--p-300)',
-            ]" />
-        </x-slot:actions>
-
-        <x-heatmap :rows="$heatmap" drill-tipe="kelas"
-                   :kelas-ids="$petaKelas" :tanggal-map="$petaTanggal" />
-    </x-card>
 
     {{-- Latest journals --}}
     <x-card title="Jurnal Terbaru" flush>
