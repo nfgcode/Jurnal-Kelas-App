@@ -19,7 +19,7 @@
 
             <div class="d-flex justify-content-between gap-2">
                 <button class="btn-hifi btn-hifi--danger" type="submit" form="hapusJadwal"
-                        onclick="return confirm('Hapus jadwal ini?')">Hapus Jadwal</button>
+                        data-konfirmasi="Hapus jadwal ini?">Hapus Jadwal</button>
 
                 <div class="d-flex gap-2">
                     <a class="btn-hifi btn-hifi--ghost" href="{{ route('jadwal.index') }}">Batal</a>

@@ -1,7 +1,7 @@
 /* =========================================================================
    Dashboards — Figma "High Fidelity 2" MoSCoW layout (Sep 2026)
 
-   Greeting card with a date picker, gradient action cards (the card itself is
+   Greeting card with a date picker, solid-tint action cards (the card itself is
    the link), the day's timetable with one button per row, and a week calendar
    beside it. Guru and siswa screens are wrapped in .dash--lega: their users
    asked for larger type, so everything inside runs ~5px above the app default.
@@ -47,7 +47,7 @@
     border: 1px solid var(--n-300);
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.03);
-    // Fixed dark ink, not var(--n-900): the gradients stay light in the dark
+    // Fixed dark ink, not var(--n-900): the tints stay light in the dark
     // theme, where the neutral tokens flip to light and the title would vanish.
     color: #2d2d2d;
     text-decoration: none;
@@ -57,24 +57,25 @@
     &:focus-visible { outline: 3px solid var(--p-300); outline-offset: 2px; }
 }
 
-.aksi-card--hijau { background: linear-gradient(90deg, #e8f5e3 0%, #c8e6c0 50%, #fff 100%); }
+// Solid tints, no gradients (user's call, Oct 2026).
+.aksi-card--hijau { background: #e3f1de; }
 
 .aksi-card--oranye {
     --aksi-badge: #e87c3e;
     --aksi-desk: #a05a2c;
-    background: linear-gradient(90deg, #fdf0e8 0%, #fad7bc 50%, #fff 100%);
+    background: #fce8da;
 }
 
 .aksi-card--khaki {
     --aksi-badge: #877129;
     --aksi-desk: #6e5c21;
-    background: linear-gradient(90deg, #f9f4e4 0%, var(--s-100) 50%, #fff 100%);
+    background: #f3ecd4;
 }
 
 .aksi-card--sage {
     --aksi-badge: var(--p-300);
     --aksi-desk: #3c5a34;
-    background: linear-gradient(90deg, #eef3ec 0%, #d6e2d1 50%, #fff 100%);
+    background: #e5ede2;
 }
 
 .aksi-card__top { display: flex; align-items: center; gap: 16px; }
@@ -119,6 +120,65 @@
     .aksi-card__badge { width: 40px; height: 40px; border-radius: 10px; font-size: 18px; }
     .aksi-card__judul { flex: none; font-size: 16px; }
     .aksi-card__desk { font-size: 12px; }
+}
+
+// The card as a form button (presensi: opening a roster is a POST).
+button.aksi-card {
+    width: 100%;
+    height: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.aksi-card__baris {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--aksi-desk);
+}
+
+.aksi-card__status { font-size: 11px; font-weight: 600; color: #1a7a45; }
+
+/* ---- Journal forms: local draft status and restore banner ---------------- */
+// A status pill, not a button: it reports what app.js has saved.
+.draf-status {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px dashed var(--n-300);
+    border-radius: var(--radius-control);
+    color: var(--n-600);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.draf-banner {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-control);
+    background: rgba(255, 219, 67, 0.25);
+    color: var(--n-900);
+    font-size: 12.5px;
+}
+
+.draf-banner__aksi { display: flex; gap: 6px; }
+
+/* ---- Presensi guru: today's lessons as action cards ---------------------- */
+.pertemuan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    padding: 12px 14px 14px;
+
+    > form { margin: 0; }
 }
 
 /* ---- Date picker --------------------------------------------------------- */

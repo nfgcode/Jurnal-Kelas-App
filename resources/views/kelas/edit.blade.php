@@ -17,7 +17,7 @@
 
             <div class="d-flex justify-content-between gap-2">
                 <button class="btn-hifi btn-hifi--danger" type="submit" form="hapusKelas"
-                        onclick="return confirm('Hapus kelas {{ $kelas->nama_kelas }}?')">Hapus Kelas</button>
+                        data-konfirmasi="Hapus kelas {{ $kelas->nama_kelas }}?">Hapus Kelas</button>
 
                 <div class="d-flex gap-2">
                     <a class="btn-hifi btn-hifi--ghost" href="{{ route('kelas.index') }}">Batal</a>

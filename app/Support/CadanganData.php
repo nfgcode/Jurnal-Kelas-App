@@ -135,7 +135,7 @@ class CadanganData
             $tabelPertama = false;
 
             $barisPertama = true;
-            DB::table($tabel)->orderBy('id')->chunk(2000, function ($rows) use ($tulis, &$barisPertama) {
+            $this->urut(DB::table($tabel), $tabel)->chunk(2000, function ($rows) use ($tulis, &$barisPertama) {
                 foreach ($rows as $row) {
                     $tulis(($barisPertama ? '' : ',').$this->encode($row));
                     $barisPertama = false;
@@ -264,7 +264,7 @@ class CadanganData
     /** Lazily stream a table's rows as ordered value arrays for the sheet writer. */
     private function barisXlsx(string $tabel, array $cols): Generator
     {
-        foreach (DB::table($tabel)->orderBy('id')->cursor() as $row) {
+        foreach ($this->urut(DB::table($tabel), $tabel)->cursor() as $row) {
             $r = (array) $row;
 
             yield array_map(fn ($c) => $r[$c] ?? null, $cols);
@@ -278,6 +278,23 @@ class CadanganData
      * @param  array<int, string>|null  $only
      * @return array<int, string>
      */
+    /**
+     * Order a table by its own primary key. Not every table has an `id`: guru
+     * and siswa are keyed by nip/nis, and orderBy('id') on them threw a 500 on
+     * every backup download.
+     */
+    private function urut($query, string $tabel)
+    {
+        $primer = collect(Schema::getIndexes($tabel))->firstWhere('primary', true)['columns']
+            ?? [Schema::getColumnListing($tabel)[0]];
+
+        foreach ($primer as $kolom) {
+            $query->orderBy($kolom);
+        }
+
+        return $query;
+    }
+
     private function tabelDipilih(?array $only): array
     {
         $dipilih = $only ? array_intersect(self::TABEL, $only) : self::TABEL;

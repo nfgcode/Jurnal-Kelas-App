@@ -1234,6 +1234,26 @@ textarea.input-hifi {
 
 .auth__link { font-size: 11.5px; color: var(--p-300); text-decoration: none; font-weight: 500; }
 
+.auth__link--btn {
+    border: 0;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+
+    &:hover { text-decoration: underline; }
+}
+
+.auth__bantuan {
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-control);
+    background: var(--n-200);
+    color: var(--n-800);
+    font-size: 11.5px;
+}
+
+.auth__top-strong { color: var(--n-800); font-weight: 600; }
+
 .auth__submit {
     width: 100%;
     height: 46px;

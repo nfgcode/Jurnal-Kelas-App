@@ -7,7 +7,7 @@
 
     <x-page-head
         title="Kelas {{ $kelas->nama_kelas }}"
-        :sub="'Tingkat ' . $kelas->tingkat . ($kelas->jurusan ? ' · ' . $kelas->jurusan : '') . ' · ' . $kpi['jumlah_siswa'] . ' siswa'">
+        :sub="'Tingkat ' . $kelas->tingkat . ($kelas->jurusanNama() ? ' · ' . $kelas->jurusanNama() : '') . ' · ' . $kpi['jumlah_siswa'] . ' siswa'">
         <x-kelas-switch :kelas-wali="$kelasWali" :kelas="$kelas" />
         <a class="btn-hifi" href="{{ route('wali-kelas.siswa', $q) }}">Data Kelas →</a>
     </x-page-head>

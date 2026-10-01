@@ -176,7 +176,7 @@ class DashboardController extends Controller
             case 'terisi':
                 $this->terapkanFilter($query, $data);
                 $query->manusia()->whereBetween('tanggal', $rentang);
-                $judul = 'Jurnal Diisi Guru';
+                $judul = 'Jurnal Terisi';
                 break;
 
             case 'otomatis':

@@ -47,9 +47,11 @@
     </section>
 
     <section class="auth__panel">
+        {{-- Accounts are issued by the school's admin, not self-registered:
+             a statement, so it is not styled as a link it cannot be. --}}
         <div class="auth__top">
             <span>Belum punya akun?</span>
-            <span class="auth__link">Hubungi admin sekolah</span>
+            <strong class="auth__top-strong">Hubungi admin sekolah</strong>
         </div>
 
         <form class="auth__form" method="POST" action="{{ route('login') }}">
@@ -71,8 +73,15 @@
             <div class="auth__field">
                 <div class="auth__label-row">
                     <label class="field__label" for="password">Kata Sandi</label>
-                    <span class="auth__link">Lupa kata sandi?</span>
+                    {{-- No self-service reset: the admin sets a new password from
+                         Akun Pengguna, so the link explains that instead. --}}
+                    <button class="auth__link auth__link--btn" type="button" id="lupaSandi"
+                            aria-expanded="false" aria-controls="bantuanSandi">Lupa kata sandi?</button>
                 </div>
+                <p class="auth__bantuan" id="bantuanSandi" hidden>
+                    Minta admin sekolah mengatur ulang kata sandi Anda melalui menu
+                    <strong>Akun Pengguna</strong>, lalu masuk dengan kata sandi yang baru.
+                </p>
                 <div class="password-wrap">
                     <input class="input-hifi" type="password" id="password" name="password"
                            autocomplete="current-password" required>
@@ -101,6 +110,13 @@
     // Show/hide the password. The icons are inline SVGs now (no more <i> from
     // the old icon font), so both ship in the markup and one is hidden.
     const passwordInput = document.getElementById('password');
+    const lupa = document.getElementById('lupaSandi');
+    lupa?.addEventListener('click', () => {
+        const bantuan = document.getElementById('bantuanSandi');
+        bantuan.hidden = !bantuan.hidden;
+        lupa.setAttribute('aria-expanded', String(!bantuan.hidden));
+    });
+
     const toggle = document.getElementById('togglePassword');
     toggle?.addEventListener('click', () => {
         const tampil = passwordInput.type === 'password';

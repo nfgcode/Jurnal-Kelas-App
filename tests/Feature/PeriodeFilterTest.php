@@ -61,7 +61,11 @@ class PeriodeFilterTest extends TestCase
             return $response->viewData('jurnals')->total();
         };
 
-        $this->assertLessThanOrEqual($hitung('bulan_ini'), $hitung('minggu_ini'));
+        // Only pairs where one range always sits inside the other. "Minggu ini"
+        // is NOT always inside "bulan ini": on 1 October the week began on
+        // 28 September, and this assertion failed at the start of such months.
+        $this->assertLessThanOrEqual($hitung('minggu_ini'), $hitung('hari_ini'));
+        $this->assertLessThanOrEqual($hitung('30_hari'), $hitung('minggu_ini'));
         $this->assertLessThanOrEqual($hitung('tahun_ini'), $hitung('bulan_ini'));
     }
 

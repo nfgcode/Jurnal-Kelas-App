@@ -9,12 +9,16 @@
         $pilihan = old('kehadiran_guru', $jurnal
             ? ($jurnal->kehadiran_guru_status === 'hadir' ? 'hadir' : ($jurnal->kehadiran_guru_ada_tugas ? 'ada_tugas' : 'tanpa_tugas'))
             : 'hadir');
+        // One local draft per meeting (or per journal being edited), so a slot
+        // switch, a closed tab or a lost connection never costs the typing.
+        $kunciDraf = 'jurnal:' . ($jurnal ? 'ubah:' . $jurnal->public_id : 'baru:' . $tanggalAktif->toDateString() . ':' . ($jadwal?->id ?? '-'));
     @endphp
 
     <x-page-head
         :title="$jurnal ? 'Ubah Jurnal Kelas' : 'Mengisi Jurnal Kelas'"
-        :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, now()->translatedFormat('l, j F Y')])->filter()->join(' · ')">
+        :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, $tanggalAktif->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
+        <span class="draf-status" data-draf-status="formJurnalKelas">Draf disimpan otomatis di perangkat ini</span>
         {{-- The primary action, repeated at the top: on a long form the only
              submit used to be below the fold. --}}
         <button class="btn-hifi" type="submit" form="formJurnalKelas">
@@ -28,7 +32,8 @@
                 <span class="card-hifi__meta">* wajib diisi</span>
             </x-slot:actions>
 
-            <form method="POST" action="{{ $aksi }}" class="form-grid" id="formJurnalKelas">
+            <form method="POST" action="{{ $aksi }}" class="form-grid" id="formJurnalKelas"
+                  data-draf="{{ $kunciDraf }}" @if ($errors->any()) data-draf-lewati @endif>
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
@@ -136,6 +141,7 @@
                     <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">Batal</a>
                     {{-- See jurnal/isi.blade.php. --}}
                     @unless ($jadwalList->isEmpty())
+                        <button class="btn-hifi btn-hifi--ghost" type="button" data-simpan-draf="formJurnalKelas">Simpan Draf</button>
                         <button class="btn-hifi" type="submit">{{ $jurnal ? 'Simpan Perubahan' : 'Kirim Jurnal' }}</button>
                     @endunless
                 </div>
@@ -194,15 +200,16 @@
                 </p>
             </x-card>
 
+            {{-- Live: app.js ticks each item as the form is filled. --}}
             <x-card title="Sebelum Menyimpan">
-                <div class="checklist">
+                <div class="checklist" data-checklist-for="formJurnalKelas">
                     @foreach ([
-                        'Kehadiran guru sudah ditandai' => true,
-                        'Materi sesuai yang diajarkan' => filled(old('materi', $jurnal?->materi)),
-                        'Tugas dicatat bila ada' => true,
-                        'Konfirmasi ke guru sebelum kirim' => false,
-                    ] as $label => $selesai)
-                        <div class="checklist__item {{ $selesai ? 'checklist__item--done' : 'checklist__item--todo' }}">
+                        ['Kehadiran guru sudah ditandai', 'kehadiran', true],
+                        ['Materi sesuai yang diajarkan', 'materi', filled(old('materi', $jurnal?->materi))],
+                        ['Keterangan diisi bila guru tidak hadir', 'keterangan', true],
+                    ] as [$label, $cek, $selesai])
+                        <div class="checklist__item {{ $selesai ? 'checklist__item--done' : 'checklist__item--todo' }}"
+                             data-cek="{{ $cek }}">
                             <span class="checklist__box"><x-ikon nama="check-lg" /></span>{{ $label }}
                         </div>
                     @endforeach

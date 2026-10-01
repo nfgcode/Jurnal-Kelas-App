@@ -7,6 +7,9 @@
         $totalSiswa = $siswaList->count();
         $mapel = $jurnal->jadwal?->mataPelajaran?->nama;
         $ditandai = $tersimpan->count();
+        // What the form starts with: the saved status, else "hadir" preselected.
+        $awal = $siswaList->map(fn ($s) => $tersimpan[$s->nis]->status ?? 'hadir')->countBy();
+        $tidakHadir = ($awal['sakit'] ?? 0) + ($awal['izin'] ?? 0) + ($awal['alpa'] ?? 0);
     @endphp
 
     <x-page-head
@@ -31,6 +34,19 @@
             untuk <strong>{{ $mapel }}</strong> saja; jam pelajaran lain punya presensinya sendiri.
         @endif
     </p>
+
+    {{-- Figma "Presensi Siswa": four live tallies. Hadir / Tidak Hadir follow
+         the radios as the teacher marks; "Belum Tersimpan" is what the server
+         holds, so it only drops once the roster is saved. --}}
+    <div class="grid-row grid-row--4">
+        <x-stat label="Total Siswa" :value="$totalSiswa" caption="terdaftar di rombel" />
+        <x-stat label="Hadir" :value="$awal['hadir'] ?? 0" data-hitung="hadir"
+                :caption="($totalSiswa ? round(($awal['hadir'] ?? 0) / $totalSiswa * 100) : 0) . '% dari kelas'" />
+        <x-stat label="Tidak Hadir" :value="$tidakHadir" data-hitung="tidak"
+                :caption="($awal['sakit'] ?? 0) . ' sakit · ' . ($awal['izin'] ?? 0) . ' izin · ' . ($awal['alpa'] ?? 0) . ' alpa'" />
+        <x-stat label="Belum Tersimpan" :value="max(0, $totalSiswa - $ditandai)"
+                :caption="$ditandai >= $totalSiswa && $totalSiswa ? 'semua tersimpan' : 'simpan untuk mencatat'" />
+    </div>
 
     <div class="filter-bar">
         <label class="filter-bar__search">
@@ -182,6 +198,23 @@
                 });
             });
 
+            // Keep the Hadir / Tidak Hadir tiles in step with the radios.
+            const hitung = () => {
+                const jumlah = { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
+                document.querySelectorAll('#tabelSiswa input[type=radio]:checked').forEach((r) => { jumlah[r.value]++; });
+                const total = baris.filter((tr) => tr.dataset.nis).length || 1;
+                const tidak = jumlah.sakit + jumlah.izin + jumlah.alpa;
+                const ubah = (kunci, nilai, keterangan) => {
+                    const kotak = document.querySelector('[data-hitung="' + kunci + '"]');
+                    if (!kotak) return;
+                    kotak.querySelector('.kpi__value').textContent = nilai;
+                    kotak.querySelector('.kpi__caption').textContent = keterangan;
+                };
+                ubah('hadir', jumlah.hadir, Math.round(jumlah.hadir / total * 100) + '% dari kelas');
+                ubah('tidak', tidak, `${jumlah.sakit} sakit · ${jumlah.izin} izin · ${jumlah.alpa} alpa`);
+            };
+            document.getElementById('tabelSiswa')?.addEventListener('change', hitung);
+
             // "Tandai semua" only touches the rows currently visible, so a teacher
             // can search for a group and mark just those without wiping the rest.
             document.querySelectorAll('[data-tandai]').forEach((tombol) => {
@@ -191,6 +224,7 @@
                         const pilihan = tr.querySelector('input[value="' + tombol.dataset.tandai + '"]');
                         if (pilihan) pilihan.checked = true;
                     });
+                    hitung();
                 });
             });
         </script>

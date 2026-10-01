@@ -319,3 +319,134 @@ document.addEventListener('change', (e) => {
         e.target.form.requestSubmit();
     }
 });
+
+// Journal forms (jurnal/isi, jurnal/mengisi): a real local draft. Typing is
+// saved to this device as it happens, "Simpan Draf" saves on demand, and an
+// unsent draft found on the next visit is offered back rather than silently
+// poured over what the server rendered. Submitting clears it — a validation
+// error re-renders the form from old() anyway.
+(() => {
+    const simpan = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+    const baca = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+    const hapus = (k) => { try { localStorage.removeItem(k); } catch { /* storage unavailable */ } };
+    const jam = (t) => new Date(t).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+    // Free text and the attendance choice; never the token, method spoof, the
+    // meeting picker (it reloads the page) or the attestation box.
+    const bidang = (form) => [...form.elements].filter((el) =>
+        el.name && !el.name.startsWith('_') && !['tanggal', 'jadwal_id'].includes(el.name)
+        && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && ['text', 'radio'].includes(el.type)) && !el.readOnly));
+
+    const nilai = (form) => {
+        const out = {};
+        bidang(form).forEach((el) => {
+            if (el.type === 'radio') { if (el.checked) out[el.name] = el.value; } else { out[el.name] = el.value; }
+        });
+        return out;
+    };
+
+    const terapkan = (form, isi) => {
+        bidang(form).forEach((el) => {
+            if (!(el.name in isi)) return;
+            if (el.type === 'radio') el.checked = el.value === isi[el.name]; else el.value = isi[el.name];
+        });
+        form.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    document.querySelectorAll('form[data-draf]').forEach((form) => {
+        const kunci = 'draf:' + form.dataset.draf;
+        const status = document.querySelector(`[data-draf-status="${form.id}"]`);
+        const tulisStatus = (teks) => { if (status) status.textContent = teks; };
+        let jeda;
+
+        const simpanSekarang = (manual) => {
+            const ok = simpan(kunci, { isi: nilai(form), waktu: Date.now() });
+            tulisStatus(ok
+                ? (manual ? 'Draf tersimpan' : 'Draf tersimpan otomatis') + ' · ' + jam(Date.now())
+                : 'Draf tidak dapat disimpan di perangkat ini');
+        };
+
+        const lama = baca(kunci);
+        const sama = lama && JSON.stringify(lama.isi) === JSON.stringify(nilai(form));
+        if (lama && !sama && !('drafLewati' in form.dataset)) {
+            const banner = document.createElement('div');
+            banner.className = 'draf-banner';
+            banner.setAttribute('role', 'status');
+            banner.innerHTML = `<span>Ada draf yang belum terkirim, disimpan pukul ${jam(lama.waktu)}.</span>`
+                + '<span class="draf-banner__aksi"><button type="button" class="btn-hifi btn-hifi--sm" data-pulihkan>Pulihkan</button>'
+                + '<button type="button" class="btn-hifi btn-hifi--sm btn-hifi--ghost" data-buang>Buang</button></span>';
+            form.prepend(banner);
+            banner.querySelector('[data-pulihkan]').addEventListener('click', () => {
+                terapkan(form, lama.isi);
+                banner.remove();
+                tulisStatus('Draf dipulihkan · ' + jam(lama.waktu));
+            });
+            banner.querySelector('[data-buang]').addEventListener('click', () => {
+                hapus(kunci);
+                banner.remove();
+                tulisStatus('Draf dibuang');
+            });
+        } else if (sama) {
+            hapus(kunci);
+        }
+
+        form.addEventListener('input', (e) => {
+            if (!e.isTrusted) return;
+            clearTimeout(jeda);
+            jeda = setTimeout(() => simpanSekarang(false), 800);
+        });
+        form.addEventListener('change', (e) => {
+            if (!e.isTrusted) return;
+            clearTimeout(jeda);
+            jeda = setTimeout(() => simpanSekarang(false), 300);
+        });
+        document.querySelectorAll(`[data-simpan-draf="${form.id}"]`).forEach((btn) =>
+            btn.addEventListener('click', () => { clearTimeout(jeda); simpanSekarang(true); }));
+        form.addEventListener('submit', () => { clearTimeout(jeda); hapus(kunci); });
+    });
+
+    // "Sebelum Menyimpan": tick each item as the form actually satisfies it.
+    document.querySelectorAll('[data-checklist-for]').forEach((daftar) => {
+        const form = document.getElementById(daftar.dataset.checklistFor);
+        if (!form) return;
+
+        const periksa = () => {
+            const pilihan = form.querySelector('input[name="kehadiran_guru"]:checked')?.value;
+            const materi = (form.elements.materi?.value || '').trim();
+            const ket = (form.elements.kehadiran_guru_keterangan?.value || '').trim();
+            const hasil = {
+                kehadiran: Boolean(pilihan),
+                materi: materi.length >= 3,
+                keterangan: !pilihan || pilihan === 'hadir' || ket.length > 0,
+            };
+            daftar.querySelectorAll('[data-cek]').forEach((item) => {
+                const ok = hasil[item.dataset.cek];
+                item.classList.toggle('checklist__item--done', ok);
+                item.classList.toggle('checklist__item--todo', !ok);
+            });
+        };
+
+        form.addEventListener('input', periksa);
+        form.addEventListener('change', periksa);
+        periksa();
+    });
+})();
+
+// Destructive actions ask first. The question rides in data-konfirmasi, an
+// ordinary HTML-escaped attribute, instead of an inline onclick="confirm('{{ }}')":
+// there the browser decodes &#039; back to a quote before running the script, so
+// a name such as  x'); alert(document.cookie);//  broke out of the JS string.
+document.addEventListener('click', (e) => {
+    const pemicu = e.target.closest('button[data-konfirmasi], a[data-konfirmasi]');
+    if (pemicu && !window.confirm(pemicu.dataset.konfirmasi)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+    }
+});
+
+document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (form.matches('form[data-konfirmasi]') && !window.confirm(form.dataset.konfirmasi)) {
+        e.preventDefault();
+    }
+});

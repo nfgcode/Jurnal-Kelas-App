@@ -262,7 +262,7 @@
         <x-slot:foot>
             <span>Hanya sebagian akhir berkas log yang dibaca agar halaman tetap ringan.</span>
             <form method="POST" action="{{ route('admin.sistem.log.bersihkan') }}"
-                  onsubmit="return confirm('Bersihkan seluruh isi berkas log? Tindakan ini tidak bisa dibatalkan.')">
+                  data-konfirmasi="Bersihkan seluruh isi berkas log? Tindakan ini tidak bisa dibatalkan.">
                 @csrf
                 <button class="btn-hifi btn-hifi--ghost btn-hifi--sm" type="submit">Bersihkan Log</button>
             </form>

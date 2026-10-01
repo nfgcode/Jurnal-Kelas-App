@@ -71,7 +71,7 @@
                 jadi <strong>Nonaktif</strong> agar tidak lagi ditawarkan saat menyusun jadwal.
             </p>
             <form method="POST" action="{{ route('ruangan.destroy', $ruangan) }}"
-                  onsubmit="return confirm('Hapus ruangan {{ $ruangan->kode }}?')">
+                  data-konfirmasi="Hapus ruangan {{ $ruangan->kode }}?">
                 @csrf
                 @method('DELETE')
                 <button class="btn-hifi btn-hifi--ghost" type="submit">Hapus Ruangan</button>

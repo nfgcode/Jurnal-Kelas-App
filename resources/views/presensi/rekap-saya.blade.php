@@ -42,6 +42,69 @@
         </x-card>
     </div>
 
+    {{-- Figma "Kehadiran per Mata Pelajaran": attendance is marked per lesson,
+         so each subject gets its own tally and predikat. --}}
+    <x-card title="Kehadiran per Mata Pelajaran" flush>
+        <x-slot:actions>
+            <x-legend :items="[
+                'Hadir' => 'var(--green-200)',
+                'Sakit' => 'var(--s-300)',
+                'Izin' => 'var(--yellow-200)',
+                'Alpa' => 'var(--red-100)',
+            ]" />
+        </x-slot:actions>
+
+        <div class="tbl-wrap">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Mata Pelajaran</th>
+                        <th>Guru</th>
+                        <th class="is-num">Total</th>
+                        <th class="is-num">H</th>
+                        <th class="is-num">S</th>
+                        <th class="is-num">I</th>
+                        <th class="is-num">A</th>
+                        <th>Persentase Kehadiran</th>
+                        <th class="is-num">Predikat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($perMapel as $mapel)
+                        @php
+                            $persenMapel = $mapel->total ? round($mapel->hadir / $mapel->total * 100) : 0;
+                            $predikatMapel = match (true) {
+                                $persenMapel >= 95 => ['Sangat Baik', 'green'],
+                                $persenMapel >= 90 => ['Baik', 'green'],
+                                $persenMapel >= 80 => ['Cukup', 'khaki'],
+                                default => ['Perhatian', 'yellow'],
+                            };
+                        @endphp
+                        <tr>
+                            <td class="is-strong">{{ $mapel->mapel }}</td>
+                            <td class="is-muted">{{ $mapel->guru ?? '—' }}</td>
+                            <td class="is-num">{{ $mapel->total }}</td>
+                            <td class="is-num">{{ (int) $mapel->hadir }}</td>
+                            <td class="is-num">{{ (int) $mapel->sakit }}</td>
+                            <td class="is-num">{{ (int) $mapel->izin }}</td>
+                            <td class="is-num">{{ (int) $mapel->alpa }}</td>
+                            <td>
+                                <span class="meter-cell">
+                                    <x-stack-bar :hadir="(int) $mapel->hadir" :sakit="(int) $mapel->sakit"
+                                                 :izin="(int) $mapel->izin" :alpa="(int) $mapel->alpa" />
+                                    <span class="is-strong">{{ $persenMapel }}%</span>
+                                </span>
+                            </td>
+                            <td class="is-num"><x-chip :tone="$predikatMapel[1]" :label="$predikatMapel[0]" /></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="9" class="empty-state">Belum ada presensi mata pelajaran pada periode ini.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-card>
+
     <form class="filter-bar" method="GET">
         <x-query-hidden />
 

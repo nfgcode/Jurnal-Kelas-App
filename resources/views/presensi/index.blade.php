@@ -15,8 +15,8 @@
 
     @if ($pertemuanHariIni->isNotEmpty())
         {{-- A guru opens this screen with one job: mark the lessons they taught
-             today. Each is its own subject, so each gets its own row and its own
-             button rather than one "isi presensi" for the whole day. --}}
+             today. Each is its own subject, so each gets its own card rather
+             than one "isi presensi" for the whole day. --}}
         <x-card title="Pertemuan Anda Hari Ini"
                 :meta="now()->translatedFormat('l, j F Y')" flush>
             <x-slot:actions>
@@ -27,46 +27,35 @@
                 @endif
             </x-slot:actions>
 
-            <div class="tbl-wrap">
-                <table class="tbl">
-                    <thead>
-                        <tr>
-                            <th>Jam</th>
-                            <th>Kelas</th>
-                            <th>Mata Pelajaran</th>
-                            <th>Presensi</th>
-                            <th class="is-num">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($pertemuanHariIni as $item)
-                            <tr>
-                                <td class="is-muted is-nowrap">JP {{ $item['jadwal']->jpLabel() }}</td>
-                                <td class="is-strong">{{ $item['jadwal']->kelas?->nama_kelas }}</td>
-                                <td>{{ $item['jadwal']->mataPelajaran?->nama }}</td>
-                                <td>
-                                    @if ($item['sudah'])
-                                        <x-chip tone="green" :label="$item['ditandai'] . ' siswa ditandai'" />
-                                    @else
-                                        <x-chip tone="neutral" label="Belum ditandai" />
-                                    @endif
-                                </td>
-                                <td class="is-num">
-                                    {{-- POST, not a link: opening the roster may have to create the
-                                         meeting's record when the class has not written its journal yet. --}}
-                                    <form method="POST" action="{{ route('presensi-jurnal.mulai') }}" class="d-inline">
-                                        @csrf
-                                        <input type="hidden" name="jadwal_id" value="{{ $item['jadwal']->id }}">
-                                        <input type="hidden" name="tanggal" value="{{ now()->toDateString() }}">
-                                        <button class="btn-hifi {{ $item['sudah'] ? 'btn-hifi--ghost' : '' }}" type="submit">
-                                            {{ $item['sudah'] ? 'Perbarui' : 'Isi Presensi' }}
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            {{-- Figma revision (High Fidelity 2): one action card per lesson, the
+                 whole card the button. POST, not a link: opening the roster may
+                 have to create the meeting's record when the class has not
+                 written its journal yet. --}}
+            <div class="pertemuan-grid">
+                @foreach ($pertemuanHariIni as $item)
+                    @php $j = $item['jadwal']; @endphp
+                    <form method="POST" action="{{ route('presensi-jurnal.mulai') }}">
+                        @csrf
+                        <input type="hidden" name="jadwal_id" value="{{ $j->id }}">
+                        <input type="hidden" name="tanggal" value="{{ now()->toDateString() }}">
+                        <button type="submit"
+                                class="aksi-card aksi-card--ringkas {{ $item['sudah'] ? 'aksi-card--sage is-selesai' : 'aksi-card--hijau' }}"
+                                aria-label="{{ $item['sudah'] ? 'Perbarui' : 'Isi' }} presensi {{ $j->mataPelajaran?->nama }} {{ $j->kelas?->nama_kelas }}, JP {{ $j->jpLabel() }}">
+                            <span class="aksi-card__top">
+                                <span class="aksi-card__badge"><x-ikon :nama="$item['sudah'] ? 'check-lg' : 'book'" /></span>
+                                <span class="aksi-card__chev"><x-ikon nama="chevron-right" /></span>
+                            </span>
+                            <span class="aksi-card__judul">{{ $j->mataPelajaran?->nama }}</span>
+                            <span class="aksi-card__baris">
+                                <span>{{ $j->kelas?->nama_kelas }}</span>
+                                <span>JP {{ $j->jpLabel() }}</span>
+                            </span>
+                            @if ($item['sudah'])
+                                <span class="aksi-card__status">{{ $item['ditandai'] }} siswa ditandai</span>
+                            @endif
+                        </button>
+                    </form>
+                @endforeach
             </div>
         </x-card>
     @endif

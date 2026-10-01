@@ -48,8 +48,13 @@
         @if ($jadwalList->isEmpty())
             <x-jadwal-kosong :tanggal="$tanggalAktif" />
         @else
+            {{-- Only the create form reloads on a new slot: on the edit form that
+                 reload used to throw away the journal being edited and open a
+                 blank one instead. --}}
             <select class="select-hifi" name="jadwal_id" data-searchable required
-                    onchange="window.location = '{{ route('jurnal.create') }}?tanggal={{ $tanggalAktif->toDateString() }}&jadwal_id=' + this.value">
+                    @unless ($jurnal)
+                        onchange="window.location = '{{ route('jurnal.create') }}?tanggal={{ $tanggalAktif->toDateString() }}&jadwal_id=' + this.value"
+                    @endunless>
                 @foreach ($jadwalList as $pilihanJadwal)
                     <option value="{{ $pilihanJadwal->id }}" @selected($jadwal?->id === $pilihanJadwal->id)>
                         @if ($denganKelas){{ $pilihanJadwal->kelas?->nama_kelas }} · @endif{{ $pilihanJadwal->mataPelajaran?->nama }}

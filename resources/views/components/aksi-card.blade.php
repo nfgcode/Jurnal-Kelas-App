@@ -3,7 +3,7 @@
     'judul',
     'deskripsi' => null,
     'ikon' => 'journal-text',
-    // hijau | oranye | khaki | sage — the Figma card gradients.
+    // hijau | oranye | khaki | sage — solid tints (no gradients, by request).
     'warna' => 'hijau',
     // A verb label ("Isi Jurnal") shown beside the title on wide screens. On a
     // phone the whole card is the tap target, so only the chevron remains.

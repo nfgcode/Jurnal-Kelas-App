@@ -327,6 +327,9 @@ class DemoSeeder extends Seeder
                 // One wali per class; there are more teachers than classes, so
                 // nobody holds two homerooms.
                 'wali_kelas_nip' => $guru[$i]->nip,
+                // Set here, not left to Kelas::booted(): DatabaseSeeder runs
+                // WithoutModelEvents, so the creating hook never fires.
+                'qr_token' => (string) Str::uuid(),
             ]);
         }
 

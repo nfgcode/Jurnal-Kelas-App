@@ -56,6 +56,12 @@ class Kelas extends Model
      */
     public function qrUrl(): string
     {
+        // A row inserted without model events (a seeder, a raw import) has no
+        // token; mint it here rather than fail the whole QR print page.
+        if (! $this->qr_token && $this->exists) {
+            $this->forceFill(['qr_token' => (string) Str::uuid()])->saveQuietly();
+        }
+
         return route('qr.show', $this->qr_token);
     }
 

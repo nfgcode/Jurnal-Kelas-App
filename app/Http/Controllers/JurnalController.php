@@ -565,11 +565,12 @@ class JurnalController extends Controller
             'materi' => ['required', 'string'],
             'tugas' => ['nullable', 'string'],
             'kehadiran_guru' => ['required', Rule::in(['hadir', 'ada_tugas', 'tanpa_tugas'])],
+            // Both writers (ketua kelas and admin) may say why the teacher was
+            // absent; the admin form used to drop the note silently.
+            'kehadiran_guru_keterangan' => ['nullable', 'string', 'max:255'],
         ];
 
-        return $user->isSiswa()
-            ? $aturan + ['kehadiran_guru_keterangan' => ['nullable', 'string']]
-            : $aturan;
+        return $aturan;
     }
 
     /**
@@ -591,7 +592,7 @@ class JurnalController extends Controller
             'kehadiran_guru_ada_tugas' => $pilihan === 'hadir' ? null : $pilihan === 'ada_tugas',
         ];
 
-        // The guru's own form carries no note field, so it never keeps a stale one.
-        return $user->isSiswa() ? $data : $data + ['kehadiran_guru_keterangan' => null];
+        // Absent the field (an older client), keep no stale note.
+        return $data + ['kehadiran_guru_keterangan' => null];
     }
 }

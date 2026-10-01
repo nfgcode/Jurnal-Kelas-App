@@ -6,7 +6,7 @@
     <x-page-head
         title="Rekap Jurnal Mengajar"
         :sub="collect([
-            number_format($statistik['terisi'], 0, ',', '.') . ' jurnal ditulis guru',
+            number_format($statistik['terisi'], 0, ',', '.') . ' jurnal terisi',
             $statistik['otomatis'] > 0 ? number_format($statistik['otomatis'], 0, ',', '.') . ' diisi otomatis' : null,
             $statistik['kelengkapan'] . '% kelengkapan',
             $statistik['diedit_lewat_hari'] > 0 ? number_format($statistik['diedit_lewat_hari'], 0, ',', '.') . ' diedit setelah hari-H' : null,
@@ -19,15 +19,15 @@
     {{-- Each tile drills into the meetings behind it — e.g. "Belum Diisi" lists
          the scheduled meetings still missing a journal, and whose guru. --}}
     <div class="grid-row grid-row--5">
-        <x-stat label="Diisi Guru" :value="number_format($statistik['terisi'], 0, ',', '.')" caption="ditulis sendiri"
+        <x-stat label="Jurnal Terisi" :value="number_format($statistik['terisi'], 0, ',', '.')" caption="ditulis ketua kelas / admin"
                 class="is-clickable" role="button" tabindex="0" data-detail-tipe="terisi" />
-        <x-stat label="Diisi Otomatis" :value="number_format($statistik['otomatis'], 0, ',', '.')" caption="guru belum mengisi"
+        <x-stat label="Diisi Otomatis" :value="number_format($statistik['otomatis'], 0, ',', '.')" caption="kelas belum menulis"
                 class="is-clickable" role="button" tabindex="0" data-detail-tipe="otomatis" />
         <x-stat label="Belum Diisi" :value="number_format($statistik['belum'], 0, ',', '.')" caption="perlu ditindaklanjuti"
                 class="is-clickable" role="button" tabindex="0" data-detail-tipe="belum" />
         <x-stat label="Terlambat Isi" :value="number_format($statistik['telat'], 0, ',', '.')" caption=">24 jam setelah KBM"
                 class="is-clickable" role="button" tabindex="0" data-detail-tipe="telat" />
-        <x-stat label="Kelengkapan" :value="$statistik['kelengkapan'] . '%'" caption="tulisan guru · target 90%"
+        <x-stat label="Kelengkapan" :value="$statistik['kelengkapan'] . '%'" caption="jurnal terisi · target 90%"
                 class="is-clickable" role="button" tabindex="0" data-detail-tipe="kelengkapan" />
     </div>
 

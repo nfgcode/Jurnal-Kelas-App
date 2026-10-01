@@ -286,9 +286,27 @@ class PresensiController extends Controller
             ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
+        // Figma "Rekap Kehadiran Saya": the record per subject. Attendance is
+        // marked per lesson by its teacher, so each subject has its own tally —
+        // a student fine overall can still be slipping in one subject.
+        $perMapel = Presensi::query()
+            ->join('jurnal', 'jurnal.id', '=', 'presensi.jurnal_id')
+            ->join('jadwal', 'jadwal.id', '=', 'jurnal.jadwal_id')
+            ->join('mata_pelajaran', 'mata_pelajaran.id', '=', 'jadwal.mata_pelajaran_id')
+            ->leftJoin('guru', 'guru.nip', '=', 'jadwal.guru_nip')
+            ->where('presensi.siswa_nis', $user->nis)
+            ->whereBetween('jurnal.tanggal', [$periode->mulaiString(), $periode->selesaiString()])
+            ->selectRaw('mata_pelajaran.nama as mapel, guru.nama as guru, COUNT(*) as total')
+            ->selectRaw("SUM(presensi.status = 'hadir') as hadir, SUM(presensi.status = 'sakit') as sakit")
+            ->selectRaw("SUM(presensi.status = 'izin') as izin, SUM(presensi.status = 'alpa') as alpa")
+            ->groupBy('mata_pelajaran.id', 'mata_pelajaran.nama', 'guru.nama')
+            ->orderBy('mata_pelajaran.nama')
+            ->get();
+
         return view('presensi.rekap-saya', [
             'periode' => $periode,
             'riwayat' => $riwayat,
+            'perMapel' => $perMapel,
             'rekap' => Ringkasan::presensi(
                 PresensiHarian::where('siswa_nis', $user->nis), $periode
             ),

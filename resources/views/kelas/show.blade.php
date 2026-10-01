@@ -5,7 +5,7 @@
 @section('content')
     <x-page-head
         :title="'Kelas ' . $kelas->nama_kelas"
-        :sub="collect([$kelas->jurusan, $kelas->ruang, $kelas->tahun_ajaran])->filter()->join(' · ')">
+        :sub="collect([$kelas->jurusanNama(), $kelas->ruang, $kelas->tahun_ajaran_kode])->filter()->join(' · ')">
         @if (Auth::user()->isAdmin())
             <a class="btn-hifi btn-hifi--ghost" href="{{ route('kelas.edit', $kelas) }}">Ubah</a>
         @endif
@@ -14,7 +14,7 @@
 
     <div class="grid-row grid-row--4">
         <x-stat label="Jumlah Siswa" :value="$kelas->siswa->count()" :caption="'kapasitas ' . $kelas->kapasitas" />
-        <x-stat label="Tingkat" :value="$kelas->tingkat" :caption="$kelas->jurusan ?? 'tanpa jurusan'" />
+        <x-stat label="Tingkat" :value="$kelas->tingkat" :caption="$kelas->jurusanNama() ?? 'tanpa jurusan'" />
         <x-stat label="Jadwal" :value="$kelas->jadwals->count()" caption="slot per minggu" />
         <x-stat label="Ruang" :value="$kelas->ruang ?? '—'" caption="ruang kelas utama" />
     </div>

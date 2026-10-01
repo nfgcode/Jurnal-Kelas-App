@@ -18,7 +18,7 @@
 
             <div class="d-flex justify-content-between gap-2">
                 <button class="btn-hifi btn-hifi--ghost" type="submit" form="hapusGuru"
-                        onclick="return confirm('Hapus {{ $guru->nama }} beserta akunnya?')">Hapus Guru</button>
+                        data-konfirmasi="Hapus {{ $guru->nama }} beserta akunnya?">Hapus Guru</button>
                 <span class="d-flex gap-2">
                     <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.guru.index') }}">Batal</a>
                     <button class="btn-hifi" type="submit">Simpan Perubahan</button>

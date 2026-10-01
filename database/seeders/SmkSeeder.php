@@ -449,6 +449,9 @@ class SmkSeeder extends Seeder
                 'tahun_ajaran_kode' => self::TAHUN_AJARAN,
                 // One distinct homeroom teacher per class (guru list is sized to match).
                 'wali_kelas_nip' => $guru[$i]->nip,
+                // Set here, not left to Kelas::booted(): DatabaseSeeder runs
+                // WithoutModelEvents, so the creating hook never fires.
+                'qr_token' => (string) Str::uuid(),
             ]);
         }
 

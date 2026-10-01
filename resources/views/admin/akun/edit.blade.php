@@ -18,7 +18,7 @@
 
             <div class="d-flex justify-content-between gap-2">
                 <button class="btn-hifi btn-hifi--ghost" type="submit" form="hapusAkun"
-                        onclick="return confirm('Hapus akun {{ $akun->username }}? Data orangnya tetap tersimpan.')">Hapus Akun</button>
+                        data-konfirmasi="Hapus akun {{ $akun->username }}? Data orangnya tetap tersimpan.">Hapus Akun</button>
                 <span class="d-flex gap-2">
                     <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.akun.index') }}">Batal</a>
                     <button class="btn-hifi" type="submit">Simpan Perubahan</button>

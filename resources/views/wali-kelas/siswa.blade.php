@@ -5,7 +5,7 @@
 @section('content')
     <x-page-head
         title="Data Kelas {{ $kelas->nama_kelas }}"
-        :sub="collect(['Tingkat ' . $kelas->tingkat, $kelas->jurusan, $kelas->tahun_ajaran])->filter()->join(' · ')">
+        :sub="collect(['Tingkat ' . $kelas->tingkat, $kelas->jurusanNama(), $kelas->tahun_ajaran_kode])->filter()->join(' · ')">
         <x-kelas-switch :kelas-wali="$kelasWali" :kelas="$kelas" />
     </x-page-head>
 

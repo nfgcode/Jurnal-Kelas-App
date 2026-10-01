@@ -10,13 +10,16 @@
         $pilihan = old('kehadiran_guru', $jurnal
             ? ($jurnal->kehadiran_guru_status === 'hadir' ? 'hadir' : ($jurnal->kehadiran_guru_ada_tugas ? 'ada_tugas' : 'tanpa_tugas'))
             : 'hadir');
+        // One local draft per meeting (or per journal being edited), so a slot
+        // switch, a closed tab or a lost connection never costs the typing.
+        $kunciDraf = 'jurnal:' . ($jurnal ? 'ubah:' . $jurnal->public_id : 'baru:' . $tanggalAktif->toDateString() . ':' . ($jadwal?->id ?? '-'));
     @endphp
 
     <x-page-head
         :title="$jurnal ? 'Ubah Jurnal Kelas' : 'Isi Jurnal Kelas'"
-        :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, now()->translatedFormat('l, j F Y')])->filter()->join(' · ')">
+        :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, $tanggalAktif->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
-        <span class="btn-hifi btn-hifi--ghost">Draf tersimpan otomatis</span>
+        <span class="draf-status" data-draf-status="formJurnal">Draf disimpan otomatis di perangkat ini</span>
     </x-page-head>
 
     <div class="grid-row grid-row--editor">
@@ -25,7 +28,8 @@
                 <span class="card-hifi__meta">* wajib diisi</span>
             </x-slot:actions>
 
-            <form method="POST" action="{{ $aksi }}" class="form-grid" id="formJurnal">
+            <form method="POST" action="{{ $aksi }}" class="form-grid" id="formJurnal"
+                  data-draf="{{ $kunciDraf }}" @if ($errors->any()) data-draf-lewati @endif>
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
@@ -35,8 +39,10 @@
                                :jadwal="$jadwal" :jadwal-list="$jadwalList" :jadwal-terisi="$jadwalTerisi"
                                :tanggal-aktif="$tanggalAktif" :jurnal="$jurnal" :kelas="$kelas" />
 
+                {{-- The meeting's teacher, from the timetable — this form is the
+                     admin's, so the signed-in user is never the one who taught. --}}
                 <x-field label="Guru Pengajar">
-                    <input class="input-hifi" type="text" value="{{ Auth::user()->nama }}" readonly>
+                    <input class="input-hifi" type="text" value="{{ $jadwal?->guru?->nama ?? '—' }}" readonly>
                 </x-field>
 
                 <x-field label="Materi yang Diajarkan" name="materi" required>
@@ -50,7 +56,7 @@
                 </x-field>
 
                 <x-field label="Kehadiran Guru" name="kehadiran_guru" required
-                         hint="Isi sesuai kondisi Anda pada jam ini.">
+                         hint="Tandai kehadiran guru yang mengajar jam ini.">
                     <div class="form-grid form-grid--3">
                         @foreach ([
                             'hadir' => 'Hadir',
@@ -63,6 +69,12 @@
                             </label>
                         @endforeach
                     </div>
+                </x-field>
+
+                <x-field label="Keterangan Ketidakhadiran" name="kehadiran_guru_keterangan">
+                    <input class="input-hifi" type="text" name="kehadiran_guru_keterangan"
+                           value="{{ old('kehadiran_guru_keterangan', $jurnal?->kehadiran_guru_keterangan) }}"
+                           placeholder="Isi bila guru tidak hadir — mis. digantikan guru piket, ada tugas...">
                 </x-field>
 
                 {{-- Attendance belongs to the meeting's teacher and is marked on
@@ -138,6 +150,7 @@
                     {{-- Nothing to file against on a day with no lesson; the save
                          would only bounce off the required jadwal_id. --}}
                     @unless ($jadwalList->isEmpty())
+                        <button class="btn-hifi btn-hifi--ghost" type="button" data-simpan-draf="formJurnal">Simpan Draf</button>
                         <button class="btn-hifi" type="submit">{{ $jurnal ? 'Simpan Perubahan' : 'Simpan Jurnal' }}</button>
                     @endunless
                 </div>
@@ -156,7 +169,9 @@
                 </div>
             </x-card>
 
-            <x-card title="Kehadiran Mengajar Saya" :meta="now()->translatedFormat('F Y')">
+            {{-- The class's teachers this month (see konteksForm), not the
+                 signed-in admin's own teaching. --}}
+            <x-card title="Kehadiran Guru Bulan Ini" :meta="$kelas?->nama_kelas">
                 @foreach ([
                     ['Hadir', $rekapKehadiran['hadir'], 'var(--green-200)'],
                     ['Tidak Hadir – Ada Tugas', $rekapKehadiran['ada_tugas'], 'var(--yellow-200)'],
@@ -188,15 +203,17 @@
                 </div>
             </x-card>
 
+            {{-- Live: app.js ticks the first three as the form is filled. --}}
             <x-card title="Sebelum Menyimpan">
-                <div class="checklist">
+                <div class="checklist" data-checklist-for="formJurnal">
                     @foreach ([
-                        'Kehadiran guru sudah dipilih' => true,
-                        'Materi sudah diisi' => filled(old('materi', $jurnal?->materi)),
-                        'Kehadiran siswa sudah lengkap' => $ditandai >= $jumlahSiswa && $jumlahSiswa > 0,
-                        'Periksa kembali jam pelajaran' => false,
-                    ] as $label => $selesai)
-                        <div class="checklist__item {{ $selesai ? 'checklist__item--done' : 'checklist__item--todo' }}">
+                        ['Kehadiran guru sudah dipilih', 'kehadiran', true],
+                        ['Materi sudah diisi', 'materi', filled(old('materi', $jurnal?->materi))],
+                        ['Keterangan diisi bila guru tidak hadir', 'keterangan', true],
+                        ['Presensi siswa sudah ditandai guru', null, $ditandai >= $jumlahSiswa && $jumlahSiswa > 0],
+                    ] as [$label, $cek, $selesai])
+                        <div class="checklist__item {{ $selesai ? 'checklist__item--done' : 'checklist__item--todo' }}"
+                             @if ($cek) data-cek="{{ $cek }}" @endif>
                             <span class="checklist__box"><x-ikon nama="check-lg" /></span>{{ $label }}
                         </div>
                     @endforeach
