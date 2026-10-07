@@ -366,6 +366,8 @@ class DemoSeeder extends Seeder
                     'nama' => $depan[$i].' '.$belakang[$i % count($belakang)],
                     'jenis_kelamin' => $i % 2 === 0 ? 'P' : 'L',
                     'kelas_id' => $kelas->id,
+                    // The student's own jurusan starts as the class's (Oct 2026).
+                    'jurusan_kode' => $kelas->jurusan_kode,
                     'no_hp' => null,
                     'alamat' => null,
                     'status' => 'aktif',

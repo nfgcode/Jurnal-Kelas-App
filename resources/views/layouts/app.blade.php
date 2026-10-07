@@ -139,6 +139,13 @@
             @if ($isAdmin)
                 {{-- Oct 2026: master data is the admin's; a guru's screens are
                      the journal (CRUD) and the roster. --}}
+                {{-- Shown once the jurusan routes are registered (backend in
+                     progress — docs/backend-jurusan.md). --}}
+                @if (Route::has('admin.jurusan.index'))
+                    <a href="{{ route('admin.jurusan.index') }}" class="sidebar__link {{ request()->routeIs('admin.jurusan.*') ? 'is-active' : '' }}">
+                        <x-ikon nama="signpost-2" /><span>Jurusan</span>
+                    </a>
+                @endif
                 <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
                     <x-ikon nama="building" /><span>Kelas</span>
                 </a>

@@ -306,6 +306,13 @@ body {
     &:hover { background: var(--red-100); border-color: var(--red-100); color: #fff; }
 }
 
+// A button that cannot be used right now; the reason is written beside it.
+.btn-hifi:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .btn-hifi--sm {
     height: 28px;
     padding: 0 10px;

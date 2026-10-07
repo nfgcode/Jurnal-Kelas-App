@@ -37,6 +37,7 @@ class Siswa extends Model
         'nama',
         'jenis_kelamin',
         'kelas_id',
+        'jurusan_kode',
         'no_hp',
         'alamat',
         'status',
@@ -104,6 +105,12 @@ class Siswa extends Model
     public function kelas(): BelongsTo
     {
         return $this->belongsTo(Kelas::class);
+    }
+
+    /** The student's own jurusan (Oct 2026), keyed by `jurusan.kode`. */
+    public function jurusan(): BelongsTo
+    {
+        return $this->belongsTo(Jurusan::class, 'jurusan_kode', 'kode');
     }
 
     /** The class this student chairs, if any. */

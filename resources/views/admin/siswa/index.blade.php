@@ -64,6 +64,7 @@
                         <th>Email</th>
                         <th><x-th-sort kolom="nama" label="Nama Siswa" /></th>
                         <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th>Jurusan</th>
                         <th>L/P</th>
                         <th>Akun</th>
                         <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
@@ -92,6 +93,8 @@
                                 </a>
                             </td>
                             <td class="is-muted">{{ $s->kelas?->nama_kelas ?? '—' }}</td>
+                            {{-- The code alone: the column is read off siswa, so no relation to load. --}}
+                            <td class="is-muted is-nowrap">{{ $s->jurusan_kode ?? '—' }}</td>
                             <td class="is-muted">{{ $s->jenis_kelamin ?? '—' }}</td>
                             <td class="is-muted">{{ $s->akun ? $s->akun->username : 'belum ada' }}</td>
                             <td class="is-num"><x-chip :tone="$statusChip[1]" :label="$statusChip[0]" /></td>
@@ -100,7 +103,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="empty-state">Tidak ada siswa yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="9" class="empty-state">Tidak ada siswa yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

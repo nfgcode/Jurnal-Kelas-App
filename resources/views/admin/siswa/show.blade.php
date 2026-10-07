@@ -41,6 +41,7 @@
                 <div class="deflist__row"><span class="deflist__key">Nama</span><span class="deflist__val">{{ $siswa->nama }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Jenis Kelamin</span><span class="deflist__val">{{ ['L' => 'Laki-laki', 'P' => 'Perempuan'][$siswa->jenis_kelamin] ?? '—' }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Kelas</span><span class="deflist__val">{{ $siswa->kelas?->nama_kelas ?? '—' }}</span></div>
+                <div class="deflist__row"><span class="deflist__key">Jurusan</span><span class="deflist__val">{{ $siswa->jurusan?->label() ?? '—' }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">No. HP</span><span class="deflist__val">{{ $siswa->no_hp ?? '—' }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Alamat</span><span class="deflist__val">{{ $siswa->alamat ?? '—' }}</span></div>
             </div>
