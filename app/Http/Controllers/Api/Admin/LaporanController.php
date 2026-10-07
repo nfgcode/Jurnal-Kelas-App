@@ -125,7 +125,7 @@ class LaporanController extends Controller
     private function kueriJurnal(array $filters, ?Periode $periode = null)
     {
         return Jurnal::query()
-            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
+            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan'])
             ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['guru_nip'] ?? null, fn ($query, $nip) => $query->diampu($nip))

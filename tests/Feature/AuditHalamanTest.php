@@ -125,9 +125,8 @@ class AuditHalamanTest extends TestCase
             ->assertSee('presensi '.$jadwal->mataPelajaran->nama.' '.$jadwal->kelas->nama_kelas, false);
     }
 
-    public function test_a_student_sees_attendance_per_subject(): void
+    public function test_a_regular_student_cannot_open_web_attendance(): void
     {
-        // A plain student: a ketua kelas reads the class recap instead.
         $presensi = DB::table('presensi')
             ->whereNotIn('siswa_nis', Kelas::whereNotNull('ketua_nis')->pluck('ketua_nis'))
             ->first();
@@ -135,10 +134,7 @@ class AuditHalamanTest extends TestCase
 
         $this->actingAs($siswa)
             ->get('/presensi?preset=30_hari')
-            ->assertOk()
-            ->assertSee('Kehadiran per Mata Pelajaran')
-            ->assertSee('Predikat')
-            ->assertDontSee('Belum ada presensi mata pelajaran pada periode ini.');
+            ->assertForbidden();
     }
 
     public function test_the_roster_shows_live_attendance_tallies(): void

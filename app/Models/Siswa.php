@@ -106,6 +106,16 @@ class Siswa extends Model
         return $this->belongsTo(Kelas::class);
     }
 
+    public function jurusan(): BelongsTo
+    {
+        return $this->belongsTo(Jurusan::class, 'jurusan_kode', 'kode');
+    }
+
+    public function jurnals(): HasMany
+    {
+        return $this->hasMany(Jurnal::class, 'siswa_nis', 'nis');
+    }
+
     /** The class this student chairs, if any. */
     public function kelasDiketuai(): HasOne
     {

@@ -66,6 +66,7 @@ class Jurnal extends Model
         'kehadiran_guru_keterangan',
         'diisi_oleh_id',
         'diisi_oleh_peran',
+        'siswa_nis',
         'diedit_setelah_hari',
     ];
 
@@ -454,6 +455,11 @@ class Jurnal extends Model
     public function diisiOleh(): BelongsTo
     {
         return $this->belongsTo(User::class, 'diisi_oleh_id');
+    }
+
+    public function siswa(): BelongsTo
+    {
+        return $this->belongsTo(Siswa::class, 'siswa_nis', 'nis');
     }
 
     /**

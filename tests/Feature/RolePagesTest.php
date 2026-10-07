@@ -113,25 +113,15 @@ class RolePagesTest extends TestCase
             ->assertDontSee('href="'.route('presensi.index').'"', false);
     }
 
-    /** A rank-and-file siswa keeps their read-only screens. */
-    public function test_siswa_screens_render(): void
+    public function test_regular_siswa_web_screens_are_denied(): void
     {
         $siswa = $this->akunSiswaKelas($this->jadwal->kelas_id, false);
         $jurnal = $this->jurnal();
 
-        $expectations = [
-            '/dashboard' => 'Dashboard Siswa',
-            '/jadwal' => $this->jadwal->kelas->nama_kelas,
-            '/jurnal' => 'Riwayat Jurnal Kelas',
-            '/presensi' => 'Rekap Kehadiran Saya',
-            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa',
-        ];
-
-        foreach ($expectations as $url => $penanda) {
+        foreach (['/dashboard', '/jadwal', '/jurnal', '/presensi', "/jurnal/{$jurnal->public_id}"] as $url) {
             $this->actingAs($siswa)
                 ->get($url)
-                ->assertOk("GET {$url} did not render for a siswa")
-                ->assertSee($penanda);
+                ->assertForbidden();
         }
 
         foreach (['/jurnal/create', "/jurnal/{$jurnal->public_id}/edit"] as $url) {

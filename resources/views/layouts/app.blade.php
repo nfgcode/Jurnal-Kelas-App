@@ -142,6 +142,9 @@
                 <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
                     <x-ikon nama="building" /><span>Kelas</span>
                 </a>
+                <a href="{{ route('admin.jurusan.index') }}" class="sidebar__link {{ request()->routeIs('admin.jurusan.*') ? 'is-active' : '' }}">
+                    <span>Jurusan</span>
+                </a>
                 <a href="{{ route('ruangan.index') }}" class="sidebar__link {{ request()->routeIs('ruangan.*') ? 'is-active' : '' }}">
                     <x-ikon nama="door" /><span>Ruangan</span>
                 </a>
@@ -202,7 +205,7 @@
 <div class="main">
     <header class="topbar">
         <div class="d-flex align-items-center">
-            <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Buka menu">
+            <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false">
                 <x-ikon nama="list" />
             </button>
             {{-- The top bar names the section ("Jurnal"); the page heading below
@@ -278,11 +281,14 @@
         </div>
     </header>
 
-    <main class="content">
+    <main class="content" @hasSection('processing') data-page-processing="@yield('processing')" @endif>
         {{-- Maintenance/disruption notices are for the people using the app, not
              for the admin who posts them and has the Sistem page instead. --}}
         <x-pengumuman-banner :untuk-peran="$user !== null && ! $isAdmin" />
         <x-flash />
+        @hasSection('processing')
+            <x-processing-status />
+        @endif
         @yield('content')
     </main>
 </div>
@@ -291,18 +297,52 @@
     const toggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('sidebar');
     const scrim = document.getElementById('sidebarScrim');
+    const mobileMenu = window.matchMedia('(max-width: 991.98px)');
+
+    const syncSidebar = () => {
+        const open = sidebar.classList.contains('is-open');
+        sidebar.inert = mobileMenu.matches && !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        if (mobileMenu.matches) sidebar.setAttribute('aria-hidden', String(!open));
+        else sidebar.removeAttribute('aria-hidden');
+    };
 
     const closeSidebar = () => {
+        const hadFocus = sidebar.contains(document.activeElement);
         sidebar.classList.remove('is-open');
         scrim.classList.remove('is-open');
+        syncSidebar();
+        if (hadFocus) toggle.focus();
     };
 
     toggle?.addEventListener('click', () => {
         sidebar.classList.toggle('is-open');
         scrim.classList.toggle('is-open');
+        syncSidebar();
+        if (sidebar.classList.contains('is-open')) sidebar.querySelector('a, button')?.focus();
     });
 
     scrim?.addEventListener('click', closeSidebar);
+    mobileMenu.addEventListener('change', closeSidebar);
+    syncSidebar();
+
+    document.addEventListener('keydown', (event) => {
+        if (!mobileMenu.matches || !sidebar.classList.contains('is-open')) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeSidebar();
+        } else if (event.key === 'Tab') {
+            const items = [...sidebar.querySelectorAll('a[href], button:not([disabled])')];
+            const first = items[0], last = items[items.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    });
 
     // Appearance preferences: apply changes live and remember them per device.
     (function () {

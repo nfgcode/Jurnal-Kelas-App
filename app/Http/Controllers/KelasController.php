@@ -103,7 +103,9 @@ class KelasController extends Controller
         return [
             'gurus' => Guru::aktif()->orderBy('nama')->get(),
             'ruanganList' => Ruangan::aktif()->orderBy('kode')->get(),
-            'jurusanList' => Jurusan::aktif()->orderBy('nama')->get(),
+            'jurusanList' => Jurusan::where(fn ($q) => $q->where('aktif', true)
+                ->when($kelas?->jurusan_kode, fn ($q, $kode) => $q->orWhere('kode', $kode)))
+                ->orderBy('nama')->get(),
             'tahunAjaranList' => TahunAjaran::orderByDesc('kode')->get(),
             'tahunBerjalan' => TahunAjaran::berjalan()?->kode,
             // Only this class's own students can chair it, so the dropdown is

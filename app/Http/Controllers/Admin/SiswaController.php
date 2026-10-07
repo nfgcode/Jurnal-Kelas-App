@@ -134,6 +134,10 @@ class SiswaController extends Controller
      */
     public function destroy(Siswa $siswa)
     {
+        if ($siswa->jurnals()->exists()) {
+            return back()->with('error', 'Siswa masih dirujuk jurnal. Ubah status menjadi Nonaktif atau Lulus, bukan menghapusnya.');
+        }
+
         $jejak = $siswa->presensiHarian()->count();
 
         if ($jejak > 0) {

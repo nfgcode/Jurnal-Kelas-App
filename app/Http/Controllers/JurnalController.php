@@ -41,7 +41,7 @@ class JurnalController extends Controller
         $periode = Periode::dari($request);
 
         $query = Jurnal::query()
-            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
+            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan'])
             // Attendance beside a journal row is the roster its own teacher
             // marked for that lesson — per subject, see the scope's note.
             ->denganPresensi()
@@ -254,6 +254,7 @@ class JurnalController extends Controller
         $data = $this->normalize($validated, $user);
         $data['diisi_oleh_id'] = $user->id;
         $data['diisi_oleh_peran'] = $peran;
+        $data['siswa_nis'] = $user->isSiswa() ? $user->nis : null;
 
         try {
             $jurnal = Jurnal::create($data);
@@ -282,7 +283,7 @@ class JurnalController extends Controller
     {
         Gate::authorize('view', $jurnal);
 
-        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh']);
+        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh', 'siswa.jurusan']);
 
         // The attendance shown beside a journal is the roster this meeting's own
         // teacher marked — the record that can differ from the lesson before it.

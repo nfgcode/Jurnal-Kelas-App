@@ -70,6 +70,7 @@
                         <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>
                         <th><x-th-sort kolom="jam" label="Jam Ke" /></th>
                         <th><x-th-sort kolom="kelas" label="Kelas" /></th>
+                        <th>Jurusan Siswa Pengisi</th>
                         <th><x-th-sort kolom="mapel" label="Mata Pelajaran" /></th>
                         <th><x-th-sort kolom="materi" label="Materi" /></th>
                         <th><x-th-sort kolom="tugas" label="Tugas" /></th>
@@ -89,6 +90,7 @@
                             <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
                             <td class="is-muted">{{ $jurnal->jadwal?->jpLabel() }}</td>
                             <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
+                            <td>{{ $jurnal->siswa?->jurusan?->nama ?? 'Tidak tersedia' }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
                             <td class="is-muted">{{ $jurnal->materiKosong() ? 'Belum diisi' : Str::limit($jurnal->materi, 24) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 22) : '—' }}</td>
@@ -105,7 +107,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="empty-state">Belum ada jurnal yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="11" class="empty-state">Belum ada jurnal yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

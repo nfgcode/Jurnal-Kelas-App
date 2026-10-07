@@ -27,6 +27,11 @@ class PencatatanAkademik extends ProsedurTersimpan
     protected function pesan(): array
     {
         return [
+            'KODE_JURUSAN_SUDAH_ADA' => ['kode', 'Kode jurusan ini sudah dipakai.'],
+            'KODE_JURUSAN_TIDAK_VALID' => ['kode', 'Kode wajib diisi, maksimal 20 karakter, dan tanpa whitespace.'],
+            'NAMA_JURUSAN_TIDAK_VALID' => ['nama', 'Nama jurusan wajib diisi dan maksimal 255 karakter.'],
+            'BIDANG_JURUSAN_TIDAK_VALID' => ['bidang', 'Bidang maksimal 255 karakter.'],
+            'AKTIF_JURUSAN_TIDAK_VALID' => ['aktif', 'Status aktif harus berupa boolean.'],
             'ROMBEL_SUDAH_ADA' => ['paralel', 'Rombel dengan tingkat, jurusan, dan nomor paralel ini sudah ada di tahun ajaran tersebut.'],
             'TAHUN_AJARAN_TIDAK_ADA' => ['tahun_ajaran_kode', 'Tahun ajaran ini belum terdaftar.'],
             'JURUSAN_TIDAK_ADA' => ['jurusan_kode', 'Jurusan ini belum terdaftar.'],
@@ -72,6 +77,36 @@ class PencatatanAkademik extends ProsedurTersimpan
         );
 
         return Kelas::findOrFail($id);
+    }
+
+    public function jurusan(array $data): Jurusan
+    {
+        $kode = mb_strtoupper((string) ($data['kode'] ?? ''));
+        $nama = trim((string) ($data['nama'] ?? ''));
+        $bidang = filled($data['bidang'] ?? null) ? trim($data['bidang']) : null;
+        $aktif = $data['aktif'] ?? true;
+
+        $this->jalankan(
+            mysql: fn () => DB::statement('CALL sp_tambah_jurusan(?,?,?,?,?)', [
+                $kode, $nama, $bidang, $data['deskripsi'] ?? null, $aktif,
+            ]),
+            portabel: function () use ($data, $kode, $nama, $bidang, $aktif) {
+                DB::transaction(function () use ($data, $kode, $nama, $bidang, $aktif) {
+                    $this->tolakBila($kode === '' || mb_strlen($kode) > 20 || preg_match('/\s/u', $kode), 'KODE_JURUSAN_TIDAK_VALID');
+                    $this->tolakBila($nama === '' || mb_strlen($nama) > 255, 'NAMA_JURUSAN_TIDAK_VALID');
+                    $this->tolakBila(mb_strlen($bidang ?? '') > 255, 'BIDANG_JURUSAN_TIDAK_VALID');
+                    $this->tolakBila(! in_array($aktif, [true, false, 0, 1, '0', '1'], true), 'AKTIF_JURUSAN_TIDAK_VALID');
+                    $this->tolakBila(Jurusan::whereKey($kode)->exists(), 'KODE_JURUSAN_SUDAH_ADA');
+
+                    Jurusan::create([
+                        'kode' => $kode, 'nama' => $nama, 'bidang' => $bidang,
+                        'deskripsi' => $data['deskripsi'] ?? null, 'aktif' => $aktif,
+                    ]);
+                });
+            },
+        );
+
+        return Jurusan::findOrFail($kode);
     }
 
     /**

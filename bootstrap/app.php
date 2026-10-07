@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AksesWeb;
 use App\Http\Middleware\CatatAktivitas;
 use App\Http\Middleware\CheckRole;
 use App\Support\PesanError;
@@ -21,8 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trimStrings(except: [
+            fn (Request $request) => $request->is('admin/jurusan', 'admin/jurusan/*'),
+        ]);
+
         $middleware->alias([
             'role' => CheckRole::class,
+            'akses-web' => AksesWeb::class,
         ]);
 
         // Every signed-in web request keeps "last active" fresh (throttled),

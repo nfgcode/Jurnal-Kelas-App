@@ -2,6 +2,7 @@
     'paginator',
     // Set false on tables where changing the page size makes no sense.
     'ukuran' => true,
+    'processing' => false,
 ])
 
 @php
@@ -13,14 +14,14 @@
 
 <div class="pager-bar">
     @if ($ukuran)
-        <form method="GET" class="pager-bar__ukuran">
+        <form method="GET" class="pager-bar__ukuran" @if ($processing) data-processing="Mengubah jumlah baris..." @endif>
             @foreach ($bawaan as $nama => $nilai)
                 <input type="hidden" name="{{ $nama }}" value="{{ $nilai }}">
             @endforeach
 
             <label>
                 Baris
-                <select class="select-hifi select-hifi--sm" name="per" onchange="this.form.submit()">
+                <select class="select-hifi select-hifi--sm" name="per" onchange="this.form.requestSubmit()">
                     @foreach (\App\Support\Halaman::PILIHAN as $pilihan)
                         <option value="{{ $pilihan }}" @selected($paginator->perPage() === $pilihan)>{{ $pilihan }}</option>
                     @endforeach
@@ -52,7 +53,7 @@
             @endif
         </nav>
 
-        <form method="GET" class="pager-bar__lompat">
+        <form method="GET" class="pager-bar__lompat" @if ($processing) data-processing="Memuat halaman..." @endif>
             @foreach ($bawaan as $nama => $nilai)
                 <input type="hidden" name="{{ $nama }}" value="{{ $nilai }}">
             @endforeach
