@@ -53,7 +53,7 @@ class IsiJurnalGelombang implements ShouldQueue
             Jurnal::create([
                 'jadwal_id' => $jadwal->id,
                 'tanggal' => $tanggal,
-                'materi' => Jurnal::MATERI_PLACEHOLDER,
+                'materi' => '', // nothing described yet — shown as "belum diisi"
                 'kehadiran_guru_status' => 'tidak_hadir',
                 'kehadiran_guru_ada_tugas' => false,
                 'diisi_oleh_id' => null,

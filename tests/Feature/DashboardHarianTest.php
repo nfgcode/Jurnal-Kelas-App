@@ -80,8 +80,12 @@ class DashboardHarianTest extends TestCase
         $jurnal->update(['diisi_oleh_peran' => 'siswa']);
         $ketua = $this->akunSiswaKelas($jurnal->jadwal->kelas_id, true);
 
+        // Oct 2026: the ketua's dashboard is always today's, so the clock is
+        // set to the journal's day.
+        $this->travelTo($jurnal->tanggal->copy()->setTime(9, 0));
+
         $this->actingAs($ketua)
-            ->get('/dashboard?tanggal='.$jurnal->tanggal->toDateString())
+            ->get('/dashboard')
             ->assertOk()
             ->assertSee('Dashboard Siswa')
             ->assertSee('Isi Jurnal Kelas')
@@ -93,15 +97,29 @@ class DashboardHarianTest extends TestCase
         $ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
         // Far enough back that the demo data has nothing written for it.
         $tanggal = $this->tanggalUntuk($this->jadwal, today()->subYears(2));
+        $this->travelTo($tanggal->copy()->setTime(9, 0));
 
         $this->actingAs($ketua)
-            ->get('/dashboard?tanggal='.$tanggal->toDateString())
+            ->get('/dashboard')
             ->assertOk()
             // Escaped match: the query string's & is &amp; in the HTML.
             ->assertSee(route('jurnal.create', [
                 'jadwal_id' => $this->jadwal->id,
                 'tanggal' => $tanggal->toDateString(),
             ]));
+    }
+
+    /** Oct 2026: the ketua only works with today, so ?tanggal= is ignored. */
+    public function test_the_ketua_dashboard_ignores_another_date(): void
+    {
+        $ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
+        $lain = today()->subDays(3)->toDateString();
+
+        $this->actingAs($ketua)
+            ->get('/dashboard?tanggal='.$lain)
+            ->assertOk()
+            ->assertViewHas('tanggal', fn ($t) => $t->isToday())
+            ->assertDontSee('tanggal='.$lain, false);
     }
 
     public function test_an_invalid_date_is_rejected(): void

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Kelas;
+use App\Models\MataPelajaran;
 use App\Models\User;
 use App\Support\ImporPengguna;
 use App\Support\XlsxExport;
@@ -84,6 +85,117 @@ class ImporPenggunaTest extends TestCase
             ->get(route('admin.impor.template', ['jenis' => 'guru']))
             ->assertOk()
             ->assertDownload();
+    }
+
+    /**
+     * Oct 2026: the guru template mirrors the guru table and the "+ Tambah
+     * Guru" form, so a file can carry the whole profile.
+     */
+    public function test_the_guru_template_carries_the_guru_profile_columns(): void
+    {
+        $respons = $this->actingAs($this->admin)
+            ->get(route('admin.impor.template', ['jenis' => 'guru']))
+            ->assertOk();
+
+        $tmp = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
+        file_put_contents($tmp, $respons->streamedContent());
+
+        $this->assertSame(
+            ['Nama Lengkap', 'Email', 'NIP', 'Jenis Kelamin', 'No. HP', 'Alamat',
+                'Mata Pelajaran', 'Wali Kelas', 'Password', 'Status'],
+            XlsxReader::baca($tmp)[0]
+        );
+
+        unlink($tmp);
+    }
+
+    /** The Data Guru page offers the bulk import beside "+ Tambah Guru", and no "Akun Guru". */
+    public function test_the_guru_page_links_to_the_guru_import(): void
+    {
+        $this->actingAs($this->admin)
+            ->get(route('admin.guru.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Tambah Beberapa Guru', '+ Tambah Guru'])
+            ->assertSee(route('admin.impor.index', ['jenis' => 'guru']), false)
+            ->assertDontSee('Akun Guru');
+
+        // ...and the import screen arrives with "guru" already chosen.
+        $this->actingAs($this->admin)
+            ->get(route('admin.impor.index', ['jenis' => 'guru']))
+            ->assertOk()
+            ->assertSee('value="guru" selected', false);
+    }
+
+    public function test_a_guru_file_fills_in_the_profile_and_subjects(): void
+    {
+        [$utama, $kedua] = MataPelajaran::orderBy('id')->take(2)->get()->all();
+
+        // Gender in words, the first subject by name and the second by code.
+        $berkas = $this->berkas('guru', [[
+            'Guru Impor Lengkap', 'guru.impor.lengkap@test.app', '198001012020121001',
+            'Perempuan', '081234567890', 'Jl. Soekarno-Hatta No. 1',
+            $utama->nama.', '.$kedua->kode, '', 'rahasia123', 'aktif',
+        ]]);
+
+        $pratinjau = $this->actingAs($this->admin)
+            ->post(route('admin.impor.pratinjau'), ['jenis' => 'guru', 'berkas' => $berkas])
+            ->assertOk();
+
+        $this->assertSame(0, $pratinjau->viewData('hasil')['ringkas']['gagal']);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.impor.simpan'), ['jenis' => 'guru', 'berkas' => $pratinjau->viewData('berkas')])
+            ->assertRedirect(route('admin.guru.index'));
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'guru.impor.lengkap@test.app', 'role' => 'guru', 'nip' => '198001012020121001',
+        ]);
+        $this->assertDatabaseHas('guru', [
+            'nip' => '198001012020121001',
+            'nama' => 'Guru Impor Lengkap',
+            'jenis_kelamin' => 'P',
+            'no_hp' => '081234567890',
+            'alamat' => 'Jl. Soekarno-Hatta No. 1',
+        ]);
+        $this->assertDatabaseHas('guru_mata_pelajaran', [
+            'guru_nip' => '198001012020121001', 'mata_pelajaran_id' => $utama->id, 'utama' => true,
+        ]);
+        $this->assertDatabaseHas('guru_mata_pelajaran', [
+            'guru_nip' => '198001012020121001', 'mata_pelajaran_id' => $kedua->id, 'utama' => false,
+        ]);
+    }
+
+    public function test_a_guru_row_with_an_unknown_gender_or_subject_is_refused(): void
+    {
+        $berkas = $this->berkas('guru', [[
+            'Guru Salah Isi', 'guru.salah@test.app', '198001012020121002',
+            'X', '', '', 'Mapel Yang Tidak Ada', '', 'rahasia123', 'aktif',
+        ]]);
+
+        $hasil = $this->actingAs($this->admin)
+            ->post(route('admin.impor.pratinjau'), ['jenis' => 'guru', 'berkas' => $berkas])
+            ->assertOk()
+            ->viewData('hasil');
+
+        $this->assertSame(1, $hasil['ringkas']['gagal']);
+        $this->assertContains('Jenis Kelamin harus L atau P.', $hasil['baris'][0]['error']);
+        $this->assertContains('Mata pelajaran "Mapel Yang Tidak Ada" tidak terdaftar.', $hasil['baris'][0]['error']);
+    }
+
+    /** A file made from the old, shorter template still imports. */
+    public function test_an_older_guru_file_without_the_profile_columns_still_imports(): void
+    {
+        $berkas = $this->berkas('guru', [[
+            'Guru Berkas Lama', 'guru.lama@test.app', '198001012020121003', '', 'rahasia123', 'aktif',
+        ]], ['Nama Lengkap', 'Email', 'NIP', 'Wali Kelas', 'Password', 'Status']);
+
+        $hasil = $this->actingAs($this->admin)
+            ->post(route('admin.impor.pratinjau'), ['jenis' => 'guru', 'berkas' => $berkas])
+            ->assertOk()
+            ->viewData('hasil');
+
+        $this->assertSame(1, $hasil['ringkas']['baru']);
+        $this->assertSame(0, $hasil['ringkas']['gagal']);
     }
 
     public function test_the_import_screen_and_template_are_admin_only(): void
@@ -214,7 +326,9 @@ class ImporPenggunaTest extends TestCase
         $ada = User::where('role', 'guru')->firstOrFail();
         $namaLama = $ada->nama;
 
-        $rows = [['Nama Baru Sekali', $ada->email, $ada->nip ?? 'IMP030', '', 'rahasia123', 'aktif']];
+        // Guru columns: Nama, Email, NIP, Jenis Kelamin, No. HP, Alamat,
+        // Mata Pelajaran, Wali Kelas, Password, Status.
+        $rows = [['Nama Baru Sekali', $ada->email, $ada->nip ?? 'IMP030', '', '', '', '', '', 'rahasia123', 'aktif']];
 
         $tanpa = $this->actingAs($this->admin)
             ->post(route('admin.impor.pratinjau'), ['jenis' => 'guru', 'berkas' => $this->berkas('guru', $rows)])

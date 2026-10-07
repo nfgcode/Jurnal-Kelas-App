@@ -119,7 +119,7 @@
                             <td class="is-strong">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
                             <td><x-guru-link :guru="$jurnal->guru" /></td>
-                            <td class="is-muted">{{ Str::limit($jurnal->materi, 28) }}</td>
+                            <td class="is-muted">{{ $jurnal->materiKosong() ? 'Belum diisi' : Str::limit($jurnal->materi, 28) }}</td>
                             <td class="is-muted">{{ $jp }} JP</td>
                             <td>
                                 <span class="meter-cell">

@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Api;
 
-use App\Models\Jurnal;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -22,9 +21,13 @@ class JurnalRequest extends FormRequest
      */
     public function rules(): array
     {
-        $aturan = [
+        return [
             'jadwal_id' => 'required|exists:jadwal,id',
-            'tanggal' => 'required|date',
+            // Oct 2026: the ketua kelas files today's journal only — the same
+            // rule as the web form, so the API is not a way around it.
+            'tanggal' => $this->user()?->isKetuaKelas()
+                ? 'required|date|date_equals:'.today()->toDateString()
+                : 'required|date',
             'materi' => 'required|string',
             'tugas' => 'nullable|string',
             'kegiatan' => 'nullable|string',
@@ -33,27 +36,6 @@ class JurnalRequest extends FormRequest
             'kehadiran_guru_alasan' => 'nullable|in:sakit,izin,alpa',
             'kehadiran_guru_ada_tugas' => 'nullable|boolean',
             'kehadiran_guru_keterangan' => 'nullable|string',
-        ];
-
-        // Correcting an auto-filled journal can turn a system-recorded absence
-        // into a presence, so the API demands the same honesty attestation the
-        // web form does. Only on update: a store has no journal to correct.
-        $jurnal = $this->route('jurnal');
-
-        if ($jurnal instanceof Jurnal && $jurnal->dibuatSistem()) {
-            $aturan['pernyataan'] = ['accepted'];
-        }
-
-        return $aturan;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'pernyataan.accepted' => 'Jurnal ini dibuat otomatis oleh sistem. Kirim "pernyataan": true untuk menyatakan perubahan dilakukan dengan jujur sesuai keadaan sebenarnya.',
         ];
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CatatAktivitas;
 use App\Http\Middleware\CheckRole;
 use App\Support\PesanError;
 use Illuminate\Auth\AuthenticationException;
@@ -23,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckRole::class,
         ]);
+
+        // Every signed-in web request keeps "last active" fresh (throttled),
+        // for the Online / Offline status on Akun Pengguna.
+        $middleware->web(append: [CatatAktivitas::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

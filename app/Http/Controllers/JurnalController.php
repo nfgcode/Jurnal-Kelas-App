@@ -139,8 +139,13 @@ class JurnalController extends Controller
             ]);
         }
 
+        // A ketua kelas reads today's journals only (Oct 2026); the period
+        // filter does not reach further back for them.
+        $hanyaHariIni = $user->isKetuaKelas();
+
         $jurnals = $query
             ->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id))
+            ->when($hanyaHariIni, fn ($q) => $q->whereDate('tanggal', today()))
             ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
@@ -155,7 +160,9 @@ class JurnalController extends Controller
         // Total and how many carried a task, in one grouped pass over the class —
         // within the selected period, so the cards match the table.
         $agregat = Jurnal::whereHas('jadwal', fn ($j) => $j->where('kelas_id', $kelas->id))
-            ->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()])
+            ->when($hanyaHariIni,
+                fn ($q) => $q->whereDate('tanggal', today()),
+                fn ($q) => $q->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->selectRaw('COUNT(*) as total, COUNT(tugas) as tugas')
             ->first();
 
@@ -164,6 +171,7 @@ class JurnalController extends Controller
             'periode' => $periode,
             'presensiSaya' => $presensiSaya,
             'kelas' => $kelas,
+            'hanyaHariIni' => $hanyaHariIni,
             'mapelList' => MataPelajaran::orderBy('nama')->get(),
             'filters' => $filters,
             'statistik' => [
@@ -184,13 +192,18 @@ class JurnalController extends Controller
         Gate::authorize('create', Jurnal::class);
 
         $user = $request->user();
-        $tanggal = $this->tanggalAcuan($request);
+        // A ketua kelas files for today only; any ?tanggal= is ignored for them.
+        $tanggal = $user->isKetuaKelas() ? today() : $this->tanggalAcuan($request);
         $jadwal = $this->jadwalTerpilih($request, $user, $tanggal);
 
         // A meeting the nightly backfill already placeholdered is corrected by
         // editing that row (which "adopts" it), never by filing a second journal
-        // beside it — so send the writer straight there.
-        if ($jadwal && $sistem = Jurnal::sudahAda($jadwal->id, $tanggal->toDateString(), Jurnal::PERAN_SISTEM)) {
+        // beside it — so send the writer straight there. Only someone who may
+        // edit it, though: the ketua kelas never edits (Oct 2026), so for them
+        // the slot simply shows as already recorded.
+        $sistem = $jadwal ? Jurnal::sudahAda($jadwal->id, $tanggal->toDateString(), Jurnal::PERAN_SISTEM) : null;
+
+        if ($sistem && $user->can('update', $sistem)) {
             return redirect()->route('jurnal.edit', $sistem)
                 ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Silakan periksa dan perbaiki di sini.');
         }
@@ -225,13 +238,17 @@ class JurnalController extends Controller
         // beside it — send the writer to correct that one instead, exactly as
         // create() does when the form is opened on the slot.
         if ($sistem = Jurnal::sudahAda($jadwal->id, $validated['tanggal'], Jurnal::PERAN_SISTEM)) {
+            if ($user->cannot('update', $sistem)) {
+                return $this->tolakGanda($sistem, $peran);
+            }
+
             // withInput(): the backfill can land on this slot while the form is
             // open (it runs at 00:30), and the writer must not lose what they
             // typed. The edit form reads old() first, so their materi/tugas
             // carry straight over into the journal they are redirected to.
             return redirect()->route('jurnal.edit', $sistem)
                 ->withInput()
-                ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Isian Anda dibawa ke sini — periksa, centang pernyataan, lalu simpan.');
+                ->with('success', 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Isian Anda dibawa ke sini — periksa, lalu simpan.');
         }
 
         $data = $this->normalize($validated, $user);
@@ -311,19 +328,9 @@ class JurnalController extends Controller
         $user = $request->user();
         $dariSistem = $jurnal->dibuatSistem();
 
-        // Correcting an auto-filled journal is honesty-sensitive (it can flip an
-        // automatic "absent" into "present"), so it requires an explicit
-        // truthfulness attestation before the change is accepted.
-        $aturan = $this->rules($user);
-
-        if ($dariSistem) {
-            $aturan['pernyataan'] = ['accepted'];
-        }
-
-        $validated = $request->validate($aturan, [
-            'pernyataan.accepted' => 'Centang pernyataan kejujuran dulu sebelum mengubah jurnal otomatis ini.',
-        ]);
-        unset($validated['pernyataan']);
+        // Oct 2026: correcting an auto-filled journal no longer asks for a
+        // truthfulness checkbox (user request) — it is validated like any edit.
+        $validated = $request->validate($this->rules($user));
 
         // jadwal_id is editable, so re-check the caller may write against it —
         // otherwise an update could move the journal onto another class/teacher.
@@ -378,7 +385,11 @@ class JurnalController extends Controller
     private function tolakGanda(?Jurnal $lama, string $peran): RedirectResponse
     {
         $siapa = $lama?->diisiOleh?->nama;
-        $sisi = $peran === 'siswa' ? 'perwakilan kelas' : 'guru pengajar';
+        $sisi = match (true) {
+            (bool) $lama?->dibuatSistem() => 'sistem (otomatis)',
+            $peran === 'siswa' => 'perwakilan kelas',
+            default => 'guru pengajar',
+        };
 
         // Name the meeting: with a day's worth of slots in the dropdown, "this
         // meeting" alone leaves the writer guessing which one was refused.
@@ -394,7 +405,9 @@ class JurnalController extends Controller
         $pesan = 'Jurnal '.($slot ? "{$slot} " : '')."pada {$lama?->tanggal?->translatedFormat('j F Y')}"
             ." sudah diisi dari sisi {$sisi}"
             .($siapa ? " oleh {$siapa}" : '')
-            .'. Silakan buka jurnal tersebut bila ingin memperbaruinya.';
+            .(request()->user()?->isKetuaKelas()
+                ? '. Jurnal tersebut bisa dilihat di daftar Jurnal Kelas Hari Ini.'
+                : '. Silakan buka jurnal tersebut bila ingin memperbaruinya.');
 
         return back()->withInput()->withErrors(['jadwal_id' => $pesan]);
     }
@@ -465,9 +478,15 @@ class JurnalController extends Controller
             return [];
         }
 
+        // The ketua kelas cannot adopt a system placeholder (they never edit),
+        // so for them it fills the slot as surely as their own journal would.
+        $peran = $user->isKetuaKelas()
+            ? [Jurnal::peranPengisi($user), Jurnal::PERAN_SISTEM]
+            : [Jurnal::peranPengisi($user)];
+
         return Jurnal::whereIn('jadwal_id', $jadwalIds)
             ->whereDate('tanggal', $tanggal->toDateString())
-            ->where('diisi_oleh_peran', Jurnal::peranPengisi($user))
+            ->whereIn('diisi_oleh_peran', $peran)
             ->pluck('jadwal_id')
             ->all();
     }
@@ -510,8 +529,6 @@ class JurnalController extends Controller
             'jurnal' => $jurnal,
             'jadwal' => $jadwal,
             'kelas' => $kelas,
-            // Editing an auto-filled journal triggers the truthfulness attestation.
-            'dariSistem' => $jurnal?->dibuatSistem() ?? false,
             'jumlahSiswa' => $jumlahSiswa,
             'presensi' => $presensi,
             'rekapKehadiran' => $rekapKehadiran,
@@ -561,7 +578,9 @@ class JurnalController extends Controller
     {
         $aturan = [
             'jadwal_id' => ['required', 'exists:jadwal,id'],
-            'tanggal' => ['required', 'date'],
+            'tanggal' => array_merge(['required', 'date'],
+                // Oct 2026: the ketua kelas only fills in today's journal.
+                $user->isKetuaKelas() ? ['date_equals:'.today()->toDateString()] : []),
             'materi' => ['required', 'string'],
             'tugas' => ['nullable', 'string'],
             'kehadiran_guru' => ['required', Rule::in(['hadir', 'ada_tugas', 'tanpa_tugas'])],

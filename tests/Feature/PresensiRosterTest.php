@@ -95,12 +95,17 @@ class PresensiRosterTest extends TestCase
             ->assertOk();
     }
 
-    public function test_the_ketua_kelas_may_read_but_not_mark_attendance(): void
+    /** Oct 2026: the ketua kelas's menu is today's journal - attendance is not on it. */
+    public function test_the_ketua_kelas_may_neither_read_nor_mark_attendance(): void
     {
         $s = $this->skenario();
 
-        $this->assertTrue($s['ketua']->can('lihatPresensiHarian', $s['kelas']));
+        $this->assertFalse($s['ketua']->can('lihatPresensiHarian', $s['kelas']));
         $this->assertFalse($s['ketua']->can('isiPresensi', $s['jurnal']));
+
+        $this->actingAs($s['ketua'])
+            ->get(route('presensi-harian.show', $s['kelas']))
+            ->assertForbidden();
 
         $this->actingAs($s['ketua'])
             ->get(route('presensi-jurnal.edit', $s['jurnal']))
@@ -299,6 +304,8 @@ class PresensiRosterTest extends TestCase
         // "how much has been filled in" figure until the class adopts it.
         $this->assertTrue($jurnal->dibuatSistem());
         $this->assertSame('hadir', $jurnal->kehadiran_guru_status);
+        // Taking the roll describes nothing about the lesson: materi stays empty.
+        $this->assertTrue($jurnal->materiKosong());
     }
 
     public function test_a_guru_cannot_open_a_roster_for_another_gurus_slot(): void

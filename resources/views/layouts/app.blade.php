@@ -85,33 +85,37 @@
 
             <div class="sidebar__section">Kegiatan</div>
 
-            <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
-                <x-ikon nama="calendar3" /><span>Jadwal Kelas</span>
-            </a>
-            <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.index', 'jurnal.show') ? 'is-active' : '' }}">
-                <x-ikon nama="journal-text" /><span>Jurnal Kelas</span>
-            </a>
             @if (Auth::user()->isKetuaKelas())
-                {{-- The ketua writes the class journal, so the action gets its own
-                     entry instead of hiding one click inside the list. --}}
+                {{-- Oct 2026: a ketua kelas only files today's journal and reads
+                     today's — no timetable, no attendance screens, no history. --}}
                 <a href="{{ route('jurnal.create') }}"
-                   class="sidebar__link {{ request()->routeIs('jurnal.create', 'jurnal.edit') ? 'is-active' : '' }}">
+                   class="sidebar__link {{ request()->routeIs('jurnal.create') ? 'is-active' : '' }}">
                     <x-ikon nama="journal-text" /><span>Isi Jurnal Kelas</span>
                 </a>
+                <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.index', 'jurnal.show') ? 'is-active' : '' }}">
+                    <x-ikon nama="calendar3" /><span>Jurnal Hari Ini</span>
+                </a>
+            @else
+                <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="calendar3" /><span>Jadwal Kelas</span>
+                </a>
+                <a href="{{ route('jurnal.index') }}" class="sidebar__link {{ request()->routeIs('jurnal.index', 'jurnal.show') ? 'is-active' : '' }}">
+                    <x-ikon nama="journal-text" /><span>Jurnal Kelas</span>
+                </a>
+                <a href="{{ route('presensi.index') }}"
+                   class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*', 'presensi-jurnal.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="person-check" /><span>Presensi Saya</span>
+                </a>
             @endif
-            <a href="{{ route('presensi.index') }}"
-               class="sidebar__link {{ request()->routeIs('presensi.*', 'presensi-harian.*', 'presensi-jurnal.*') ? 'is-active' : '' }}">
-                <x-ikon nama="person-check" /><span>{{ Auth::user()->isKetuaKelas() ? 'Presensi Kelas' : 'Presensi Saya' }}</span>
-            </a>
         @else
             <a href="{{ $isAdmin ? route('admin.dashboard') : route('dashboard') }}"
                class="sidebar__link {{ request()->routeIs('dashboard', 'admin.dashboard') ? 'is-active' : '' }}">
                 <x-ikon nama="speedometer2" /><span>Dashboard</span>
             </a>
 
-            <div class="sidebar__section">Data Master</div>
-
             @if ($isAdmin)
+                <div class="sidebar__section">Data Master</div>
+
                 {{-- People and accounts are deliberately two entries: the top
                      two hold the school's records, the third only holds logins. --}}
                 <a href="{{ route('admin.guru.index') }}"
@@ -132,18 +136,22 @@
                 </a>
             @endif
 
-            <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
-                <x-ikon nama="building" /><span>{{ $isAdmin ? 'Kelas' : 'Kelas Saya' }}</span>
-            </a>
-            <a href="{{ route('ruangan.index') }}" class="sidebar__link {{ request()->routeIs('ruangan.*') ? 'is-active' : '' }}">
-                <x-ikon nama="door" /><span>Ruangan</span>
-            </a>
-            <a href="{{ route('mata-pelajaran.index') }}" class="sidebar__link {{ request()->routeIs('mata-pelajaran.*') ? 'is-active' : '' }}">
-                <x-ikon nama="book" /><span>{{ $isAdmin ? 'Mata Pelajaran' : 'Mapel Saya' }}</span>
-            </a>
-            <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
-                <x-ikon nama="calendar3" /><span>Jadwal</span>
-            </a>
+            @if ($isAdmin)
+                {{-- Oct 2026: master data is the admin's; a guru's screens are
+                     the journal (CRUD) and the roster. --}}
+                <a href="{{ route('kelas.index') }}" class="sidebar__link {{ request()->routeIs('kelas.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="building" /><span>Kelas</span>
+                </a>
+                <a href="{{ route('ruangan.index') }}" class="sidebar__link {{ request()->routeIs('ruangan.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="door" /><span>Ruangan</span>
+                </a>
+                <a href="{{ route('mata-pelajaran.index') }}" class="sidebar__link {{ request()->routeIs('mata-pelajaran.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="book" /><span>Mata Pelajaran</span>
+                </a>
+                <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="calendar3" /><span>Jadwal</span>
+                </a>
+            @endif
 
             <div class="sidebar__section">Kegiatan</div>
 

@@ -10,16 +10,17 @@ use App\Support\Ringkasan;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
  * A meeting may carry at most two journals — the class's own, filed by its ketua
- * kelas, and an administrative one — and never two from the same side. The
- * lesson was taught once, so meeting-based figures must count it once however
- * many journals describe it.
+ * kelas, and the teacher's (written by the guru, or by an admin on that side) —
+ * and never two from the same side. The lesson was taught once, so
+ * meeting-based figures must count it once however many journals describe it.
  *
- * A guru writes no journal at all now; the admin stands in for that side here,
- * which is the only way a `guru`-side row is created any more.
+ * Oct 2026: the guru writes journals again, and the ketua kelas only files for
+ * today — so the clock is frozen on a day this lesson meets.
  */
 class JurnalGandaTest extends TestCase
 {
@@ -47,8 +48,23 @@ class JurnalGandaTest extends TestCase
         $this->guru = $this->akunGuru($this->jadwal->guru_nip);
         $this->ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
 
-        $this->tanggal = now()->addMonth()->toDateString();
+        // A day a month out on this lesson's weekday, frozen as "today" so the
+        // ketua (today-only) can file for it and no seeded journal exists yet.
+        $hari = array_search($this->jadwal->hari, Ringkasan::HARI, true);
+        $tanggal = today()->addMonth();
+        while ($tanggal->dayOfWeekIso - 1 !== $hari) {
+            $tanggal->addDay();
+        }
+        Carbon::setTestNow($tanggal->copy()->setTime(9, 0));
+
+        $this->tanggal = $tanggal->toDateString();
         Jurnal::where('jadwal_id', $this->jadwal->id)->whereDate('tanggal', $this->tanggal)->delete();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** @param  array<string, mixed>  $ganti */
@@ -80,10 +96,24 @@ class JurnalGandaTest extends TestCase
         $this->assertSame(1, $this->jumlahJurnal(), 'Kiriman kedua seharusnya ditolak.');
     }
 
-    /** The class no longer shares authorship with the teacher: they have none. */
-    public function test_a_guru_cannot_file_a_journal_at_all(): void
+    /** Oct 2026: the guru files their own lesson's journal — once. */
+    public function test_a_guru_files_one_journal_for_their_own_lesson(): void
     {
-        $this->kirim($this->guru)->assertForbidden();
+        $this->kirim($this->guru)->assertRedirect();
+        $this->assertSame('guru', Jurnal::where('jadwal_id', $this->jadwal->id)
+            ->whereDate('tanggal', $this->tanggal)->value('diisi_oleh_peran'));
+
+        $this->kirim($this->guru, ['materi' => 'Kirim kedua'])
+            ->assertSessionHasErrors('jadwal_id');
+
+        $this->assertSame(1, $this->jumlahJurnal());
+    }
+
+    public function test_a_guru_cannot_file_on_another_teachers_lesson(): void
+    {
+        $lain = User::where('role', 'guru')->where('nip', '!=', $this->jadwal->guru_nip)->firstOrFail();
+
+        $this->kirim($lain)->assertForbidden();
 
         $this->assertSame(0, $this->jumlahJurnal());
     }

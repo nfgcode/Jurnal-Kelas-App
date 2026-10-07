@@ -126,27 +126,33 @@ class JadwalFormTest extends TestCase
         $this->assertSame(1, Jadwal::where('jam_ke_mulai', '>=', 10)->count());
     }
 
+    /*
+     * Oct 2026: the date-following form belongs to the guru (full journal CRUD
+     * on their own lessons). The ketua kelas only ever files for today, so
+     * their form is pinned — see the ketua tests at the bottom.
+     */
+
     public function test_the_dropdown_only_offers_that_days_lessons(): void
     {
-        $tanggal = $this->tanggalDenganJadwal($this->ketua);
+        $tanggal = $this->tanggalDenganJadwal($this->guru);
         $hari = Ringkasan::HARI[$tanggal->dayOfWeekIso - 1];
 
-        $this->actingAs($this->ketua)
+        $this->actingAs($this->guru)
             ->get('/jurnal/create?tanggal='.$tanggal->toDateString())
             ->assertOk()
             ->assertViewHas('jadwalList', fn ($list) => $list->isNotEmpty()
-                && $list->every(fn ($j) => $j->hari === $hari));
+                && $list->every(fn ($j) => $j->hari === $hari && $j->guru_nip === $this->guru->nip));
     }
 
     public function test_changing_the_date_changes_the_list(): void
     {
-        $tanggal = $this->tanggalDenganJadwal($this->ketua);
+        $tanggal = $this->tanggalDenganJadwal($this->guru);
 
-        $hariIni = $this->actingAs($this->ketua)
+        $hariIni = $this->actingAs($this->guru)
             ->get('/jurnal/create?tanggal='.$tanggal->toDateString())
             ->viewData('jadwalList')->pluck('id')->sort()->values();
 
-        $besok = $this->actingAs($this->ketua)
+        $besok = $this->actingAs($this->guru)
             ->get('/jurnal/create?tanggal='.$tanggal->copy()->addDay()->toDateString())
             ->viewData('jadwalList')->pluck('id')->sort()->values();
 
@@ -158,7 +164,7 @@ class JadwalFormTest extends TestCase
         // Sunday: `jadwal.hari` only ever holds Senin–Sabtu.
         $minggu = today()->next(Carbon::SUNDAY);
 
-        $this->actingAs($this->ketua)
+        $this->actingAs($this->guru)
             ->get('/jurnal/create?tanggal='.$minggu->toDateString())
             ->assertOk()
             ->assertViewHas('jadwalList', fn ($list) => $list->isEmpty())
@@ -169,8 +175,8 @@ class JadwalFormTest extends TestCase
 
     public function test_slots_already_written_up_are_marked(): void
     {
-        $tanggal = $this->tanggalDenganJadwal($this->ketua);
-        $jadwal = Jadwal::where('kelas_id', $this->ketua->kelas_id)
+        $tanggal = $this->tanggalDenganJadwal($this->guru);
+        $jadwal = Jadwal::where('guru_nip', $this->guru->nip)
             ->where('hari', Ringkasan::HARI[$tanggal->dayOfWeekIso - 1])
             ->firstOrFail();
 
@@ -178,24 +184,25 @@ class JadwalFormTest extends TestCase
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal->toDateString(),
             'materi' => 'Sudah ditulis',
-            'diisi_oleh_id' => $this->ketua->id,
-            'diisi_oleh_peran' => 'siswa',
+            'diisi_oleh_id' => $this->guru->id,
+            'diisi_oleh_peran' => 'guru',
         ]);
 
-        $this->actingAs($this->ketua)
+        $this->actingAs($this->guru)
             ->get('/jurnal/create?tanggal='.$tanggal->toDateString())
             ->assertOk()
             ->assertViewHas('jadwalTerisi', fn ($terisi) => in_array($jadwal->id, $terisi, true))
             ->assertSee('sudah diisi', false);
     }
 
-    /**
-     * The journal is the class's record, so the form is closed to a guru
-     * outright rather than merely narrowed to their own slots.
-     */
-    public function test_a_guru_is_not_offered_the_journal_form_at_all(): void
+    /** Oct 2026: a guru writes journals again — but only on their own lessons. */
+    public function test_a_guru_is_offered_only_their_own_lessons(): void
     {
-        $this->actingAs($this->guru)->get('/jurnal/create')->assertForbidden();
+        $this->actingAs($this->guru)
+            ->get('/jurnal/create')
+            ->assertOk()
+            ->assertViewHas('jadwalList', fn ($list) => $list
+                ->every(fn ($j) => $j->guru_nip === $this->guru->nip));
     }
 
     public function test_a_ketua_is_only_offered_their_own_class(): void
@@ -209,16 +216,43 @@ class JadwalFormTest extends TestCase
 
     public function test_a_malformed_date_is_refused(): void
     {
-        $this->actingAs($this->ketua)
+        $this->actingAs($this->guru)
             ->get('/jurnal/create?tanggal=bukan-tanggal')
             ->assertSessionHasErrors('tanggal');
     }
 
+    /** The ketua's form ignores ?tanggal=: it is always today's. */
+    public function test_the_ketua_form_is_pinned_to_today(): void
+    {
+        $this->actingAs($this->ketua)
+            ->get('/jurnal/create?tanggal='.today()->subDays(3)->toDateString())
+            ->assertOk()
+            ->assertViewHas('tanggalAktif', fn ($t) => $t->isToday())
+            ->assertSee('readonly', false);
+    }
+
+    /** …and the server refuses any other date a crafted post might send. */
+    public function test_a_ketua_cannot_file_for_another_day(): void
+    {
+        $jadwal = Jadwal::where('kelas_id', $this->ketua->kelas_id)->firstOrFail();
+
+        $this->actingAs($this->ketua)
+            ->post('/jurnal', [
+                'jadwal_id' => $jadwal->id,
+                'tanggal' => today()->subDay()->toDateString(),
+                'materi' => 'Kemarin',
+                'kehadiran_guru' => 'hadir',
+            ])
+            ->assertSessionHasErrors('tanggal');
+
+        $this->assertDatabaseMissing('jurnal', ['materi' => 'Kemarin']);
+    }
+
     public function test_the_duplicate_message_names_the_meeting(): void
     {
-        $tanggal = $this->tanggalDenganJadwal($this->ketua);
+        $tanggal = $this->tanggalDenganJadwal($this->guru);
         $jadwal = Jadwal::with(['kelas', 'mataPelajaran'])
-            ->where('kelas_id', $this->ketua->kelas_id)
+            ->where('guru_nip', $this->guru->nip)
             ->where('hari', Ringkasan::HARI[$tanggal->dayOfWeekIso - 1])
             ->firstOrFail();
 
@@ -226,13 +260,13 @@ class JadwalFormTest extends TestCase
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal->toDateString(),
             'materi' => 'Yang pertama',
-            'diisi_oleh_id' => $this->ketua->id,
-            'diisi_oleh_peran' => 'siswa',
+            'diisi_oleh_id' => $this->guru->id,
+            'diisi_oleh_peran' => 'guru',
         ]);
 
         // With a whole day of slots in the dropdown, "this meeting" alone would
         // leave the writer guessing which one was refused.
-        $this->actingAs($this->ketua)
+        $this->actingAs($this->guru)
             ->post('/jurnal', [
                 'jadwal_id' => $jadwal->id,
                 'tanggal' => $tanggal->toDateString(),

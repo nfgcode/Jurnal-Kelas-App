@@ -27,7 +27,8 @@
                 <div class="deflist__row"><span class="deflist__key">Email</span><span class="deflist__val">{{ $akun->email }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Peran</span><span class="deflist__val">{{ ucfirst($akun->role) }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Status</span><span class="deflist__val">{{ ucfirst($akun->status) }}</span></div>
-                <div class="deflist__row"><span class="deflist__key">Terakhir Aktif</span><span class="deflist__val">{{ $akun->last_active_at?->format('d/m/Y H:i') ?? 'belum pernah masuk' }}</span></div>
+                <div class="deflist__row"><span class="deflist__key">Sesi</span><span class="deflist__val"><x-status-sesi :user="$akun" /></span></div>
+                <div class="deflist__row"><span class="deflist__key">Terakhir Online</span><span class="deflist__val">{{ $akun->last_active_at?->format('d/m/Y H:i') ?? 'belum pernah masuk' }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Dibuat</span><span class="deflist__val">{{ $akun->created_at?->format('d/m/Y') }}</span></div>
             </div>
         </x-card>

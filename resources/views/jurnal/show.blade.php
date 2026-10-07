@@ -89,13 +89,21 @@
     <div class="grid-row grid-row--editor">
         <div class="d-flex flex-column gap-3">
             <x-card title="Materi yang Diajarkan">
-                <p class="mb-0" style="font-size: 12.5px; line-height: 1.6; color: var(--n-900)">{{ $jurnal->materi }}</p>
+                @if ($jurnal->materiKosong())
+                    <p class="mb-0 jurnal-belum">{{ \App\Models\Jurnal::MATERI_BELUM }}</p>
+                @else
+                    <p class="mb-0" style="font-size: 12.5px; line-height: 1.6; color: var(--n-900)">{{ $jurnal->materi }}</p>
+                @endif
             </x-card>
 
             <x-card title="Tugas / Pekerjaan Rumah">
-                <p class="mb-0" style="font-size: 12.5px; line-height: 1.6; color: var(--n-900)">
-                    {{ $jurnal->tugas ?: 'Tidak ada tugas pada pertemuan ini.' }}
-                </p>
+                @if ($jurnal->tugasBelumDiisi())
+                    <p class="mb-0 jurnal-belum">{{ \App\Models\Jurnal::TUGAS_BELUM }}</p>
+                @else
+                    <p class="mb-0" style="font-size: 12.5px; line-height: 1.6; color: var(--n-900)">
+                        {{ $jurnal->tugas ?: 'Tidak ada tugas pada pertemuan ini.' }}
+                    </p>
+                @endif
             </x-card>
 
             <x-card :title="'Kehadiran Siswa — ' . ($jurnal->jadwal?->mataPelajaran?->nama ?? 'Pertemuan Ini')" flush>

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Guru;
 use App\Models\Kelas;
+use App\Models\MataPelajaran;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -52,8 +53,15 @@ class ImporPengguna
         ];
 
         if ($jenis === 'guru') {
+            // Mirrors the guru table (nip, nama, jenis_kelamin, no_hp, alamat,
+            // status), its login (email, password) and the subjects it teaches
+            // (guru_mata_pelajaran) — the same fields as "+ Tambah Guru".
             return $umum + [
-                'nip' => ['judul' => 'NIP', 'wajib' => true, 'petunjuk' => 'Harus unik. Dipakai untuk login.'],
+                'nip' => ['judul' => 'NIP', 'wajib' => true, 'petunjuk' => 'Harus unik, hanya angka. Dipakai untuk login.'],
+                'jenis_kelamin' => ['judul' => 'Jenis Kelamin', 'wajib' => false, 'petunjuk' => 'L atau P.'],
+                'no_hp' => ['judul' => 'No. HP', 'wajib' => false, 'petunjuk' => 'Maksimal 20 karakter.'],
+                'alamat' => ['judul' => 'Alamat', 'wajib' => false, 'petunjuk' => 'Maksimal 500 karakter.'],
+                'mapel' => ['judul' => 'Mata Pelajaran', 'wajib' => false, 'petunjuk' => 'Nama atau kode mapel yang diampu, pisahkan dengan koma. Yang pertama menjadi mapel utama.'],
                 'wali_kelas' => ['judul' => 'Wali Kelas', 'wajib' => false, 'petunjuk' => 'Nama kelas perwalian, pisahkan dengan koma bila lebih dari satu. Kosongkan bila bukan wali kelas.'],
             ] + $penutup;
         }
@@ -101,9 +109,11 @@ class ImporPengguna
         $kelas = Kelas::orderBy('nama_kelas')->value('nama_kelas') ?? 'X RPL 1';
 
         if ($jenis === 'guru') {
+            $mapel = MataPelajaran::orderBy('nama')->limit(2)->pluck('nama')->all() + [0 => 'Matematika', 1 => 'Fisika'];
+
             return [
-                ['Budi Santoso', 'budi.santoso@contoh.sch.id', '198501012010011001', $kelas, '', 'aktif'],
-                ['Siti Aminah', 'siti.aminah@contoh.sch.id', '199003152015032002', '', '', 'aktif'],
+                ['Budi Santoso', 'budi.santoso@contoh.sch.id', '198501012010011001', 'L', '081234567890', 'Jl. Merdeka No. 1', $mapel[0], $kelas, '', 'aktif'],
+                ['Siti Aminah', 'siti.aminah@contoh.sch.id', '199003152015032002', 'P', '', '', $mapel[0].', '.$mapel[1], '', '', 'aktif'],
             ];
         }
 
@@ -142,6 +152,15 @@ class ImporPengguna
 
         foreach (Kelas::orderBy('nama_kelas')->pluck('nama_kelas') as $nama) {
             $rows[] = ['', '', $nama];
+        }
+
+        if ($jenis === 'guru') {
+            $rows[] = ['', '', ''];
+            $rows[] = ['Mapel terdaftar', '', 'Salin nama atau kode berikut ke kolom Mata Pelajaran:'];
+
+            foreach (MataPelajaran::orderBy('nama')->get(['nama', 'kode']) as $m) {
+                $rows[] = ['', $m->kode, $m->nama];
+            }
         }
 
         return $rows;
@@ -197,12 +216,21 @@ class ImporPengguna
                 $data[$kunci] = trim((string) ($row[$indeks] ?? ''));
             }
 
+            if (! isset($mapelPeta)) {
+                $mapelPeta = [];
+                foreach (MataPelajaran::get(['id', 'nama', 'kode']) as $m) {
+                    $mapelPeta[mb_strtolower(trim($m->nama))] = $m->id;
+                    $mapelPeta[mb_strtolower(trim((string) $m->kode))] = $m->id;
+                }
+            }
+
             $baris[] = self::periksaBaris(
                 // +2: row 1 is the header, and spreadsheets count from 1.
                 $i + 2,
                 $data,
                 $jenis,
                 $kelasPeta,
+                $mapelPeta,
                 $terlihat,
                 $passwordBawaan,
                 $perbarui
@@ -235,6 +263,7 @@ class ImporPengguna
         array $data,
         string $jenis,
         array $kelasPeta,
+        array $mapelPeta,
         array &$terlihat,
         ?string $passwordBawaan,
         bool $perbarui
@@ -281,6 +310,43 @@ class ImporPengguna
         }
 
         $kelasId = null;
+        $mapelIds = [];
+
+        if ($jenis === 'guru') {
+            // Same rules as the "+ Tambah Guru" form (GuruRequest).
+            if (($data['nip'] ?? '') !== '' && ! ctype_digit($data['nip'])) {
+                $error[] = 'NIP hanya boleh berisi angka.';
+            }
+
+            $jk = mb_strtolower($data['jenis_kelamin'] ?? '');
+            $data['jenis_kelamin'] = match (true) {
+                $jk === '' => '',
+                in_array($jk, ['l', 'laki-laki', 'laki laki', 'pria'], true) => 'L',
+                in_array($jk, ['p', 'perempuan', 'wanita'], true) => 'P',
+                default => '?',
+            };
+            if ($data['jenis_kelamin'] === '?') {
+                $error[] = 'Jenis Kelamin harus L atau P.';
+            }
+
+            if (mb_strlen($data['no_hp'] ?? '') > 20) {
+                $error[] = 'No. HP maksimal 20 karakter.';
+            }
+
+            if (mb_strlen($data['alamat'] ?? '') > 500) {
+                $error[] = 'Alamat maksimal 500 karakter.';
+            }
+
+            foreach (array_filter(array_map('trim', explode(',', $data['mapel'] ?? ''))) as $namaMapel) {
+                $id = $mapelPeta[mb_strtolower($namaMapel)] ?? null;
+
+                if ($id === null) {
+                    $error[] = 'Mata pelajaran "'.$namaMapel.'" tidak terdaftar.';
+                } elseif (! in_array($id, $mapelIds, true)) {
+                    $mapelIds[] = $id;
+                }
+            }
+        }
 
         if ($jenis === 'siswa') {
             $namaKelas = mb_strtolower($data['kelas'] ?? '');
@@ -340,6 +406,7 @@ class ImporPengguna
             'nomor' => $nomor,
             'data' => $data + [
                 '_kelas_id' => $kelasId,
+                '_mapel_ids' => $mapelIds,
                 '_password' => $password,
                 '_user_id' => $adaEmail?->id,
                 '_username' => self::username($data['email'], $adaEmail?->id),
@@ -379,7 +446,12 @@ class ImporPengguna
                     ? Guru::updateOrCreate(['nip' => $data['nip']], [
                         'nama' => $data['nama'],
                         'status' => $statusOrang,
-                    ])
+                    ] + array_filter([
+                        // A blank optional cell keeps what is on file.
+                        'jenis_kelamin' => $data['jenis_kelamin'] ?? '',
+                        'no_hp' => $data['no_hp'] ?? '',
+                        'alamat' => $data['alamat'] ?? '',
+                    ], fn ($v) => $v !== ''))
                     : Siswa::updateOrCreate(['nis' => $data['nis']], [
                         'nama' => $data['nama'],
                         'kelas_id' => $data['_kelas_id'],
@@ -419,6 +491,14 @@ class ImporPengguna
 
                 if ($jenis === 'guru') {
                     self::terapkanPerwalian($orang, $data['wali_kelas'] ?? '');
+
+                    // The subjects listed replace the teacher's set; the first
+                    // is the main one. A blank cell leaves the set as it was.
+                    if (! empty($data['_mapel_ids'])) {
+                        $orang->mataPelajaran()->sync(collect($data['_mapel_ids'])
+                            ->mapWithKeys(fn ($id, $i) => [$id => ['utama' => $i === 0]])
+                            ->all());
+                    }
                 }
             }
         });

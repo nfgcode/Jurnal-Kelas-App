@@ -36,7 +36,9 @@ class AuthorizationTest extends TestCase
         $this->admin = User::where('role', 'admin')->firstOrFail();
         $this->jadwal = Jadwal::with('kelas')->firstOrFail();
         $this->guru = $this->akunGuru($this->jadwal->guru_nip);
-        $this->siswa = $this->akunSiswaKelas($this->jadwal->kelas_id);
+        // A rank-and-file student: the ketua kelas has a narrower menu of their
+        // own since Oct 2026 (see the ketua tests below).
+        $this->siswa = $this->akunSiswaKelas($this->jadwal->kelas_id, false);
     }
 
     public function test_siswa_is_denied_master_data_screens(): void
@@ -60,6 +62,50 @@ class AuthorizationTest extends TestCase
         foreach (['/jadwal', '/jurnal', '/presensi'] as $url) {
             $this->actingAs($this->siswa)->get($url)->assertOk("GET {$url} should be visible to a siswa");
         }
+    }
+
+    /** Oct 2026: the ketua kelas files today's journal and reads today's - nothing else. */
+    public function test_the_ketua_kelas_only_reaches_todays_journals(): void
+    {
+        $ketua = $this->akunSiswaKelas($this->jadwal->kelas_id, true);
+
+        foreach (['/jurnal', '/jurnal/create'] as $url) {
+            $this->actingAs($ketua)->get($url)->assertOk("GET {$url} should be open to the ketua");
+        }
+
+        foreach (['/jadwal', "/jadwal/{$this->jadwal->id}", '/presensi',
+            "/presensi-harian/{$ketua->kelas_id}"] as $url) {
+            $this->actingAs($ketua)->get($url)->assertForbidden("GET {$url} should be closed to the ketua");
+        }
+
+        // Their class's journal from another day is out of reach...
+        $lampau = Jurnal::whereHas('jadwal', fn ($q) => $q->where('kelas_id', $ketua->kelas_id))
+            ->whereDate('tanggal', '<', today())
+            ->firstOrFail();
+        $this->actingAs($ketua)->get("/jurnal/{$lampau->public_id}")->assertForbidden();
+
+        // ...and the day's list carries today's only.
+        $this->actingAs($ketua)->get('/jurnal')
+            ->assertViewHas('hanyaHariIni', true)
+            ->assertSee('Jurnal Kelas Hari Ini');
+    }
+
+    /** Oct 2026: a guru's menu is the journal and its roster; master data is the admin's. */
+    public function test_a_guru_is_kept_to_journals_and_attendance(): void
+    {
+        foreach (['/jurnal', '/jurnal/create', '/presensi'] as $url) {
+            $this->actingAs($this->guru)->get($url)->assertOk("GET {$url} should be open to a guru");
+        }
+
+        foreach (['/kelas', "/kelas/{$this->jadwal->kelas_id}", '/ruangan', '/mata-pelajaran',
+            '/jadwal', "/jadwal/{$this->jadwal->id}"] as $url) {
+            $this->actingAs($this->guru)->get($url)->assertForbidden("GET {$url} should be closed to a guru");
+        }
+
+        $this->actingAs($this->guru)->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('href="'.route('kelas.index').'"', false)
+            ->assertDontSee('href="'.route('jadwal.index').'"', false);
     }
 
     public function test_siswa_cannot_open_another_classs_journal_or_attendance(): void
@@ -302,40 +348,82 @@ class AuthorizationTest extends TestCase
     }
 
     /**
-     * Deleting a journal is offered in the UI, so the boundary matters. The
-     * journal is the class's record now, so the class's ketua may erase it and a
-     * guru - even the one who taught the lesson, even the wali kelas - may not.
+     * Deleting a journal is offered in the UI, so the boundary matters. Since
+     * Oct 2026 the guru has full CRUD over every journal on the lessons they
+     * teach - including the one the ketua filed. The ketua kelas files and
+     * reads but never deletes, a wali kelas who did not teach the lesson may
+     * only read it, and another lesson's teacher may not touch it.
      */
-    public function test_only_the_class_or_admin_may_delete_a_journal(): void
+    public function test_only_the_teacher_or_admin_may_delete_a_journal(): void
     {
         $kelas = $this->jadwal->kelas;
         $wali = $this->buatGuru();
         $kelas->update(['wali_kelas_nip' => $wali->nip]);
-
-        $jurnal = Jurnal::whereHas('jadwal', fn ($q) => $q
-            ->where('kelas_id', $kelas->id)
-            ->where('guru_nip', '<>', $wali->nip))
-            ->firstOrFail();
-
-        // The wali can open it, but is offered no way to delete it...
-        $this->actingAs($wali)->get("/jurnal/{$jurnal->public_id}")
-            ->assertOk()
-            ->assertDontSee('data-bs-target="#hapusJurnal"', false);
-
-        // ...and forcing the request is refused, not merely hidden.
-        $this->actingAs($wali)->delete("/jurnal/{$jurnal->public_id}")->assertForbidden();
-        $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
-
-        // Nor may the teacher whose lesson it records: their half is the roster.
-        $pengajar = $this->akunGuru($jurnal->jadwal->guru_nip);
-        $this->actingAs($pengajar)->delete("/jurnal/{$jurnal->public_id}")->assertForbidden();
-        $this->assertDatabaseHas('jurnal', ['id' => $jurnal->id]);
-
-        // The class's ketua may, and is shown the button.
         $ketua = $this->akunSiswaKelas($kelas->id, true);
-        $this->actingAs($ketua)->get("/jurnal/{$jurnal->public_id}")
+
+        // Today's, so the ketua can see them: both written by the class, on
+        // two different teachers' lessons.
+        [$dariKelas, $lainnya] = $this->duaPertemuan($kelas->id, today()->toDateString());
+
+        foreach ([$wali, $ketua] as $akun) {
+            // They can open it, but are offered no way to delete it...
+            $this->actingAs($akun)->get("/jurnal/{$dariKelas->public_id}")
+                ->assertOk()
+                ->assertDontSee('data-bs-target="#hapusJurnal"', false);
+
+            // ...and forcing the request is refused, not merely hidden.
+            $this->actingAs($akun)->delete("/jurnal/{$dariKelas->public_id}")->assertForbidden();
+            $this->assertDatabaseHas('jurnal', ['id' => $dariKelas->id]);
+        }
+
+        // Another lesson's teacher cannot even open it, let alone delete it.
+        $guruLain = $this->akunGuru($lainnya->jadwal->guru_nip);
+        $this->actingAs($guruLain)->get("/jurnal/{$dariKelas->public_id}")->assertForbidden();
+        $this->actingAs($guruLain)->delete("/jurnal/{$dariKelas->public_id}")->assertForbidden();
+        $this->assertDatabaseHas('jurnal', ['id' => $dariKelas->id]);
+
+        // The lesson's own teacher is shown the edit and delete buttons, and may
+        // delete it - even though the ketua wrote it.
+        $pengajar = $this->akunGuru($dariKelas->jadwal->guru_nip);
+        $this->actingAs($pengajar)->get("/jurnal/{$dariKelas->public_id}")
             ->assertOk()
+            ->assertSee(route('jurnal.edit', $dariKelas), false)
             ->assertSee('data-bs-target="#hapusJurnal"', false);
+        $this->actingAs($pengajar)->delete("/jurnal/{$dariKelas->public_id}")
+            ->assertRedirect(route('jurnal.index'));
+        $this->assertDatabaseMissing('jurnal', ['id' => $dariKelas->id]);
+
+        // The admin may remove any journal.
+        $this->actingAs($this->admin)->delete("/jurnal/{$lainnya->public_id}")
+            ->assertRedirect(route('jurnal.index'));
+        $this->assertDatabaseMissing('jurnal', ['id' => $lainnya->id]);
+    }
+
+    /** The guru corrects the class's journal on their lesson; it stays the class's entry. */
+    public function test_a_guru_may_edit_the_class_journal_on_their_lesson(): void
+    {
+        $kelasId = $this->jadwal->kelas_id;
+        [$dariKelas, $lainnya] = $this->duaPertemuan($kelasId, today()->toDateString());
+        $pengajar = $this->akunGuru($dariKelas->jadwal->guru_nip);
+
+        $isian = [
+            'jadwal_id' => $dariKelas->jadwal_id,
+            'tanggal' => today()->toDateString(),
+            'materi' => 'Diperbaiki guru pengampu',
+            'kehadiran_guru' => 'hadir',
+        ];
+
+        $this->actingAs($pengajar)->get("/jurnal/{$dariKelas->public_id}/edit")->assertOk();
+        $this->actingAs($pengajar)->put("/jurnal/{$dariKelas->public_id}", $isian)
+            ->assertRedirect(route('jurnal.index'));
+
+        $segar = $dariKelas->fresh();
+        $this->assertSame('Diperbaiki guru pengampu', $segar->materi);
+        $this->assertSame('siswa', $segar->diisi_oleh_peran);
+
+        // Another lesson's teacher still may not.
+        $this->actingAs($this->akunGuru($lainnya->jadwal->guru_nip))
+            ->get("/jurnal/{$dariKelas->public_id}/edit")->assertForbidden();
     }
 
     /**
@@ -347,7 +435,6 @@ class AuthorizationTest extends TestCase
     public function test_deleting_a_journal_removes_its_own_roster_only(): void
     {
         $kelasId = $this->jadwal->kelas_id;
-        $ketua = $this->akunSiswaKelas($kelasId, true);
         $tanggal = now()->toDateString();
 
         // Two meetings of the same class on the same day, each marked by its own
@@ -363,7 +450,8 @@ class AuthorizationTest extends TestCase
             'kelas_id' => $kelasId, 'siswa_nis' => $nis, 'status' => 'alpa',
         ]);
 
-        $this->actingAs($ketua)
+        // An admin may remove any journal.
+        $this->actingAs($this->admin)
             ->delete("/jurnal/{$dua->public_id}")
             ->assertRedirect(route('jurnal.index'));
 

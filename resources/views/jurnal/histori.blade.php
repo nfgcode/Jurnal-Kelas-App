@@ -90,7 +90,7 @@
                             <td class="is-muted">{{ $jurnal->jadwal?->jpLabel() }}</td>
                             <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
-                            <td class="is-muted">{{ Str::limit($jurnal->materi, 24) }}</td>
+                            <td class="is-muted">{{ $jurnal->materiKosong() ? 'Belum diisi' : Str::limit($jurnal->materi, 24) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 22) : '—' }}</td>
                             <td>
                                 <span class="meter-cell">

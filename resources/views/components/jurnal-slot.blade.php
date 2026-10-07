@@ -27,9 +27,12 @@
         {{-- Reloading on change is what makes the schedule list below match the
              chosen day. Editing stays on the journal's own date, so only the
              create form reloads. --}}
+        {{-- A ketua kelas files for today only (Oct 2026): the date is fixed. --}}
+        @php $tanggalTerkunci = Auth::user()?->isKetuaKelas(); @endphp
         <input class="input-hifi" type="date" name="tanggal"
-               value="{{ old('tanggal', $tanggalAktif->toDateString()) }}" required
-               @unless ($jurnal)
+               value="{{ $tanggalTerkunci ? $tanggalAktif->toDateString() : old('tanggal', $tanggalAktif->toDateString()) }}" required
+               @if ($tanggalTerkunci) readonly aria-readonly="true" @endif
+               @unless ($jurnal || $tanggalTerkunci)
                    onchange="window.location = '{{ route('jurnal.create') }}?tanggal=' + this.value"
                @endunless>
     </x-field>

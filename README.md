@@ -80,8 +80,7 @@ Tujuannya mengurangi kerjaan berulang guru, tapi tetap jelas mana yang diisi ora
 - **Statusnya ditulis "Otomatis", bukan "Terisi"**, jadi di rekap tetap kelihatan mana yang belum diisi guru sendiri
 - **Angkanya juga tidak ikut digelembungkan.** Semua hitungan "jurnal terisi" cuma menghitung yang ditulis orang, dan Rekap Jurnal memecahnya jadi tiga yang totalnya selalu pas sama jumlah pertemuan terjadwal: **Diisi Guru + Diisi Otomatis + Belum Diisi**. Angka kelengkapan cuma menghitung tulisan guru, dan **"Terlambat Isi" tidak menghitung jurnal otomatis** (yang secara teknis memang selalu telat) supaya guru yang benar-benar telat tetap kelihatan
 - **Bukan buat menilai guru.** Tulisan "tidak hadir · tanpa tugas" di jurnal otomatis itu cuma penanda kosong, bukan hasil pengamatan. Makanya tidak ikut dihitung di rekap Kehadiran Guru, "Guru Perlu Perhatian", maupun "Guru Teraktif"
-- **Masih bisa diubah semua peran.** Begitu jurnal otomatis dibuka lalu diedit, jurnalnya jadi milik yang mengedit (guru/ketua kelas), jadi tidak ada dua jurnal untuk satu pertemuan
-- **Wajib centang pernyataan** kalau mau mengubah jurnal otomatis: isinya menyatakan perubahan dibuat sesuai keadaan sebenarnya. Tanpa itu perubahannya ditolak
+- **Masih bisa diubah guru pengampu dan admin.** Begitu jurnal otomatis dibuka lalu diedit, jurnalnya jadi milik yang mengedit, jadi tidak ada dua jurnal untuk satu pertemuan. Ketua kelas tidak mengedit jurnal, jadi baginya pertemuan itu terhitung sudah tercatat
 - **Label "Diedit setelah hari-H"** buat jurnal yang diubah di hari setelah tanggal pelajarannya. Labelnya kelihatan oleh semua peran dan beda dari label "Telat" (telat *mengisi*). Admin bisa memfilter dan lihat jumlahnya di Rekap Jurnal
 
 ```bash
@@ -685,7 +684,7 @@ Jurnal-Kelas-App/
 │       ├── layouts/              # Layout utama (sidebar, nav)
 │       └── components/           # 27 komponen Blade, a.l. x-ikon, x-th-sort, x-pager,
 │                                 #   x-periode-filter, x-query-hidden, x-filter-tingkat-jurusan,
-│                                 #   x-jurnal-attestasi, x-jurnal-edit-badge
+│                                 #   x-jurnal-edit-badge
 ├── routes/
 │   ├── web.php                   # Route web
 │   ├── api.php                   # Route REST API
@@ -728,7 +727,7 @@ Tiap berkas test menjaga satu jenis kesalahan yang pernah benar-benar kejadian:
 | `PeriodeFilterTest` | Preset periode beneran menyaring, tidak melebarkan akses peran, dan filter form tidak membuang sortir/periode/ukuran halaman |
 | `PaginationTest` | Whitelist `?per=`; ukuran halaman tidak bisa dipakai buat melebarkan akses |
 | `QrAksesTest` | QR cuma buat guru, bisa pilih sebagian kelas, unduhan PDF beneran PDF & khusus admin |
-| `JurnalOtomatisTest` | Pengisian otomatis bikin jurnal "sistem", bisa diulang tanpa dobel, dan tidak nyentuh hari ini/masa depan; jurnal otomatis wajib centang pernyataan waktu diubah lalu diadopsi; label "diedit setelah hari-H" + filternya |
+| `JurnalOtomatisTest` | Pengisian otomatis bikin jurnal "sistem", bisa diulang tanpa dobel, dan tidak nyentuh hari ini/masa depan; jurnal otomatis diadopsi oleh yang mengedit (tanpa centang pernyataan); label "diedit setelah hari-H" + filternya |
 | `ApiJurnalKontrakTest` | API mengembalikan identitas yang dipakai alamatnya sendiri (`public_id`): bisa baca → update cuma bermodal respons, dan id angka memang bukan kunci URL |
 | `CadanganTest` | Backup/restore khusus admin: ekspor memuat semua tabel & bisa dipilih sebagian, unduhan ter-gzip dan bisa dipulihkan lagi (gabung/ganti), berkas asing ditolak |
 | `IkonTest` | Semua ikon yang dipakai memang ada, biar ikon tidak kosong diam-diam |

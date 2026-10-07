@@ -12,22 +12,26 @@ use App\Models\User;
 class JadwalPolicy
 {
     /**
-     * Admin sees every slot; a guru sees a slot in a class they teach (their own
-     * lesson or another subject in that class's timetable); a student sees only
-     * their own class's timetable.
+     * Who may open the timetable at all. Oct 2026: a guru only works with the
+     * journal and the roster, and a ketua kelas only with today's journal, so
+     * the timetable screens are for admin and ordinary students.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->isAdmin() || ($user->isSiswa() && ! $user->isKetuaKelas());
+    }
+
+    /**
+     * Admin sees every slot; an ordinary student only their own class's.
      */
     public function view(User $user, Jadwal $jadwal): bool
     {
-        if ($user->isAdmin()) {
-            return true;
+        if (! $this->viewAny($user)) {
+            return false;
         }
 
-        if ($user->isSiswa()) {
-            return $user->kelas_id !== null && $jadwal->kelas_id === $user->kelas_id;
-        }
-
-        return $user->isGuru()
-            && $jadwal->kelas?->jadwals()->where('guru_nip', $user->nip)->exists();
+        return $user->isAdmin()
+            || ($user->kelas_id !== null && $jadwal->kelas_id === $user->kelas_id);
     }
 
     public function create(User $user): bool

@@ -3,10 +3,19 @@
 @section('title', 'Jurnal')
 
 @section('content')
+    @php
+        // A ketua kelas reads today's journals only (Oct 2026), so there is no
+        // period to pick and the wording says "hari ini".
+        $hanyaHariIni = $hanyaHariIni ?? false;
+        $labelPeriode = $hanyaHariIni ? now()->translatedFormat('l, j F Y') : $periode->label();
+    @endphp
+
     <x-page-head
-        title="Riwayat Jurnal Kelas"
-        :sub="collect([$kelas?->nama_kelas, number_format($statistik['total'], 0, ',', '.') . ' pertemuan', $periode->label()])->filter()->join(' · ')">
-        <x-periode-filter :periode="$periode" />
+        :title="$hanyaHariIni ? 'Jurnal Kelas Hari Ini' : 'Riwayat Jurnal Kelas'"
+        :sub="collect([$kelas?->nama_kelas, number_format($statistik['total'], 0, ',', '.') . ' pertemuan', $labelPeriode])->filter()->join(' · ')">
+        @unless ($hanyaHariIni)
+            <x-periode-filter :periode="$periode" />
+        @endunless
         @if (Auth::user()->isKetuaKelas())
             <a class="btn-hifi" href="{{ route('jurnal.create') }}">Isi Jurnal Kelas</a>
         @endif
@@ -14,7 +23,7 @@
 
     <div class="grid-row grid-row--4">
         <x-stat label="Total Pertemuan" :value="number_format($statistik['total'], 0, ',', '.')"
-                :caption="$periode->label()" />
+                :caption="$labelPeriode" />
         <x-stat label="Jurnal Terisi" :value="number_format($statistik['total'], 0, ',', '.')"
                 :caption="round($statistik['kelengkapan']) . '% kelengkapan'" />
         <x-stat label="Kelengkapan" :value="round($statistik['kelengkapan']) . '%'" caption="dari jadwal terjadwal" />
@@ -82,7 +91,7 @@
                             <td class="is-strong is-nowrap">{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
                             <td class="is-muted is-nowrap">{{ $jurnal->guru?->nama }}</td>
                             <td><x-chip :tone="$chip['tone']" :label="$chip['label']" /></td>
-                            <td class="is-muted">{{ Str::limit($jurnal->materi, 22) }}</td>
+                            <td class="is-muted">{{ $jurnal->materiKosong() ? 'Belum diisi' : Str::limit($jurnal->materi, 22) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 20) : '—' }}</td>
                             <td><x-chip :tone="$tonePresensi" :label="$saya ? ucfirst($saya->status) : '—'" /></td>
                             <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /> <x-jurnal-edit-badge :jurnal="$jurnal" /></td>

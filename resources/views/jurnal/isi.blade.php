@@ -33,8 +33,6 @@
                 @csrf
                 @if ($jurnal) @method('PUT') @endif
 
-                <x-jurnal-attestasi :aktif="$dariSistem ?? false" />
-
                 <x-jurnal-slot label="Jadwal (Kelas · Mata Pelajaran)" dengan-kelas
                                :jadwal="$jadwal" :jadwal-list="$jadwalList" :jadwal-terisi="$jadwalTerisi"
                                :tanggal-aktif="$tanggalAktif" :jurnal="$jurnal" :kelas="$kelas" />
@@ -133,7 +131,7 @@
                                         <td class="is-muted is-nowrap" style="padding-left: 0">{{ $lalu->tanggal->format('d/m') }}</td>
                                         <td class="is-strong">{{ $lalu->jadwal?->mataPelajaran?->nama }}</td>
                                         <td class="is-muted">{{ $lalu->guru?->nama }}</td>
-                                        <td class="is-muted">{{ Str::limit($lalu->materi, 28) }}</td>
+                                        <td class="is-muted">{{ $lalu->materiKosong() ? 'Belum diisi' : Str::limit($lalu->materi, 28) }}</td>
                                         <td class="is-num" style="padding-right: 0">
                                             <x-chip :tone="$chip['tone']" :label="$chip['label']" />
                                         </td>

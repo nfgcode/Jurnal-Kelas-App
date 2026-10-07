@@ -6,7 +6,11 @@
     <x-page-head
         title="Data Guru"
         :sub="$statistik['total'] . ' guru terdaftar · ' . $statistik['aktif'] . ' aktif · ' . $statistik['wali'] . ' wali kelas'">
-        <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.akun.index', ['role' => 'guru']) }}">Akun Guru</a>
+        {{-- Bulk add through the Excel import, preset to "Guru". (The "Akun
+             Guru" shortcut was removed — logins live under Akun Pengguna.) --}}
+        <a class="btn-hifi btn-hifi--ghost" href="{{ route('admin.impor.index', ['jenis' => 'guru']) }}#unggah">
+            <x-ikon nama="file-earmark-arrow-up" /> Tambah Beberapa Guru
+        </a>
         <a class="btn-hifi" href="{{ route('admin.guru.create') }}">+ Tambah Guru</a>
     </x-page-head>
 

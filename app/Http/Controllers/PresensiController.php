@@ -40,9 +40,11 @@ class PresensiController extends Controller
     {
         $user = $request->user();
 
-        // A regular student's own record; a ketua kelas gets the class recap,
-        // since they answer for the class rather than only for themselves.
-        if ($user->isSiswa() && ! $user->isKetuaKelas()) {
+        // Oct 2026: a ketua kelas only files and reads today's journal.
+        abort_if($user->isKetuaKelas(), 403, 'Ketua kelas hanya dapat mengisi dan melihat jurnal hari ini.');
+
+        // A regular student's own record.
+        if ($user->isSiswa()) {
             return $this->rekapSiswa($request, $user);
         }
 

@@ -261,6 +261,9 @@ button.aksi-card {
     > * { min-width: 0; }
 }
 
+// No week beside it (the ketua kelas dashboard): the table takes the row.
+.dash-jadwal--tunggal { grid-template-columns: minmax(0, 1fr); }
+
 // Larger-type table for the dashboards.
 .tbl--lega {
     thead th { font-size: 13px; padding: 9px 14px; }

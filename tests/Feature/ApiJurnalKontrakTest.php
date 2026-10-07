@@ -57,8 +57,8 @@ class ApiJurnalKontrakTest extends TestCase
             'diisi_oleh_peran' => 'guru',
         ]);
 
-        // The class's chair: journals are written and updated by the class now,
-        // so a write round trip has to be made as them.
+        // The class's chair. Oct 2026: they file today's journal but never edit
+        // one — updates belong to the lesson's guru (or an admin).
         $ketua = $this->buatSiswa(['nis' => '2026000777', 'kelas_id' => $kelas->id]);
         $kelas->update(['ketua_nis' => $ketua->nis]);
 
@@ -81,20 +81,27 @@ class ApiJurnalKontrakTest extends TestCase
 
     public function test_a_client_can_update_using_only_what_the_api_returned(): void
     {
-        [, $jadwal, $jurnal, $tanggal, $ketua] = $this->jurnalUji();
+        [$guru, $jadwal, $jurnal, $tanggal, $ketua] = $this->jurnalUji();
 
         // Read it back the way a real client would, then write using the id the
         // response carried — no out-of-band knowledge of the numeric key.
-        $dibaca = $this->actingAs($ketua)->getJson("/api/jurnal/{$jurnal->public_id}")
+        $dibaca = $this->actingAs($guru)->getJson("/api/jurnal/{$jurnal->public_id}")
             ->assertOk()
             ->json('data');
 
-        $this->actingAs($ketua)->putJson("/api/jurnal/{$dibaca['public_id']}", [
+        $isian = [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Materi diperbarui lewat API',
             'kehadiran_guru_status' => 'hadir',
-        ])->assertOk();
+        ];
+
+        // The ketua may read today's journal but not rewrite it.
+        $this->actingAs($ketua)->getJson("/api/jurnal/{$dibaca['public_id']}")->assertOk();
+        $this->actingAs($ketua)->putJson("/api/jurnal/{$dibaca['public_id']}", $isian)->assertForbidden();
+        $this->assertSame('Materi awal', $jurnal->fresh()->materi);
+
+        $this->actingAs($guru)->putJson("/api/jurnal/{$dibaca['public_id']}", $isian)->assertOk();
 
         $this->assertSame('Materi diperbarui lewat API', $jurnal->fresh()->materi);
     }

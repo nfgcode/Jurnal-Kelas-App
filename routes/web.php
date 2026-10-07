@@ -84,7 +84,9 @@ Route::middleware('auth')->group(function () {
         Route::resource('ruangan', RuanganController::class)->except(['index', 'show']);
     });
 
-    Route::middleware('role:admin,guru')->group(function () {
+    // Oct 2026: a guru's screens are the journal and the roster only, so the
+    // master-data read screens are admin-only like their write side.
+    Route::middleware('role:admin')->group(function () {
         Route::resource('kelas', KelasController::class)->only(['index', 'show']);
         Route::resource('mata-pelajaran', MataPelajaranController::class)->only(['index', 'show']);
         // A guru reads the room register to find where a lesson meets; only an

@@ -98,6 +98,12 @@ class DashboardController extends Controller
         $kelasId = $kelas?->id ?? 0;
         $isKetua = $user->isKetuaKelas();
 
+        // Oct 2026: a ketua kelas works with today's journal only, so their
+        // dashboard is always today whatever ?tanggal= says.
+        if ($isKetua) {
+            $tanggal = today();
+        }
+
         $jadwal = Jadwal::with(['mataPelajaran', 'guru'])
             ->where('kelas_id', $kelasId)
             ->padaHariDari($tanggal)
@@ -105,18 +111,21 @@ class DashboardController extends Controller
             ->get();
 
         // The ketua's duty is discharged only by a journal written from the
-        // class's side — a teacher's entry or the nightly placeholder does not
-        // count. Everyone else just needs to know whether there is one to read.
+        // class's side — a teacher's entry does not count. A system placeholder
+        // does: the ketua cannot edit (adopt) it since Oct 2026, so offering
+        // "Isi Jurnal" there would lead nowhere. Everyone else just needs to
+        // know whether there is one to read.
+        $peranKetua = ['siswa', Jurnal::PERAN_SISTEM];
         $jurnal = Jurnal::whereIn('jadwal_id', $jadwal->pluck('id'))
             ->whereDate('tanggal', $tanggal)
-            ->when($isKetua, fn ($q) => $q->where('diisi_oleh_peran', 'siswa'))
+            ->when($isKetua, fn ($q) => $q->whereIn('diisi_oleh_peran', $peranKetua))
             ->get()
             ->keyBy('jadwal_id');
 
         [$senin, $batas] = $this->rentangMinggu($tanggal);
         $selesaiPerTanggal = Jurnal::untukKelas($kelasId)
             ->whereBetween('tanggal', [$senin->toDateString(), $batas->toDateString()])
-            ->when($isKetua, fn ($q) => $q->where('diisi_oleh_peran', 'siswa'))
+            ->when($isKetua, fn ($q) => $q->whereIn('diisi_oleh_peran', $peranKetua))
             ->get(['jadwal_id', 'tanggal'])
             ->groupBy(fn ($j) => $j->tanggal->toDateString())
             ->map(fn ($rows) => $rows->unique('jadwal_id')->count());

@@ -87,7 +87,7 @@
                             <tr>
                                 <td class="is-muted is-nowrap">{{ $j->tanggal->format('d/m/Y') }}</td>
                                 <td class="is-strong">{{ $j->jadwal?->mataPelajaran?->nama ?? '—' }}</td>
-                                <td>{{ Str::limit($j->materi, 40) }}</td>
+                                <td>{{ $j->materiKosong() ? 'Belum diisi' : Str::limit($j->materi, 40) }}</td>
                                 <td class="is-muted">{{ $j->guru?->nama ?? '—' }}</td>
                             </tr>
                         @empty

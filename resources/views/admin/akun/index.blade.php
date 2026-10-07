@@ -16,7 +16,11 @@
         <a href="{{ route('admin.siswa.index') }}">Data Siswa</a> — akun guru dan siswa juga dibuat dari sana.
     </p>
 
-    <div class="grid-row grid-row--4">
+    <div class="grid-row grid-row--5">
+        {{-- Online = active in the last {{ \App\Models\User::MENIT_ONLINE }} minutes and not
+             signed out since (User::isOnline()). --}}
+        <x-stat label="Sedang Online" :value="number_format($statistik['online'], 0, ',', '.')"
+                :caption="'aktif ' . \App\Models\User::MENIT_ONLINE . ' menit terakhir'" />
         <x-stat label="Total Akun" :value="number_format($statistik['total'], 0, ',', '.')" caption="seluruh peran" />
         <x-stat label="Aktif" :value="number_format($statistik['aktif'], 0, ',', '.')"
                 :caption="$statistik['pending'] . ' menunggu verifikasi'" />
@@ -47,6 +51,12 @@
             <option value="tidak" @selected(($filters['tertaut'] ?? null) === 'tidak')>Tanpa Data Orang</option>
         </select>
 
+        <select class="select-hifi" name="sesi" style="width: 150px" onchange="this.form.submit()">
+            <option value="">Semua Sesi</option>
+            <option value="online" @selected(($filters['sesi'] ?? null) === 'online')>Online</option>
+            <option value="offline" @selected(($filters['sesi'] ?? null) === 'offline')>Offline</option>
+        </select>
+
         <select class="select-hifi" name="status" style="width: 140px" onchange="this.form.submit()">
             <option value="">Semua Status</option>
             @foreach (['aktif' => 'Aktif', 'pending' => 'Pending', 'nonaktif' => 'Nonaktif'] as $value => $label)
@@ -60,6 +70,9 @@
     </form>
 
     <x-card title="Daftar Akun" flush>
+        <x-slot:actions>
+            <span class="card-hifi__meta">Status sesi per {{ now()->format('H.i') }} · muat ulang untuk memperbarui</span>
+        </x-slot:actions>
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
@@ -69,7 +82,8 @@
                         <th><x-th-sort kolom="username" label="Username" /></th>
                         <th>Nama Pemilik</th>
                         <th><x-th-sort kolom="peran" label="Peran" /></th>
-                        <th><x-th-sort kolom="aktif" label="Terakhir Aktif" bawaan /></th>
+                        <th>Sesi</th>
+                        <th><x-th-sort kolom="aktif" label="Terakhir Online" bawaan /></th>
                         <th class="is-num"><x-th-sort kolom="status" label="Status" /></th>
                         <th class="is-num">Aksi</th>
                     </tr>
@@ -103,14 +117,15 @@
                                 @endif
                             </td>
                             <td class="is-strong">{{ ucfirst($a->role) }}</td>
-                            <td class="is-muted">{{ $a->last_active_at?->format('d/m/Y') ?? 'belum pernah' }}</td>
+                            <td><x-status-sesi :user="$a" /></td>
+                            <td class="is-muted is-nowrap">{{ $a->last_active_at?->format('d/m/Y H.i') ?? 'belum pernah' }}</td>
                             <td class="is-num"><x-chip :tone="$statusChip[1]" :label="$statusChip[0]" /></td>
                             <td class="is-num tbl__aksi">
                                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm" href="{{ route('admin.akun.edit', $a) }}">Ubah</a>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="empty-state">Tidak ada akun yang cocok dengan filter.</td></tr>
+                        <tr><td colspan="9" class="empty-state">Tidak ada akun yang cocok dengan filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>

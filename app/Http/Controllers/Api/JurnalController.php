@@ -131,9 +131,6 @@ class JurnalController extends Controller
         $user = $request->user();
         $dariSistem = $jurnal->dibuatSistem();
 
-        // The attestation is a gate, not a stored column (see JurnalRequest).
-        unset($data['pernyataan']);
-
         // jadwal_id is editable, so the *destination* slot must be re-checked:
         // the policy only vetted the journal as it stands. Without this a guru
         // could move their entry onto another teacher's meeting (it would land

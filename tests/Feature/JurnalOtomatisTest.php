@@ -134,6 +134,58 @@ class JurnalOtomatisTest extends TestCase
         $this->assertSame('tidak_hadir', $sistem->kehadiran_guru_status);
         $this->assertFalse((bool) $sistem->kehadiran_guru_ada_tugas);
         $this->assertSame('Otomatis', $sistem->statusPengisian()['label']);
+        // Nothing is invented for the lesson's content.
+        $this->assertSame('', $sistem->materi);
+        $this->assertTrue($sistem->materiKosong());
+    }
+
+    /**
+     * Oct 2026: a placeholder says plainly that the lesson has not been
+     * described yet, instead of showing system text as if it were the materi.
+     */
+    public function test_a_placeholder_shows_materi_and_tugas_as_not_filled_in(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+
+        $sistem = $this->jurnal($jadwal, $tanggal, [
+            'materi' => '', 'tugas' => null,
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+        ]);
+
+        $this->actingAs($guru)->get(route('jurnal.show', $sistem))
+            ->assertOk()
+            ->assertSee(Jurnal::MATERI_BELUM)
+            ->assertSee(Jurnal::TUGAS_BELUM)
+            ->assertDontSee('Tidak ada tugas pada pertemuan ini.')
+            ->assertDontSee('mohon lengkapi');
+
+        // The edit form opens blank, so the guru writes the materi themselves.
+        $this->actingAs($guru)->get(route('jurnal.edit', $sistem))
+            ->assertOk()
+            ->assertViewHas('jurnal', fn ($j) => $j->materiKosong());
+
+        // Lists read "Belum diisi" rather than a blank cell.
+        $this->actingAs($guru)->get('/jurnal')->assertOk()->assertSee('Belum diisi');
+    }
+
+    /** A journal somebody wrote with no homework still says there was none. */
+    public function test_a_written_journal_without_tugas_still_says_there_was_none(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $tanggal = $this->tanggalLampau();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
+
+        $jurnal = $this->jurnal($jadwal, $tanggal, ['tugas' => null]);
+
+        $this->actingAs($guru)->get(route('jurnal.show', $jurnal))
+            ->assertOk()
+            ->assertSee('Materi uji')
+            ->assertSee('Tidak ada tugas pada pertemuan ini.')
+            ->assertDontSee(Jurnal::TUGAS_BELUM);
     }
 
     /**
@@ -182,58 +234,48 @@ class JurnalOtomatisTest extends TestCase
         $this->assertSame(0, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $hariIni->toDateString())->count());
     }
 
-    // ---- C. Otomatis chip + editable/adopt + attestation ------------------
+    // ---- C. Otomatis chip + editable/adopt ---------------------------------
 
-    public function test_editing_a_system_journal_requires_the_honesty_checkbox(): void
+    /** Oct 2026: the truthfulness checkbox is gone — the edit form shows no box. */
+    public function test_the_edit_form_of_a_system_journal_asks_for_no_attestation(): void
     {
         $guru = $this->guru();
         $kelas = $this->kelas();
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
-        $ketua = $this->ketua($kelas);
-
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
-            'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
-        // Without the attestation → rejected, still a system journal.
-        $this->actingAs($ketua)->put(route('jurnal.update', $sistem), [
-            'jadwal_id' => $jadwal->id,
-            'tanggal' => $tanggal,
-            'materi' => 'Sebenarnya saya hadir',
-            'kehadiran_guru' => 'hadir',
-        ])->assertSessionHasErrors('pernyataan');
-
-        $this->assertTrue($sistem->fresh()->dibuatSistem());
+        $this->actingAs($guru)->get(route('jurnal.edit', $sistem))
+            ->assertOk()
+            ->assertDontSee('name="pernyataan"', false)
+            ->assertDontSee('dengan <strong>jujur</strong>', false);
     }
 
-    public function test_editing_a_system_journal_with_attestation_adopts_it(): void
+    public function test_editing_a_system_journal_adopts_it(): void
     {
         $guru = $this->guru();
         $kelas = $this->kelas();
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
-        $ketua = $this->ketua($kelas);
-
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
             'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
-        $this->actingAs($ketua)->put(route('jurnal.update', $sistem), [
+        $this->actingAs($guru)->put(route('jurnal.update', $sistem), [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Guru hadir dan mengajar',
             'kehadiran_guru' => 'hadir',
-            'pernyataan' => '1',
         ])->assertRedirect()->assertSessionHas('success');
 
         $segar = $sistem->fresh();
-        $this->assertSame('siswa', $segar->diisi_oleh_peran);     // adopted by the class
-        $this->assertSame($ketua->id, $segar->diisi_oleh_id);
+        $this->assertSame('guru', $segar->diisi_oleh_peran);      // adopted by the teacher
+        $this->assertSame($guru->id, $segar->diisi_oleh_id);
         $this->assertSame('hadir', $segar->kehadiran_guru_status);
         $this->assertFalse($segar->dibuatSistem());
         $this->assertTrue($segar->dieditSetelahHari());           // edited after the lesson day
@@ -246,13 +288,11 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
-        $ketua = $this->ketua($kelas);
-
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
-        $this->actingAs($ketua)
+        $this->actingAs($guru)
             ->get(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $tanggal]))
             ->assertRedirect(route('jurnal.edit', $sistem));
     }
@@ -264,15 +304,13 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
-        $ketua = $this->ketua($kelas);
-
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
-        // The unique index would accept this pair ('sistem' vs 'siswa'), so the
+        // The unique index would accept this pair ('sistem' vs 'guru'), so the
         // controller has to be the one that refuses a second journal.
-        $this->actingAs($ketua)->post('/jurnal', [
+        $this->actingAs($guru)->post('/jurnal', [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Jurnal kedua',
@@ -280,6 +318,45 @@ class JurnalOtomatisTest extends TestCase
         ])->assertRedirect(route('jurnal.edit', $sistem));
 
         $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $tanggal)->count());
+    }
+
+    /**
+     * The ketua kelas never edits (Oct 2026), so a system placeholder on one of
+     * today's slots must not send them to an edit screen that refuses them.
+     * It shows as already recorded, and a crafted post is refused with a
+     * message rather than a 403 or a second journal.
+     */
+    public function test_a_system_journal_today_is_read_only_for_the_ketua(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $hariIni = today()->toDateString();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $hariIni, 1);
+        $ketua = $this->ketua($kelas);
+
+        $sistem = $this->jurnal($jadwal, $hariIni, [
+            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+        ]);
+
+        $this->actingAs($ketua)
+            ->get(route('jurnal.create', ['jadwal_id' => $jadwal->id]))
+            ->assertOk()
+            ->assertViewHas('jadwalTerisi', fn ($terisi) => in_array($jadwal->id, $terisi, true));
+
+        $this->actingAs($ketua)->get('/dashboard')
+            ->assertOk()
+            ->assertSee(route('jurnal.show', $sistem), false)
+            ->assertDontSee(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $hariIni]));
+
+        $this->actingAs($ketua)->post('/jurnal', [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $hariIni,
+            'materi' => 'Jurnal kedua',
+            'kehadiran_guru' => 'hadir',
+        ])->assertSessionHasErrors('jadwal_id');
+
+        $this->assertStringContainsString('sistem (otomatis)', session('errors')->first('jadwal_id'));
+        $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $hariIni)->count());
     }
 
     // ---- Metrics stay honest about what the automation filled --------------
@@ -375,13 +452,11 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
 
-        $ketua = $this->ketua($kelas);
-
         $sistem = $this->jurnal($jadwal, $tanggal, [
             'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
-        $this->actingAs($ketua)->postJson('/api/jurnal', [
+        $this->actingAs($guru)->postJson('/api/jurnal', [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Lewat API',
@@ -395,7 +470,7 @@ class JurnalOtomatisTest extends TestCase
         $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $tanggal)->count());
     }
 
-    public function test_api_editing_a_system_journal_requires_the_attestation(): void
+    public function test_api_editing_a_system_journal_adopts_it(): void
     {
         $guru = $this->guru();
         $kelas = $this->kelas();
@@ -407,41 +482,16 @@ class JurnalOtomatisTest extends TestCase
             'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
         ]);
 
-        $this->actingAs($this->ketua($kelas))->putJson("/api/jurnal/{$sistem->public_id}", [
-            'jadwal_id' => $jadwal->id,
-            'tanggal' => $tanggal,
-            'materi' => 'Guru sebenarnya hadir',
-            'kehadiran_guru_status' => 'hadir',
-        ])->assertStatus(422)->assertJsonValidationErrors('pernyataan');
-
-        $this->assertTrue($sistem->fresh()->dibuatSistem());
-    }
-
-    public function test_api_editing_a_system_journal_with_attestation_adopts_it(): void
-    {
-        $guru = $this->guru();
-        $kelas = $this->kelas();
-        $tanggal = $this->tanggalLampau();
-        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
-
-        $sistem = $this->jurnal($jadwal, $tanggal, [
-            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
-            'kehadiran_guru_status' => 'tidak_hadir', 'kehadiran_guru_ada_tugas' => false,
-        ]);
-
-        $ketua = $this->ketua($kelas);
-
-        $this->actingAs($ketua)->putJson("/api/jurnal/{$sistem->public_id}", [
+        $this->actingAs($guru)->putJson("/api/jurnal/{$sistem->public_id}", [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Guru hadir dan mengajar',
             'kehadiran_guru_status' => 'hadir',
-            'pernyataan' => true,
         ])->assertOk();
 
         $segar = $sistem->fresh();
-        $this->assertSame('siswa', $segar->diisi_oleh_peran);
-        $this->assertSame($ketua->id, $segar->diisi_oleh_id);
+        $this->assertSame('guru', $segar->diisi_oleh_peran);
+        $this->assertSame($guru->id, $segar->diisi_oleh_id);
         $this->assertFalse($segar->dibuatSistem());
         // The marker is set by the model event, so the API path carries it too.
         $this->assertTrue($segar->dieditSetelahHari());
@@ -461,7 +511,8 @@ class JurnalOtomatisTest extends TestCase
 
         // jadwal_id is editable, so the destination slot must be re-authorized —
         // otherwise A's journal lands on another class's meeting.
-        $this->actingAs($this->ketua($kelasA))->putJson("/api/jurnal/{$jurnal->public_id}", [
+        // The journal's own guru tries to move it onto another teacher's class.
+        $this->actingAs($guruA)->putJson("/api/jurnal/{$jurnal->public_id}", [
             'jadwal_id' => $jadwalB->id,
             'tanggal' => $tanggal,
             'materi' => 'Dipindah diam-diam',
@@ -479,7 +530,7 @@ class JurnalOtomatisTest extends TestCase
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
         $jurnal = $this->jurnal($jadwal, $tanggal);
 
-        $this->actingAs($this->ketua($kelas))->putJson("/api/jurnal/{$jurnal->public_id}", [
+        $this->actingAs($guru)->putJson("/api/jurnal/{$jurnal->public_id}", [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Diperbarui biasa',
@@ -498,11 +549,12 @@ class JurnalOtomatisTest extends TestCase
         $tanggal = $this->tanggalLampau();
         $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $tanggal, 1);
         $jurnal = $this->jurnal($jadwal, $tanggal);
-        $ketua = $this->ketua($kelas);
 
         $this->assertFalse($jurnal->dieditSetelahHari());
 
-        $this->actingAs($ketua)->put(route('jurnal.update', $jurnal), [
+        // Oct 2026: correcting a past day's journal is the guru's (the ketua
+        // kelas only works with today's).
+        $this->actingAs($guru)->put(route('jurnal.update', $jurnal), [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $tanggal,
             'materi' => 'Materi diperbaiki belakangan',
@@ -511,7 +563,7 @@ class JurnalOtomatisTest extends TestCase
 
         $this->assertTrue($jurnal->fresh()->dieditSetelahHari());
 
-        $this->actingAs($ketua)->get(route('jurnal.show', $jurnal))
+        $this->actingAs($guru)->get(route('jurnal.show', $jurnal))
             ->assertSee('Diedit setelah hari-H');
     }
 

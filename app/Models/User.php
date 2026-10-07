@@ -63,6 +63,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_active_at' => 'datetime',
+            'last_logout_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -133,6 +134,39 @@ class User extends Authenticatable
      * Free-text search across the *account* list: the credentials themselves,
      * plus the name and identifier of the person behind them.
      */
+    /**
+     * How long after their last request a user still counts as online. The
+     * activity stamp is written at most once a minute (CatatAktivitas), so the
+     * window has to be comfortably wider than that.
+     */
+    public const MENIT_ONLINE = 5;
+
+    /**
+     * Online: active within the window and not signed out since.
+     */
+    public function isOnline(): bool
+    {
+        return $this->last_active_at !== null
+            && $this->last_active_at->gte(now()->subMinutes(self::MENIT_ONLINE))
+            && ($this->last_logout_at === null || $this->last_logout_at->lt($this->last_active_at));
+    }
+
+    /** The same rule as {@see isOnline()}, as a query. */
+    public function scopeOnline($query)
+    {
+        return $query->where('last_active_at', '>=', now()->subMinutes(self::MENIT_ONLINE))
+            ->where(fn ($q) => $q->whereNull('last_logout_at')->orWhereColumn('last_logout_at', '<', 'last_active_at'));
+    }
+
+    /** Everyone {@see scopeOnline()} leaves out, including those never seen. */
+    public function scopeOffline($query)
+    {
+        return $query->where(fn ($q) => $q
+            ->whereNull('last_active_at')
+            ->orWhere('last_active_at', '<', now()->subMinutes(self::MENIT_ONLINE))
+            ->orWhereColumn('last_logout_at', '>=', 'last_active_at'));
+    }
+
     public function scopeCari($query, string $q)
     {
         return $query->where(function ($inner) use ($q) {

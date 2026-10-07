@@ -67,6 +67,10 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        // Akun Pengguna shows the user Offline from this moment, not five
+        // minutes later when their activity window lapses.
+        $request->user()?->forceFill(['last_logout_at' => now()])->saveQuietly();
+
         Auth::logout();
 
         $request->session()->invalidate();

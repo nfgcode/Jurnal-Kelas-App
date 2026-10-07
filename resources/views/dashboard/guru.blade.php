@@ -12,9 +12,9 @@
         $akanDatang = $tanggal->isAfter(today());
     @endphp
 
-    {{-- Figma "Dashboard Guru" (MoSCoW): greeting + date, ONE presensi card
-         (the "isi" and "lihat" cards were merged in review), the day's lessons
-         with one action each, and the week beside them. --}}
+    {{-- Figma "Dashboard Guru" (MoSCoW): greeting + date, the journal and
+         presensi cards, the day's lessons with one action each, and the week
+         beside them. --}}
     <div class="dash dash--lega">
         <div class="card-hifi dash-head">
             <div>
@@ -26,7 +26,12 @@
             <x-pilih-tanggal :tanggal="$tanggal" />
         </div>
 
-        <div class="aksi-row aksi-row--1">
+        {{-- Oct 2026: a guru writes their own teaching journal again (full
+             CRUD) besides marking each lesson's roster. --}}
+        <div class="aksi-row aksi-row--2">
+            <x-aksi-card :href="route('jurnal.create', ['tanggal' => $tanggal->toDateString()])"
+                         :judul="'Isi Jurnal Mengajar' . $sufiks" ikon="book" warna="sage" cta="Isi Jurnal"
+                         deskripsi="Catat materi dan tugas setiap pertemuan yang Anda ajar." />
             <x-aksi-card :href="route('presensi.index')"
                          :judul="'Presensi Siswa' . $sufiks" ikon="people" warna="hijau" cta="Isi Presensi"
                          :deskripsi="$belumDitandai
@@ -38,7 +43,9 @@
             <x-card :title="'Jadwal Mengajar' . $sufiks" flush class="dash-jadwal__tabel">
                 <x-slot:actions>
                     <span class="chip chip--solid-lembut">{{ $tanggal->translatedFormat('l, j F Y') }}</span>
-                    <a class="auth__link" href="{{ route('jadwal.index') }}">Lihat semua →</a>
+                    {{-- The timetable screen is admin-only now; the guru's history
+                         lives on the journal list. --}}
+                    <a class="auth__link" href="{{ route('jurnal.index') }}">Histori jurnal →</a>
                 </x-slot:actions>
 
                 <div class="tbl-wrap">

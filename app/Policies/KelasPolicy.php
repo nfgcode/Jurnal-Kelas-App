@@ -46,7 +46,8 @@ class KelasPolicy
                 || $kelas->wali_kelas_nip === $user->nip;
         }
 
-        return $user->kelas_id === $kelas->id;
+        // A ketua kelas only works with today's journal (Oct 2026).
+        return ! $user->isKetuaKelas() && $user->kelas_id === $kelas->id;
     }
 
     public function create(User $user): bool

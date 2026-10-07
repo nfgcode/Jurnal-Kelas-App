@@ -22,6 +22,8 @@ class JadwalController extends Controller
      */
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Jadwal::class);
+
         $filters = $request->validate([
             'kelas_id' => ['nullable', 'exists:kelas,id'],
             'guru_nip' => ['nullable', 'exists:guru,nip'],

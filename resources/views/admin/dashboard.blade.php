@@ -122,7 +122,7 @@
                             <td class="is-strong">{{ $jurnal->jadwal?->kelas?->nama_kelas }}</td>
                             <td>{{ $jurnal->jadwal?->mataPelajaran?->nama }}</td>
                             <td><x-guru-link :guru="$jurnal->guru" :avatar="false" /></td>
-                            <td>{{ Str::limit($jurnal->materi, 32) }}</td>
+                            <td>{{ $jurnal->materiKosong() ? 'Belum diisi' : Str::limit($jurnal->materi, 32) }}</td>
                             <td>
                                 <span class="meter-cell">
                                     <x-meter :percent="$jurnal->total_presensi ? $jurnal->hadir_count / $jurnal->total_presensi * 100 : 0" />

@@ -29,13 +29,16 @@ class Jurnal extends Model
     public const PERAN_SISTEM = 'sistem';
 
     /**
-     * The `materi` a placeholder journal carries. `materi` is NOT NULL, and a
-     * meeting's record sometimes has to exist before anybody has described it —
-     * the nightly backfill files one for a lesson that ended unjournalled, and a
-     * guru taking the roll opens one when the class has not written theirs yet.
-     * The "Otomatis" status chip comes from the peran, not from this text.
+     * A meeting's record sometimes has to exist before anybody has described it
+     * — the nightly backfill files one for a lesson that ended unjournalled, and
+     * a guru taking the roll opens one when the class has not written theirs
+     * yet. Such a placeholder carries an empty `materi` (the column is NOT NULL)
+     * rather than invented text, so screens say "belum diisi" and the edit form
+     * opens blank. The "Otomatis" status chip comes from the peran.
      */
-    public const MATERI_PLACEHOLDER = 'Diisi otomatis oleh sistem — mohon lengkapi bila perlu.';
+    public const MATERI_BELUM = 'Materi yang diajarkan belum diisi.';
+
+    public const TUGAS_BELUM = 'Tugas / pekerjaan rumah belum diisi.';
 
     /**
      * The table associated with the model.
@@ -125,6 +128,18 @@ class Jurnal extends Model
     public function dibuatSistem(): bool
     {
         return $this->diisi_oleh_peran === self::PERAN_SISTEM;
+    }
+
+    /** Nobody has described the lesson yet (a placeholder's empty materi). */
+    public function materiKosong(): bool
+    {
+        return trim((string) $this->materi) === '';
+    }
+
+    /** Tugas is "belum diisi" only while nobody has written the journal; a writer who leaves it blank means none. */
+    public function tugasBelumDiisi(): bool
+    {
+        return $this->dibuatSistem() && trim((string) $this->tugas) === '';
     }
 
     /**

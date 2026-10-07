@@ -54,7 +54,7 @@
                     <div class="deflist__row"><span class="deflist__key">Username</span><span class="deflist__val is-strong">{{ $guru->akun->username }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Email</span><span class="deflist__val">{{ $guru->akun->email }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Status Akun</span><span class="deflist__val">{{ ucfirst($guru->akun->status) }}</span></div>
-                    <div class="deflist__row"><span class="deflist__key">Terakhir Aktif</span><span class="deflist__val">{{ $guru->akun->last_active_at?->format('d/m/Y H:i') ?? 'belum pernah masuk' }}</span></div>
+                    <div class="deflist__row"><span class="deflist__key">Terakhir Online</span><span class="deflist__val">{{ $guru->akun->last_active_at?->format('d/m/Y H:i') ?? 'belum pernah masuk' }}</span></div>
                 </div>
                 <a class="btn-hifi btn-hifi--ghost btn-hifi--sm mt-2" href="{{ route('admin.akun.show', $guru->akun) }}">Kelola Akun</a>
             @else

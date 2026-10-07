@@ -55,15 +55,16 @@
         @endforeach
     </div>
 
-    <x-card title="Unggah Berkas Terisi" meta="Ditinjau dulu sebelum disimpan">
+    <x-card title="Unggah Berkas Terisi" meta="Ditinjau dulu sebelum disimpan" id="unggah">
         <form method="POST" action="{{ route('admin.impor.pratinjau') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="grid-row grid-row--2">
                 <x-field label="Jenis Data" name="jenis" required>
                     <select class="select-hifi" name="jenis" id="jenis" required>
-                        <option value="siswa" @selected(old('jenis') === 'siswa')>Siswa</option>
-                        <option value="guru" @selected(old('jenis') === 'guru')>Guru</option>
+                        {{-- ?jenis=guru from Data Guru's "Tambah Beberapa Guru". --}}
+                        <option value="siswa" @selected(old('jenis', request('jenis')) === 'siswa')>Siswa</option>
+                        <option value="guru" @selected(old('jenis', request('jenis')) === 'guru')>Guru</option>
                     </select>
                 </x-field>
 

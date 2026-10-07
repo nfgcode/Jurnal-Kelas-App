@@ -32,6 +32,9 @@ class AkunController extends Controller
             'role' => ['nullable', Rule::in(['admin', 'guru', 'siswa'])],
             'status' => ['nullable', Rule::in(['aktif', 'nonaktif', 'pending'])],
             'tertaut' => ['nullable', 'in:ya,tidak'],
+            // Session status: online = active in the last few minutes and not
+            // signed out since (User::isOnline()).
+            'sesi' => ['nullable', 'in:online,offline'],
             'q' => ['nullable', 'string', 'max:255'],
             // sort/dir are deliberately not validated: Urutan whitelists the
             // column against this screen's map, so an unknown one falls back to
@@ -47,6 +50,7 @@ class AkunController extends Controller
             ->when($filters['tertaut'] ?? null, fn ($q, $t) => $t === 'tidak'
                 ? $q->whereNull('nip')->whereNull('nis')
                 : $q->where(fn ($w) => $w->whereNotNull('nip')->orWhereNotNull('nis')))
+            ->when($filters['sesi'] ?? null, fn ($q, $sesi) => $sesi === 'online' ? $q->online() : $q->offline())
             ->when($filters['q'] ?? null, fn ($q, $cari) => $q->cari($cari));
 
         // Default: most-recently-active first. Plain DESC already sorts NULLs
@@ -84,6 +88,7 @@ class AkunController extends Controller
                 'nonaktif' => $hitung(null, 'nonaktif'),
                 'pending' => $hitung(null, 'pending'),
                 'belumPernahMasuk' => User::whereNull('last_active_at')->count(),
+                'online' => User::online()->count(),
             ],
         ]);
     }

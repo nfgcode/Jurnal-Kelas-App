@@ -27,7 +27,10 @@
                     · Semester Gasal {{ now()->year }}/{{ now()->year + 1 }}
                 </p>
             </div>
-            <x-pilih-tanggal :tanggal="$tanggal" />
+            {{-- Oct 2026: a ketua kelas works with today only — no day picker. --}}
+            @unless ($isKetua)
+                <x-pilih-tanggal :tanggal="$tanggal" />
+            @endunless
         </div>
 
         <div class="aksi-row aksi-row--2">
@@ -43,19 +46,24 @@
                              deskripsi="Baca jurnal pelajaran kelasmu." />
             @endif
 
-            <x-aksi-card :href="route('presensi.index')"
-                         :judul="$isKetua ? 'Presensi Kelas' . $sufiks : 'Kehadiran Saya'"
-                         ikon="calendar3" warna="oranye" cta="Lihat Presensi"
-                         :deskripsi="$isKetua
-                             ? 'Lihat riwayat dan status presensi kelas.'
-                             : 'Lihat riwayat kehadiranmu di kelas.'" />
+            @if ($isKetua)
+                {{-- The ketua reads today's journals; attendance screens are not
+                     theirs any more. --}}
+                <x-aksi-card :href="route('jurnal.index')"
+                             judul="Jurnal Kelas Hari Ini" ikon="calendar3" warna="oranye" cta="Lihat Jurnal"
+                             deskripsi="Lihat jurnal kelas yang sudah diisi hari ini." />
+            @else
+                <x-aksi-card :href="route('presensi.index')"
+                             judul="Kehadiran Saya" ikon="calendar3" warna="oranye" cta="Lihat Presensi"
+                             deskripsi="Lihat riwayat kehadiranmu di kelas." />
+            @endif
         </div>
 
-        <div class="dash-jadwal">
+        <div @class(['dash-jadwal', 'dash-jadwal--tunggal' => $isKetua])>
             <x-card :title="'Jadwal Kelas' . $sufiks" flush class="dash-jadwal__tabel">
                 <x-slot:actions>
                     <span class="chip chip--solid-lembut">{{ $tanggal->translatedFormat('l, j F Y') }}</span>
-                    <a class="auth__link" href="{{ route('jadwal.index') }}">Lihat semua →</a>
+                    <a class="auth__link" href="{{ $isKetua ? route('jurnal.index') : route('jadwal.index') }}">Lihat semua →</a>
                 </x-slot:actions>
 
                 <div class="tbl-wrap">
@@ -103,8 +111,11 @@
                 </x-slot:foot>
             </x-card>
 
-            <x-kalender-mini :minggu="$minggu" :tanggal="$tanggal" satuan="jadwal"
-                             :belum-label="$isKetua ? '%d jurnal belum diisi' : '%d belum ada jurnal'" />
+            {{-- The week is for moving between days, which a ketua no longer does. --}}
+            @unless ($isKetua)
+                <x-kalender-mini :minggu="$minggu" :tanggal="$tanggal" satuan="jadwal"
+                                 belum-label="%d belum ada jurnal" />
+            @endunless
         </div>
     </div>
 @endsection

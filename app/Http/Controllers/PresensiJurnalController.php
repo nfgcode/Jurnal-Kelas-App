@@ -119,7 +119,7 @@ class PresensiJurnalController extends Controller
             ?? Jurnal::create([
                 'jadwal_id' => $jadwal->id,
                 'tanggal' => $tanggal,
-                'materi' => Jurnal::MATERI_PLACEHOLDER,
+                'materi' => '', // nothing described yet — shown as "belum diisi"
                 // The guru is demonstrably in the room — they are taking the roll
                 // — so the placeholder must not record them as absent the way the
                 // nightly backfill's does. The class corrects the rest.

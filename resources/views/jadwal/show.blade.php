@@ -35,7 +35,7 @@
                         @php $status = $jurnal->statusPengisian(); @endphp
                         <tr>
                             <td class="is-muted is-nowrap">{{ $jurnal->tanggal->format('d/m/Y') }}</td>
-                            <td>{{ Str::limit($jurnal->materi, 60) }}</td>
+                            <td>{{ $jurnal->materiKosong() ? 'Belum diisi' : Str::limit($jurnal->materi, 60) }}</td>
                             <td class="is-muted">{{ $jurnal->tugas ? Str::limit($jurnal->tugas, 40) : '—' }}</td>
                             <td class="is-num"><x-chip :tone="$status['tone']" :label="$status['label']" /></td>
                             <td class="is-num">

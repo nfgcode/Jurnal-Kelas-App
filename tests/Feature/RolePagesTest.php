@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\User;
+use App\Support\Ringkasan;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -68,27 +69,73 @@ class RolePagesTest extends TestCase
         }
     }
 
-    public function test_siswa_screens_render(): void
+    /**
+     * Oct 2026: the ketua kelas files today's journal and reads today's. Every
+     * other screen they used to reach - editing, the timetable, attendance -
+     * is closed to them.
+     */
+    public function test_ketua_screens_render(): void
     {
-        $jurnal = $this->jurnal();
+        // Today's journal, written by the class, so there is one to read.
+        Jurnal::where('jadwal_id', $this->jadwal->id)->whereDate('tanggal', today())->delete();
+        $jurnal = Jurnal::create([
+            'jadwal_id' => $this->jadwal->id,
+            'tanggal' => today()->toDateString(),
+            'materi' => 'Materi hari ini',
+            'kehadiran_guru_status' => 'hadir',
+            'diisi_oleh_id' => $this->siswa->id,
+            'diisi_oleh_peran' => 'siswa',
+        ]);
 
         $expectations = [
             '/dashboard' => 'Dashboard Siswa',
-            '/jurnal' => 'Riwayat Jurnal Kelas',
+            '/jurnal' => 'Jurnal Kelas Hari Ini',
             '/jurnal/create' => 'Mengisi Jurnal Kelas',
-            "/jurnal/{$jurnal->public_id}/edit" => 'Ubah Jurnal Kelas',
-            // A ketua kelas answers for the class, so /presensi is the class
-            // recap rather than the personal record a regular siswa sees.
-            '/presensi' => 'Rekap Presensi Siswa',
-            route('presensi-harian.show', $this->jadwal->kelas_id) => 'Presensi Harian',
             "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa',
         ];
 
         foreach ($expectations as $url => $penanda) {
             $this->actingAs($this->siswa)
                 ->get($url)
+                ->assertOk("GET {$url} did not render for a ketua")
+                ->assertSee($penanda);
+        }
+
+        foreach (["/jurnal/{$jurnal->public_id}/edit", '/jadwal', '/presensi',
+            route('presensi-harian.show', $this->jadwal->kelas_id)] as $url) {
+            $this->actingAs($this->siswa)->get($url)->assertForbidden("GET {$url} should be closed to a ketua");
+        }
+
+        // The sidebar offers only what they may open.
+        $this->actingAs($this->siswa)->get('/dashboard')
+            ->assertSee('Jurnal Hari Ini')
+            ->assertDontSee('href="'.route('jadwal.index').'"', false)
+            ->assertDontSee('href="'.route('presensi.index').'"', false);
+    }
+
+    /** A rank-and-file siswa keeps their read-only screens. */
+    public function test_siswa_screens_render(): void
+    {
+        $siswa = $this->akunSiswaKelas($this->jadwal->kelas_id, false);
+        $jurnal = $this->jurnal();
+
+        $expectations = [
+            '/dashboard' => 'Dashboard Siswa',
+            '/jadwal' => $this->jadwal->kelas->nama_kelas,
+            '/jurnal' => 'Riwayat Jurnal Kelas',
+            '/presensi' => 'Rekap Kehadiran Saya',
+            "/jurnal/{$jurnal->public_id}" => 'Kehadiran Siswa',
+        ];
+
+        foreach ($expectations as $url => $penanda) {
+            $this->actingAs($siswa)
+                ->get($url)
                 ->assertOk("GET {$url} did not render for a siswa")
                 ->assertSee($penanda);
+        }
+
+        foreach (['/jurnal/create', "/jurnal/{$jurnal->public_id}/edit"] as $url) {
+            $this->actingAs($siswa)->get($url)->assertForbidden("GET {$url} should be closed to a siswa");
         }
     }
 
@@ -153,23 +200,42 @@ class RolePagesTest extends TestCase
     }
 
     /**
-     * A guru no longer authors journals at all: their record of a lesson is the
-     * roster. The form and the post are both closed to them.
+     * Oct 2026: the guru has full CRUD over the journals of the lessons they
+     * teach - and only those. Another teacher's lesson is refused outright.
      */
-    public function test_a_guru_cannot_author_a_journal(): void
+    public function test_a_guru_authors_journals_on_their_own_lessons_only(): void
     {
-        $this->actingAs($this->guru)->get('/jurnal/create')->assertForbidden();
+        // A day a month out on this lesson's weekday: nothing written yet.
+        $hari = array_search($this->jadwal->hari, Ringkasan::HARI, true);
+        $tanggal = today()->addMonth();
+        while ($tanggal->dayOfWeekIso - 1 !== $hari) {
+            $tanggal->addDay();
+        }
+        $this->travelTo($tanggal->copy()->setTime(9, 0));
 
-        $this->actingAs($this->guru)
-            ->post('/jurnal', [
-                'jadwal_id' => $this->jadwal->id,
-                'tanggal' => now()->toDateString(),
-                'materi' => 'Turunan fungsi aljabar',
-                'kehadiran_guru' => 'ada_tugas',
-            ])
-            ->assertForbidden();
+        $this->actingAs($this->guru)->get('/jurnal/create')
+            ->assertOk()
+            ->assertViewHas('jadwalList', fn ($list) => $list->isNotEmpty()
+                && $list->every(fn ($j) => $j->guru_nip === $this->guru->nip));
 
+        $isian = [
+            'jadwal_id' => $this->jadwal->id,
+            'tanggal' => $tanggal->toDateString(),
+            'materi' => 'Turunan fungsi aljabar',
+            'kehadiran_guru' => 'hadir',
+        ];
+
+        $lain = User::where('role', 'guru')->where('nip', '!=', $this->jadwal->guru_nip)->firstOrFail();
+        $this->actingAs($lain)->post('/jurnal', $isian)->assertForbidden();
         $this->assertDatabaseMissing('jurnal', ['materi' => 'Turunan fungsi aljabar']);
+
+        $this->actingAs($this->guru)->post('/jurnal', $isian)->assertRedirect();
+        $jurnal = Jurnal::where('materi', 'Turunan fungsi aljabar')->firstOrFail();
+        $this->assertSame('guru', $jurnal->diisi_oleh_peran);
+
+        // ...and it is theirs to edit.
+        $this->actingAs($this->guru)->get("/jurnal/{$jurnal->public_id}/edit")->assertOk();
+        $this->actingAs($lain)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();
     }
 
     /**
