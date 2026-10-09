@@ -143,16 +143,19 @@ class Ringkasan
     }
 
     /**
-     * A student's attendance percentage — the fn_persentase_kehadiran_siswa
+     * A student's attendance percentage: the fn_persentase_kehadiran_siswa
      * stored function on MySQL, the equivalent aggregate elsewhere.
+     *
+     * Takes a NIS, and takes it as a string: `siswa.nis` is VARCHAR(20), so an
+     * int parameter would quietly drop a leading zero and then match nothing.
      */
-    public static function persentaseKehadiranSiswa(int $siswaId): float
+    public static function persentaseKehadiranSiswa(string $nis): float
     {
         if (DbDriver::mysql()) {
-            return (float) DB::selectOne('SELECT fn_persentase_kehadiran_siswa(?) AS p', [$siswaId])->p;
+            return (float) DB::selectOne('SELECT fn_persentase_kehadiran_siswa(?) AS p', [$nis])->p;
         }
 
-        $r = PresensiHarian::where('siswa_nis', $siswaId)
+        $r = PresensiHarian::where('siswa_nis', $nis)
             ->selectRaw("COUNT(*) t, SUM(CASE WHEN status = 'hadir' THEN 1 ELSE 0 END) h")
             ->first();
 

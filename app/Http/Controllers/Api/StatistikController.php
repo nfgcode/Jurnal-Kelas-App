@@ -17,21 +17,23 @@ class StatistikController extends Controller
         $user = $request->user();
 
         if ($user->isSiswa()) {
-            $siswaId = $user->id;
+            // The account's own NIS, not its id: attendance is keyed by
+            // siswa.nis, and the field this endpoint answers with is siswa_nis.
+            $nis = $user->nis;
             $kelasId = $user->kelas_id;
         } else {
             $filters = $request->validate([
                 'siswa_nis' => ['nullable', 'exists:siswa,nis'],
                 'kelas_id' => ['nullable', 'exists:kelas,id'],
             ]);
-            $siswaId = $filters['siswa_nis'] ?? null;
+            $nis = $filters['siswa_nis'] ?? null;
             $kelasId = $filters['kelas_id'] ?? null;
         }
 
         return response()->json([
-            'siswa_nis' => $siswaId,
-            'persentase_kehadiran_siswa' => $siswaId === null ? null
-                : Ringkasan::persentaseKehadiranSiswa($siswaId),
+            'siswa_nis' => $nis,
+            'persentase_kehadiran_siswa' => $nis === null ? null
+                : Ringkasan::persentaseKehadiranSiswa((string) $nis),
             'kelas_id' => $kelasId,
             'persentase_kehadiran_kelas' => $kelasId === null ? null
                 : Ringkasan::persentaseKehadiranKelas($kelasId),
