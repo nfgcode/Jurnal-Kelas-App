@@ -1547,8 +1547,9 @@ textarea.input-hifi {
     .card-hifi__body { padding: 10px 12px 12px; }
 
     // Fourteen bar labels can't all fit at ~300px — show every other one.
+    // of-type, not nth-child: the target line <span> precedes the columns.
     .barchart { gap: 3px; }
-    .barchart__col:nth-child(even) .barchart__tick { visibility: hidden; }
+    .barchart__col:nth-of-type(even) .barchart__tick { visibility: hidden; }
 
     // The mobile sidebar shouldn't quite reach the right edge.
     .sidebar { width: min(var(--sidebar-w), 82vw); }

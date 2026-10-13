@@ -423,7 +423,9 @@ button.aksi-card {
 // instead of being clipped to a 5px column ("14/7" read as "1:").
 .barchart--padat { gap: 2px; min-width: 0; overflow: hidden; }
 .barchart--padat .barchart__tick { overflow: visible; max-width: none; }
-.barchart--padat .barchart__col:first-child .barchart__tick { align-self: flex-start; }
+// of-type: the target line is a <span> placed before the columns, so a
+// :first-child/:nth-child count would be off by one whenever a target is drawn.
+.barchart--padat .barchart__col:first-of-type .barchart__tick { align-self: flex-start; }
 .barchart__tick--sembunyi { visibility: hidden; }
 
 .barchart__target {
