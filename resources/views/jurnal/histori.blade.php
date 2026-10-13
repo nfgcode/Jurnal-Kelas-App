@@ -64,7 +64,7 @@
 
     <x-card title="Riwayat Jurnal Mengajar" flush>
         <div class="tbl-wrap">
-            <table class="tbl">
+            <table class="tbl tbl--rapat">
                 <thead>
                     <tr>
                         <th><x-th-sort kolom="tanggal" label="Tanggal" bawaan /></th>

@@ -728,6 +728,13 @@ a.name-cell:hover { text-decoration: underline; }
 .tbl .is-muted { color: var(--n-600); }
 .tbl .is-nowrap { white-space: nowrap; }
 
+/* A report with ten-odd columns must still fit a 1366-1440px laptop without
+   pushing the action column out of the card: tighter cells, and a long header
+   may break between its words. Narrower screens still scroll the table. */
+.tbl--rapat thead th { white-space: normal; }
+.tbl--rapat thead th,
+.tbl--rapat tbody td { padding-left: 10px; padding-right: 10px; }
+
 // "Belum diisi" on a placeholder journal: muted and italic so it never reads as
 // something a teacher wrote.
 .jurnal-belum { font-size: 12.5px; line-height: 1.6; color: var(--n-600); font-style: italic; }

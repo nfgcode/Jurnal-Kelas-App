@@ -74,7 +74,7 @@
             <span class="card-hifi__meta">Status sesi per {{ now()->format('H.i') }} · muat ulang untuk memperbarui</span>
         </x-slot:actions>
         <div class="tbl-wrap">
-            <table class="tbl">
+            <table class="tbl tbl--rapat">
                 <thead>
                     <tr>
                         <th><x-th-sort kolom="nip_nis" label="NIP / NIS" /></th>
