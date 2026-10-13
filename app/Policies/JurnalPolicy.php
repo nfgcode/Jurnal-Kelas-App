@@ -14,7 +14,8 @@ use App\Models\User;
  *  - a **guru** does full CRUD on the journals of the lessons they teach, and
  *    still marks each lesson's roster ({@see isiPresensi()});
  *  - a **ketua kelas** only files today's journal for the class and reads
- *    today's — no editing, no deleting, no history;
+ *    today's — no editing, no deleting, no history. Filing may land in the
+ *    placeholder a guru opened by taking the roll first ({@see lengkapi()});
  *  - an **admin** may do anything.
  *
  * Both a guru and the ketua may file for the same meeting: the unique index is
@@ -88,6 +89,23 @@ class JurnalPolicy
     public function delete(User $user, Jurnal $jurnal): bool
     {
         return $this->update($user, $jurnal);
+    }
+
+    /**
+     * Whether a ketua kelas may write the class's journal INTO a system
+     * placeholder rather than beside it. That placeholder is today's record the
+     * teacher opened by taking the roll before the class wrote anything
+     * ({@see \App\Http\Controllers\PresensiJurnalController::mulai()}), so it
+     * is the class's journal still waiting for its content — not something to
+     * edit. Today only and own class only, the same reach as filing a journal.
+     */
+    public function lengkapi(User $user, Jurnal $jurnal): bool
+    {
+        return $user->isKetuaKelas()
+            && $jurnal->dibuatSistem()
+            && (bool) $jurnal->tanggal?->isToday()
+            && $user->kelas_id !== null
+            && $jurnal->jadwal?->kelas_id === $user->kelas_id;
     }
 
     /**

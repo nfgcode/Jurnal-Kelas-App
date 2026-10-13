@@ -116,7 +116,7 @@
                                     {{ $a->nama ?? '—' }}
                                 @endif
                             </td>
-                            <td class="is-strong">{{ ucfirst($a->role) }}</td>
+                            <td class="is-strong">{{ ucfirst($a->role) }}@if ($a->isHanyaBaca()) <x-chip tone="khaki" label="Pantau" />@endif</td>
                             <td><x-status-sesi :user="$a" /></td>
                             <td class="is-muted is-nowrap">{{ $a->last_active_at?->format('d/m/Y H.i') ?? 'belum pernah' }}</td>
                             <td class="is-num"><x-chip :tone="$statusChip[1]" :label="$statusChip[0]" /></td>

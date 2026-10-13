@@ -27,12 +27,14 @@
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     @stack('styles')
 </head>
-<body>
+{{-- An akun pantau only looks: mode-pantau hides the controls that only write. --}}
+<body @class(['mode-pantau' => Auth::user()?->isHanyaBaca()])>
 
 @php
     $user = Auth::user();
     $isAdmin = $user?->isAdmin() ?? false;
     $isSiswa = $user?->isSiswa() ?? false;
+    $pantau = $user?->isHanyaBaca() ?? false;
 
     // In "Mode Wali Kelas" the whole app narrows to one class, so the nav is
     // replaced rather than extended. The active class rides along on every
@@ -126,6 +128,7 @@
                    class="sidebar__link {{ request()->routeIs('admin.siswa.*') ? 'is-active' : '' }}">
                     <x-ikon nama="people" /><span>Data Siswa</span>
                 </a>
+                @unless ($pantau)
                 <a href="{{ route('admin.akun.index') }}"
                    class="sidebar__link {{ request()->routeIs('admin.akun.*') ? 'is-active' : '' }}">
                     <x-ikon nama="shield-lock" /><span>Akun Pengguna</span>
@@ -134,6 +137,7 @@
                    class="sidebar__link {{ request()->routeIs('admin.impor.*') ? 'is-active' : '' }}">
                     <x-ikon nama="file-earmark-arrow-up" /><span>Impor Data</span>
                 </a>
+                @endunless
             @endif
 
             @if ($isAdmin)
@@ -153,6 +157,9 @@
                 </a>
                 <a href="{{ route('jadwal.index') }}" class="sidebar__link {{ request()->routeIs('jadwal.*') ? 'is-active' : '' }}">
                     <x-ikon nama="calendar3" /><span>Jadwal</span>
+                </a>
+                <a href="{{ route('admin.hari-libur.index') }}" class="sidebar__link {{ request()->routeIs('admin.hari-libur.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="calendar3" /><span>Hari Libur</span>
                 </a>
             @endif
 
@@ -184,18 +191,20 @@
                 <a href="{{ route('admin.kelas-qr.index') }}" class="sidebar__link {{ request()->routeIs('admin.kelas-qr.*') ? 'is-active' : '' }}">
                     <x-ikon nama="qr-code" /><span>Cetak QR Kelas</span>
                 </a>
+                @unless ($pantau)
                 <a href="{{ route('admin.cadangan.index') }}" class="sidebar__link {{ request()->routeIs('admin.cadangan.*') ? 'is-active' : '' }}">
                     <x-ikon nama="shield-lock" /><span>Cadangan Data</span>
                 </a>
                 <a href="{{ route('admin.sistem.index') }}" class="sidebar__link {{ request()->routeIs('admin.sistem.*') ? 'is-active' : '' }}">
                     <x-ikon nama="activity" /><span>Sistem &amp; Log</span>
                 </a>
+                @endunless
             @endif
         @endif
     </nav>
 
     <div class="sidebar__foot">
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('logout') }}" data-pantau>
             @csrf
             <button type="submit" class="sidebar__link"><x-ikon nama="box-arrow-left" /><span>Logout</span></button>
         </form>
@@ -214,6 +223,12 @@
         </div>
 
         <div class="topbar__right d-flex align-items-center gap-2">
+            @if ($pantau)
+                <span class="user-chip" title="Akun ini hanya bisa melihat data">
+                    <x-ikon nama="eye" /><span class="d-none d-sm-inline">Akun Pantau</span>
+                </span>
+            @endif
+
             @if ($user?->isWaliKelas())
                 <a class="user-chip" href="{{ $waliMode ? route('dashboard') : route('wali-kelas.dashboard') }}"
                    title="Beralih tampilan guru / wali kelas">
@@ -269,7 +284,7 @@
                 </li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" data-pantau>
                         @csrf
                         <button type="submit" class="dropdown-item text-danger">
                             <x-ikon nama="box-arrow-left" kelas="me-2" />Logout

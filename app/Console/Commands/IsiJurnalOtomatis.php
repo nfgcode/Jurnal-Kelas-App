@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\IsiJurnalGelombang;
+use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Support\Ringkasan;
@@ -66,13 +67,15 @@ class IsiJurnalOtomatis extends Command
 
     /**
      * Every (jadwal, tanggal) in range that falls on a school day and has no
-     * journal yet — the gaps the backfill fills.
+     * journal yet — the gaps the backfill fills. A Hari Libur is no school day:
+     * filling it would record every teacher as absent on a day nobody taught.
      *
      * @return array<int, array{jadwal_id: int, tanggal: string}>
      */
     private function pertemuanKosong(Carbon $mulai, Carbon $selesai): array
     {
         $jadwalPerHari = Jadwal::get(['id', 'hari'])->groupBy('hari');
+        $libur = HariLibur::tanggalAntara($mulai, $selesai);
 
         // The (jadwal, date) pairs already journaled in the window, as a fast set.
         $terisi = Jurnal::whereBetween('tanggal', [$mulai->toDateString(), $selesai->toDateString()])
@@ -84,7 +87,7 @@ class IsiJurnalOtomatis extends Command
         for ($d = $mulai->copy(); $d->lte($selesai); $d->addDay()) {
             $hari = Ringkasan::HARI[$d->dayOfWeekIso - 1] ?? null;
 
-            if ($hari === null) {
+            if ($hari === null || isset($libur[$d->toDateString()])) {
                 continue;
             }
 

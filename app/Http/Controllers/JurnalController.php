@@ -199,8 +199,8 @@ class JurnalController extends Controller
         // A meeting the nightly backfill already placeholdered is corrected by
         // editing that row (which "adopts" it), never by filing a second journal
         // beside it — so send the writer straight there. Only someone who may
-        // edit it, though: the ketua kelas never edits (Oct 2026), so for them
-        // the slot simply shows as already recorded.
+        // edit it, though: the ketua kelas never edits (Oct 2026); for them the
+        // form stays, and saving writes into today's placeholder (see store()).
         $sistem = $jadwal ? Jurnal::sudahAda($jadwal->id, $tanggal->toDateString(), Jurnal::PERAN_SISTEM) : null;
 
         if ($sistem && $user->can('update', $sistem)) {
@@ -238,6 +238,20 @@ class JurnalController extends Controller
         // beside it — send the writer to correct that one instead, exactly as
         // create() does when the form is opened on the slot.
         if ($sistem = Jurnal::sudahAda($jadwal->id, $validated['tanggal'], Jurnal::PERAN_SISTEM)) {
+            // The ketua writes today's journal into the placeholder the guru
+            // opened by taking the roll first, so the roster already hanging off
+            // that row stays with the class's journal.
+            if ($user->can('lengkapi', $sistem)) {
+                $sistem->update($this->normalize($validated, $user) + [
+                    'diisi_oleh_id' => $user->id,
+                    'diisi_oleh_peran' => $peran,
+                    'siswa_nis' => $user->nis,
+                ]);
+
+                return redirect()->route('jurnal.show', $sistem)
+                    ->with('success', 'Jurnal tersimpan.');
+            }
+
             if ($user->cannot('update', $sistem)) {
                 return $this->tolakGanda($sistem, $peran);
             }
@@ -479,15 +493,11 @@ class JurnalController extends Controller
             return [];
         }
 
-        // The ketua kelas cannot adopt a system placeholder (they never edit),
-        // so for them it fills the slot as surely as their own journal would.
-        $peran = $user->isKetuaKelas()
-            ? [Jurnal::peranPengisi($user), Jurnal::PERAN_SISTEM]
-            : [Jurnal::peranPengisi($user)];
-
+        // A system placeholder never fills a slot: a guru or admin adopts it by
+        // editing, and the ketua writes today's journal into it (JurnalPolicy::lengkapi).
         return Jurnal::whereIn('jadwal_id', $jadwalIds)
             ->whereDate('tanggal', $tanggal->toDateString())
-            ->whereIn('diisi_oleh_peran', $peran)
+            ->where('diisi_oleh_peran', Jurnal::peranPengisi($user))
             ->pluck('jadwal_id')
             ->all();
     }

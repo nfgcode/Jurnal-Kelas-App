@@ -44,6 +44,9 @@ class AkunRequest extends FormRequest
             // nulls it out if one is sent anyway.
             'nama' => ['required_if:role,admin', 'nullable', 'string', 'max:255'],
             'role' => ['required', Rule::in(['admin', 'guru', 'siswa'])],
+
+            // Akun pantau: admin accounts only; ignored for guru and siswa.
+            'hanya_baca' => ['nullable', 'boolean'],
         ];
     }
 }

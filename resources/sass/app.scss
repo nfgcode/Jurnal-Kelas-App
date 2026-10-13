@@ -1757,3 +1757,18 @@ textarea.input-hifi {
 
 // Dashboards (Figma High Fidelity 2): action cards, date picker, week calendar.
 @import "dashboard";
+
+/* ---- Akun pantau ----------------------------------------------------------
+   A read-only admin (kepala sekolah, waka kurikulum). Controls that only
+   write — POST forms, links to create/edit screens — are hidden; the server
+   refuses them anyway (BatasiAkunPantau), this keeps the screen honest.
+   Forms marked data-pantau (logout) stay. */
+.mode-pantau .main {
+    form[method="post" i]:not([data-pantau]),
+    a[href$="/create"],
+    a[href*="/create?"],
+    a[href$="/edit"],
+    a[href*="/edit?"] {
+        display: none !important;
+    }
+}

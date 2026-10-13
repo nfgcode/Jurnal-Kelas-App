@@ -30,7 +30,7 @@ Route::post('login', [AuthController::class, 'login']);
 // colliding with the web resource routes of the same name (kelas.index) — a
 // collision would otherwise make route('kelas.index') in the web UI resolve to
 // the /api URL. API routes are addressed by URL, not by name, so the prefix is free.
-Route::middleware('auth:sanctum')->name('api.')->group(function () {
+Route::middleware(['auth:sanctum', 'pantau'])->name('api.')->group(function () {
     // Session
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);

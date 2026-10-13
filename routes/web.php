@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AkunController;
 use App\Http\Controllers\Admin\CadanganController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\GuruController;
+use App\Http\Controllers\Admin\HariLiburController;
 use App\Http\Controllers\Admin\ImporController;
 use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasQrController;
@@ -45,7 +46,8 @@ Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected routes (require authentication)
-Route::middleware(['auth', 'akses-web'])->group(function () {
+// `pantau`: an akun pantau (read-only admin) is refused every write here.
+Route::middleware(['auth', 'akses-web', 'pantau'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -166,6 +168,12 @@ Route::middleware(['auth', 'akses-web'])->group(function () {
         Route::resource('siswa', SiswaController::class);
         Route::resource('jurusan', JurusanController::class)->except('show');
         Route::resource('akun', AkunController::class);
+
+        // Dates the school does not meet — kept out of the nightly backfill and
+        // every school-day count.
+        Route::resource('hari-libur', HariLiburController::class)
+            ->only(['index', 'store', 'destroy'])
+            ->parameters(['hari-libur' => 'hariLibur']);
 
         // Bulk account creation from a spreadsheet: template out, filled file
         // in, preview, then commit.

@@ -31,15 +31,18 @@
 
     {{-- Action cards (Figma "Row / Aksi Cepat"): the admin's four daily jobs,
          each card itself the link — no button inside. --}}
-    <div class="aksi-row aksi-row--4">
+    {{-- An akun pantau has no Kelola Pengguna, so its row holds three. --}}
+    <div @class(['aksi-row', Auth::user()->isHanyaBaca() ? 'aksi-row--3' : 'aksi-row--4'])>
         <x-aksi-card :href="route('admin.laporan.jurnal')" judul="Cek Jurnal Hari Ini" ikon="book" warna="hijau" ringkas
                      :deskripsi="$jadwalHariIni
                          ? $belumBerjurnal . ' dari ' . $jadwalHariIni . ' jadwal belum berjurnal.'
                          : 'Tidak ada jadwal hari ini.'" />
         <x-aksi-card :href="route('admin.laporan.presensi')" judul="Pantau Kehadiran" ikon="people" warna="oranye" ringkas
                      deskripsi="Hadir, izin, sakit, dan alpa siswa hari ini." />
+        @unless (Auth::user()->isHanyaBaca())
         <x-aksi-card :href="route('admin.akun.index')" judul="Kelola Pengguna" ikon="person-plus" warna="khaki" ringkas
                      deskripsi="Tambah atau impor akun guru dan siswa." />
+        @endunless
         <x-aksi-card :href="route('jadwal.index')" judul="Atur Jadwal" ikon="calendar3" warna="sage" ringkas
                      deskripsi="Susun jadwal pelajaran untuk tiap kelas." />
     </div>

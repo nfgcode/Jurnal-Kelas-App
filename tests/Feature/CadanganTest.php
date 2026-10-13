@@ -99,7 +99,7 @@ class CadanganTest extends TestCase
             'guru', 'kelas', 'siswa', 'users', 'guru_mata_pelajaran',
             'jadwal', 'jurnal', 'presensi',
             'presensi_log', 'presensi_harian', 'presensi_harian_log',
-            'pengumuman', 'laporan_error', 'personal_access_tokens',
+            'pengumuman', 'laporan_error', 'hari_libur', 'personal_access_tokens',
         ] as $tabel) {
             $this->assertArrayHasKey($tabel, $data['tabel'], "Cadangan harus memuat tabel $tabel.");
         }

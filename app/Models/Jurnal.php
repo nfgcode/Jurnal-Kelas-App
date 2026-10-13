@@ -113,12 +113,9 @@ class Jurnal extends Model
 
     /**
      * Which side of a meeting a journal was written from. A meeting may hold one
-     * journal per side — the class's own, filed by its ketua kelas, and an
-     * administrative one — enforced by the unique index
-     * (jadwal_id, tanggal, diisi_oleh_peran).
-     *
-     * A guru writes no journal at all now, so the 'guru' side is only ever
-     * reached by an admin correcting the record.
+     * journal per side — the class's own, filed by its ketua kelas, and the
+     * teacher's, filed by the guru who taught it (or an admin) — enforced by the
+     * unique index (jadwal_id, tanggal, diisi_oleh_peran).
      */
     public static function peranPengisi(User $user): string
     {

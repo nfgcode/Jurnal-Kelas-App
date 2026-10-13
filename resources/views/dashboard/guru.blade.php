@@ -43,6 +43,9 @@
             <x-card :title="'Jadwal Mengajar' . $sufiks" flush class="dash-jadwal__tabel">
                 <x-slot:actions>
                     <span class="chip chip--solid-lembut">{{ $tanggal->translatedFormat('l, j F Y') }}</span>
+                    @if ($libur)
+                        <x-chip tone="yellow" :label="'Libur · ' . $libur->keterangan" />
+                    @endif
                     {{-- The timetable screen is admin-only now; the guru's history
                          lives on the journal list. --}}
                     <a class="auth__link" href="{{ route('jurnal.index') }}">Histori jurnal →</a>

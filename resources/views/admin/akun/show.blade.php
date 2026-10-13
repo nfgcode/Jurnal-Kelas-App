@@ -25,7 +25,7 @@
             <div class="deflist">
                 <div class="deflist__row"><span class="deflist__key">Username</span><span class="deflist__val is-strong">{{ $akun->username }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Email</span><span class="deflist__val">{{ $akun->email }}</span></div>
-                <div class="deflist__row"><span class="deflist__key">Peran</span><span class="deflist__val">{{ ucfirst($akun->role) }}</span></div>
+                <div class="deflist__row"><span class="deflist__key">Peran</span><span class="deflist__val">{{ ucfirst($akun->role) }}{{ $akun->isHanyaBaca() ? ' · akun pantau (hanya lihat)' : '' }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Status</span><span class="deflist__val">{{ ucfirst($akun->status) }}</span></div>
                 <div class="deflist__row"><span class="deflist__key">Sesi</span><span class="deflist__val"><x-status-sesi :user="$akun" /></span></div>
                 <div class="deflist__row"><span class="deflist__key">Terakhir Online</span><span class="deflist__val">{{ $akun->last_active_at?->format('d/m/Y H:i') ?? 'belum pernah masuk' }}</span></div>

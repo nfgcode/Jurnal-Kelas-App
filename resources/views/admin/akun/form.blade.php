@@ -56,4 +56,16 @@
         <input class="input-hifi" type="password" name="password" id="password"
                autocomplete="new-password" @if (! $akun) required @endif>
     </x-field>
+
+    @unless ($milikOrang)
+        <x-field name="hanya_baca"
+                 hint="Untuk kepala sekolah atau waka kurikulum: bisa melihat dashboard, jurnal, presensi, dan rekap, tetapi tidak bisa mengubah atau menghapus data.">
+            <label class="d-flex align-items-center gap-2" for="hanya_baca">
+                <input type="hidden" name="hanya_baca" value="0">
+                <input type="checkbox" name="hanya_baca" id="hanya_baca" value="1"
+                       @checked(old('hanya_baca', $akun?->hanya_baca))>
+                <span class="field__label mb-0">Akun pantau (hanya lihat)</span>
+            </label>
+        </x-field>
+    @endunless
 </div>

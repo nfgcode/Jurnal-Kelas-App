@@ -163,9 +163,9 @@ class WaliKelasController extends Controller
      * Attendance for the class two ways: the standing per-student recap a wali
      * actually acts on, and the day-by-day roll calls behind it.
      *
-     * Read-only. A wali kelas is a guru, and a guru no longer marks attendance:
-     * the class's ketua files it once a day. What a wali gets here is oversight
-     * - who is slipping, and which days were never filed at all.
+     * Read-only. Each lesson's roster is marked by the guru who taught it, and
+     * the class's day is derived from those rosters. What a wali gets here is
+     * oversight - who is slipping, and which days were never filed at all.
      */
     public function presensi(Request $request)
     {

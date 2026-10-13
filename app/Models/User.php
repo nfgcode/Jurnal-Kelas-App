@@ -41,6 +41,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'hanya_baca',
         'status',
         'nip',
         'nis',
@@ -64,6 +65,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_active_at' => 'datetime',
             'last_logout_at' => 'datetime',
+            'hanya_baca' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -118,6 +120,15 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Akun pantau: an admin who may only look (kepala sekolah, waka
+     * kurikulum). See the BatasiAkunPantau middleware.
+     */
+    public function isHanyaBaca(): bool
+    {
+        return $this->isAdmin() && (bool) $this->hanya_baca;
     }
 
     public function isGuru(): bool

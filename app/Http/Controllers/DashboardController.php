@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Presensi;
@@ -72,6 +73,7 @@ class DashboardController extends Controller
 
         return view('dashboard.guru', [
             'tanggal' => $tanggal,
+            'libur' => HariLibur::pada($tanggal),
             'jadwal' => $jadwal,
             'jurnal' => $jurnal,
             'ditandai' => $ditandai,
@@ -111,11 +113,11 @@ class DashboardController extends Controller
             ->get();
 
         // The ketua's duty is discharged only by a journal written from the
-        // class's side — a teacher's entry does not count. A system placeholder
-        // does: the ketua cannot edit (adopt) it since Oct 2026, so offering
-        // "Isi Jurnal" there would lead nowhere. Everyone else just needs to
-        // know whether there is one to read.
-        $peranKetua = ['siswa', Jurnal::PERAN_SISTEM];
+        // class's side — neither a teacher's entry nor the placeholder a guru
+        // opens by taking the roll first counts; the ketua writes into that
+        // placeholder (JurnalPolicy::lengkapi), so the row keeps its "Isi Jurnal".
+        // Everyone else just needs to know whether there is one to read.
+        $peranKetua = ['siswa'];
         $jurnal = Jurnal::whereIn('jadwal_id', $jadwal->pluck('id'))
             ->whereDate('tanggal', $tanggal)
             ->when($isKetua, fn ($q) => $q->whereIn('diisi_oleh_peran', $peranKetua))
@@ -132,6 +134,7 @@ class DashboardController extends Controller
 
         return view('dashboard.siswa', [
             'tanggal' => $tanggal,
+            'libur' => HariLibur::pada($tanggal),
             'kelas' => $kelas,
             'isKetua' => $isKetua,
             'jadwal' => $jadwal,
@@ -196,12 +199,16 @@ class DashboardController extends Controller
     private function mingguKalender(Carbon $tanggal, array $jadwalPerHari, array $selesaiPerTanggal): array
     {
         $senin = $tanggal->copy()->startOfWeek(Carbon::MONDAY);
+        $libur = HariLibur::tanggalAntara($senin, $senin->copy()->addDays(6));
         $hari = [];
 
         for ($i = 0; $i < 7; $i++) {
             $t = $senin->copy()->addDays($i);
-            // Ringkasan::HARI stops at Sabtu — Minggu is never timetabled.
-            $jumlah = $jadwalPerHari[Ringkasan::HARI[$i] ?? ''] ?? 0;
+            // Ringkasan::HARI stops at Sabtu — Minggu is never timetabled. A Hari
+            // Libur holds no lessons either, so the calendar shows it as Libur.
+            $jumlah = isset($libur[$t->toDateString()])
+                ? 0
+                : $jadwalPerHari[Ringkasan::HARI[$i] ?? ''] ?? 0;
 
             $hari[] = [
                 'tanggal' => $t,

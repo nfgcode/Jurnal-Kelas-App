@@ -63,6 +63,9 @@
             <x-card :title="'Jadwal Kelas' . $sufiks" flush class="dash-jadwal__tabel">
                 <x-slot:actions>
                     <span class="chip chip--solid-lembut">{{ $tanggal->translatedFormat('l, j F Y') }}</span>
+                    @if ($libur)
+                        <x-chip tone="yellow" :label="'Libur · ' . $libur->keterangan" />
+                    @endif
                     <a class="auth__link" href="{{ $isKetua ? route('jurnal.index') : route('jadwal.index') }}">Lihat semua →</a>
                 </x-slot:actions>
 

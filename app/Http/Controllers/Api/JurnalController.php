@@ -95,6 +95,20 @@ class JurnalController extends Controller
         // beside it — the unique index would allow the pair, since their
         // diisi_oleh_peran differ ('sistem' vs guru/siswa).
         if ($sistem = Jurnal::sudahAda($jadwal->id, $data['tanggal'], Jurnal::PERAN_SISTEM)) {
+            // Except the ketua's own case: today's placeholder the guru opened by
+            // taking the roll is the class's journal waiting for its content, so
+            // it is written into rather than refused (JurnalPolicy::lengkapi).
+            if ($user->can('lengkapi', $sistem)) {
+                $sistem->update($data + [
+                    'diisi_oleh_id' => $user->id,
+                    'diisi_oleh_peran' => $peran,
+                    'siswa_nis' => $user->nis,
+                ]);
+
+                return (new JurnalResource($sistem->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan'])))
+                    ->response()->setStatusCode(201);
+            }
+
             return response()->json([
                 'message' => 'Jurnal pertemuan ini sudah dibuat otomatis oleh sistem. Perbarui jurnal tersebut, jangan membuat yang baru.',
                 'jurnal_id' => $sistem->id,

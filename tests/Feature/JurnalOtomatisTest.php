@@ -321,12 +321,12 @@ class JurnalOtomatisTest extends TestCase
     }
 
     /**
-     * The ketua kelas never edits (Oct 2026), so a system placeholder on one of
-     * today's slots must not send them to an edit screen that refuses them.
-     * It shows as already recorded, and a crafted post is refused with a
-     * message rather than a 403 or a second journal.
+     * Today's system placeholder is the record a guru opened by taking the roll
+     * before the class wrote anything. The ketua never edits (Oct 2026), so they
+     * are not sent to an edit screen — they keep "Isi Jurnal", and saving writes
+     * the class's journal INTO that row instead of refusing or adding a second.
      */
-    public function test_a_system_journal_today_is_read_only_for_the_ketua(): void
+    public function test_the_ketua_writes_todays_journal_into_the_system_placeholder(): void
     {
         $guru = $this->guru();
         $kelas = $this->kelas();
@@ -335,19 +335,37 @@ class JurnalOtomatisTest extends TestCase
         $ketua = $this->ketua($kelas);
 
         $sistem = $this->jurnal($jadwal, $hariIni, [
-            'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+            'materi' => '', 'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
         ]);
 
         $this->actingAs($ketua)
             ->get(route('jurnal.create', ['jadwal_id' => $jadwal->id]))
             ->assertOk()
-            ->assertViewHas('jadwalTerisi', fn ($terisi) => in_array($jadwal->id, $terisi, true));
+            ->assertViewHas('jadwalTerisi', fn ($terisi) => ! in_array($jadwal->id, $terisi, true));
 
         $this->actingAs($ketua)->get('/dashboard')
             ->assertOk()
-            ->assertSee(route('jurnal.show', $sistem), false)
-            ->assertDontSee(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $hariIni]));
+            ->assertSee(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $hariIni]));
 
+        $this->actingAs($ketua)->get(route('jurnal.show', $sistem))
+            ->assertOk()
+            ->assertSee(route('jurnal.create', ['jadwal_id' => $jadwal->id, 'tanggal' => $hariIni]));
+
+        $this->actingAs($ketua)->post('/jurnal', [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $hariIni,
+            'materi' => 'Persamaan kuadrat',
+            'kehadiran_guru' => 'hadir',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('jurnal.show', $sistem));
+
+        $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $hariIni)->count());
+
+        $sistem->refresh();
+        $this->assertSame('siswa', $sistem->diisi_oleh_peran);
+        $this->assertSame($ketua->id, $sistem->diisi_oleh_id);
+        $this->assertSame('Persamaan kuadrat', $sistem->materi);
+
+        // Written once, the slot is the class's own: a second submit is refused.
         $this->actingAs($ketua)->post('/jurnal', [
             'jadwal_id' => $jadwal->id,
             'tanggal' => $hariIni,
@@ -355,8 +373,69 @@ class JurnalOtomatisTest extends TestCase
             'kehadiran_guru' => 'hadir',
         ])->assertSessionHasErrors('jadwal_id');
 
-        $this->assertStringContainsString('sistem (otomatis)', session('errors')->first('jadwal_id'));
         $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $hariIni)->count());
+    }
+
+    /**
+     * The usual order in a classroom: the guru takes the roll at the start of
+     * the lesson, the ketua writes the journal afterwards. The roster marked
+     * first must end up on the class's journal, not be orphaned or duplicated.
+     */
+    public function test_the_ketua_writes_the_journal_after_the_guru_took_the_roll(): void
+    {
+        $guru = $this->guru();
+        $kelas = $this->kelas();
+        $hariIni = today()->toDateString();
+        $jadwal = $this->jadwal($kelas, $this->mapel('Matematika'), $guru, $hariIni, 1);
+        $ketua = $this->ketua($kelas);
+        $siswa = $this->siswa($kelas);
+
+        $this->actingAs($guru)
+            ->post(route('presensi-jurnal.mulai'), ['jadwal_id' => $jadwal->id, 'tanggal' => $hariIni])
+            ->assertRedirect();
+
+        $jurnal = Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $hariIni)->sole();
+
+        $this->actingAs($guru)->post(route('presensi-jurnal.store', $jurnal), ['presensi' => [
+            ['siswa_nis' => $ketua->nis, 'status' => 'hadir'],
+            ['siswa_nis' => $siswa->nis, 'status' => 'sakit'],
+        ]])->assertRedirect(route('jurnal.show', $jurnal));
+
+        $this->actingAs($ketua)->post('/jurnal', [
+            'jadwal_id' => $jadwal->id,
+            'tanggal' => $hariIni,
+            'materi' => 'Persamaan kuadrat',
+            'kehadiran_guru' => 'hadir',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('jurnal.show', $jurnal));
+
+        $jurnal->refresh();
+        $this->assertSame('siswa', $jurnal->diisi_oleh_peran);
+        $this->assertSame('Persamaan kuadrat', $jurnal->materi);
+        $this->assertSame(1, Jurnal::where('jadwal_id', $jadwal->id)->whereDate('tanggal', $hariIni)->count());
+        $this->assertSame(2, $jurnal->presensis()->count());
+    }
+
+    /** Only today's placeholder of the ketua's own class can be written into. */
+    public function test_the_ketua_cannot_write_into_another_class_or_another_day(): void
+    {
+        $guru = $this->guru();
+        $kelasKetua = $this->kelas();
+        $kelasLain = $this->kelas();
+        $hariIni = today()->toDateString();
+        $ketua = $this->ketua($kelasKetua);
+
+        $lain = $this->jurnal($this->jadwal($kelasLain, $this->mapel('Fisika'), $guru, $hariIni, 3), $hariIni, [
+            'materi' => '', 'diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null,
+        ]);
+        $kemarin = $this->jurnal(
+            $this->jadwal($kelasKetua, $this->mapel('Kimia'), $guru, $this->tanggalLampau(), 5),
+            $this->tanggalLampau(),
+            ['diisi_oleh_peran' => 'sistem', 'diisi_oleh_id' => null],
+        );
+
+        $this->assertFalse($ketua->can('lengkapi', $lain));
+        $this->assertFalse($ketua->can('lengkapi', $kemarin));
+        $this->assertFalse($guru->can('lengkapi', $lain));
     }
 
     // ---- Metrics stay honest about what the automation filled --------------

@@ -34,6 +34,12 @@
         @can('update', $jurnal)
             <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.edit', $jurnal) }}">Ubah Jurnal</a>
         @endcan
+        {{-- Today's record the guru opened by taking the roll: the ketua
+             writes the class's journal into it. --}}
+        @can('lengkapi', $jurnal)
+            <a class="btn-hifi"
+               href="{{ route('jurnal.create', ['jadwal_id' => $jurnal->jadwal_id, 'tanggal' => $jurnal->tanggal->toDateString()]) }}">Isi Jurnal</a>
+        @endcan
         @can('delete', $jurnal)
             <button type="button" class="btn-hifi btn-hifi--danger"
                     data-bs-toggle="modal" data-bs-target="#hapusJurnal">Hapus</button>

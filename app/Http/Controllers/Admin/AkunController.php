@@ -117,11 +117,14 @@ class AkunController extends Controller
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => 'admin',
+            'hanya_baca' => $request->boolean('hanya_baca'),
             'status' => $data['status'],
         ]);
 
         return redirect()->route('admin.akun.index')
-            ->with('success', 'Akun admin berhasil ditambahkan.');
+            ->with('success', $request->boolean('hanya_baca')
+                ? 'Akun pantau berhasil ditambahkan. Akun ini hanya bisa melihat data.'
+                : 'Akun admin berhasil ditambahkan.');
     }
 
     public function show(User $akun)
@@ -157,11 +160,19 @@ class AkunController extends Controller
             ]);
         }
 
+        // An admin turning their own account into an akun pantau would lock
+        // themselves out of every change, including undoing this one.
+        if ($akun->is($request->user()) && $request->boolean('hanya_baca')) {
+            return back()->withInput()
+                ->withErrors(['hanya_baca' => 'Anda tidak dapat menjadikan akun Anda sendiri akun pantau.']);
+        }
+
         $akun->username = $data['username'];
         $akun->email = $data['email'];
         $akun->status = $data['status'];
         $akun->role = $data['role'];
         $akun->nama = $akun->role === 'admin' ? $data['nama'] : null;
+        $akun->hanya_baca = $akun->role === 'admin' && $request->boolean('hanya_baca');
 
         if (filled($data['password'] ?? null)) {
             $akun->password = Hash::make($data['password']);

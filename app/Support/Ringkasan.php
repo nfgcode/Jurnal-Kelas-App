@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\HariLibur;
 use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Kelas;
@@ -476,17 +477,22 @@ class Ringkasan
     }
 
     /**
-     * The last $days school days (Monday–Saturday), oldest first.
+     * The last $days school days (Monday–Saturday, minus the admin's Hari
+     * Libur), oldest first.
      *
      * @return array<int, Carbon>
      */
     public static function hariSekolah(int $days): array
     {
         $tanggal = Carbon::today();
+        // Every holiday that could fall inside the walk, in one query: $days
+        // school days never span more than twice as many calendar days plus a
+        // long break.
+        $libur = HariLibur::tanggalAntara($tanggal->copy()->subDays($days * 2 + 60), $tanggal);
         $hasil = [];
 
         while (count($hasil) < $days) {
-            if ($tanggal->dayOfWeekIso <= 6) {
+            if ($tanggal->dayOfWeekIso <= 6 && ! isset($libur[$tanggal->toDateString()])) {
                 $hasil[] = $tanggal->copy();
             }
 
@@ -497,17 +503,18 @@ class Ringkasan
     }
 
     /**
-     * The school days (Monday–Saturday) between two dates inclusive, oldest
-     * first — the window a {@see Periode} filters on.
+     * The school days (Monday–Saturday, minus the admin's Hari Libur) between
+     * two dates inclusive, oldest first — the window a {@see Periode} filters on.
      *
      * @return array<int, Carbon>
      */
     public static function hariSekolahAntara(Carbon $mulai, Carbon $selesai): array
     {
+        $libur = HariLibur::tanggalAntara($mulai, $selesai);
         $hasil = [];
 
         for ($tanggal = $mulai->copy()->startOfDay(); $tanggal->lte($selesai); $tanggal->addDay()) {
-            if ($tanggal->dayOfWeekIso <= 6) {
+            if ($tanggal->dayOfWeekIso <= 6 && ! isset($libur[$tanggal->toDateString()])) {
                 $hasil[] = $tanggal->copy();
             }
         }

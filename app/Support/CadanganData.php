@@ -63,6 +63,7 @@ class CadanganData
         'presensi_harian_log',
         'pengumuman',
         'laporan_error',
+        'hari_libur',
         'personal_access_tokens',
     ];
 
@@ -85,6 +86,7 @@ class CadanganData
         'presensi_harian',
         'pengumuman',
         'laporan_error',
+        'hari_libur',
     ];
 
     /** Never written to the human-readable XLSX (the JSON backup still keeps them). */

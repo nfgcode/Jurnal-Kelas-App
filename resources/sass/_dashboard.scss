@@ -35,6 +35,7 @@
 .aksi-row { display: grid; gap: 14px; }
 .aksi-row--1 { grid-template-columns: minmax(0, 1fr); }
 .aksi-row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.aksi-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .aksi-row--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 
 .aksi-card {
@@ -453,6 +454,7 @@ button.aksi-card {
 }
 
 @media (max-width: 1199.98px) {
+    .aksi-row--3,
     .aksi-row--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .aksi-card__judul { font-size: 20px; }
     .aksi-card__desk { font-size: 17px; }
@@ -544,6 +546,7 @@ button.aksi-card {
     .aksi-card__desk { font-size: 16px; }
     .aksi-card__cta { display: none; }
     .aksi-card__chev--sempit { display: inline-flex; }
+    .aksi-row--3,
     .aksi-row--4 { grid-template-columns: minmax(0, 1fr); }
 
     .kalender-mini__daftar { padding: 10px; }
