@@ -147,7 +147,7 @@
                     <x-ikon nama="building" /><span>Kelas</span>
                 </a>
                 <a href="{{ route('admin.jurusan.index') }}" class="sidebar__link {{ request()->routeIs('admin.jurusan.*') ? 'is-active' : '' }}">
-                    <span>Jurusan</span>
+                    <x-ikon nama="signpost-2" /><span>Jurusan</span>
                 </a>
                 <a href="{{ route('ruangan.index') }}" class="sidebar__link {{ request()->routeIs('ruangan.*') ? 'is-active' : '' }}">
                     <x-ikon nama="door" /><span>Ruangan</span>
