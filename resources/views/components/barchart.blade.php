@@ -19,6 +19,9 @@
     $waspada = $target ? $target * 2 / 3 : null;
     // A month of daily bars cannot keep 6px gaps inside a third-width card.
     $padat = count($series) > 16;
+    // Nor can every bar carry a date: label about eight of them, shown whole.
+    // Kept even so the phone rule hiding even-numbered ticks never hides these.
+    $langkah = $padat ? 2 * (int) ceil(count($series) / 16) : 1;
     $nada = fn ($v) => match (true) {
         $target === null => null,
         // Nothing written usually means no school (Sunday, a holiday): grey,
@@ -55,7 +58,7 @@
                          data-detail-tipe="{{ $drill }}" data-detail-tanggal="{{ $row['key'] ?? '' }}"
                      @endif
                      title="{{ $row['label'] ?? '' }}: {{ $row['value'] ?? 0 }}"></div>
-                <span class="barchart__tick">{{ $row['label'] ?? '' }}</span>
+                <span @class(['barchart__tick', 'barchart__tick--sembunyi' => $loop->index % $langkah !== 0])>{{ $row['label'] ?? '' }}</span>
             </div>
         @endforeach
     </div>

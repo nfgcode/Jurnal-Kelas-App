@@ -418,9 +418,13 @@ button.aksi-card {
 .barchart__bar--kurang { background: var(--red-100); }
 .barchart__bar--kosong { background: var(--n-300); }
 
-// A month of daily bars: tight gaps, and every other date label only.
+// A month or more of bars: tight gaps, and only every few date labels (picked
+// in x-barchart) — those shown whole, spilling over the unlabelled neighbours
+// instead of being clipped to a 5px column ("14/7" read as "1:").
 .barchart--padat { gap: 2px; min-width: 0; overflow: hidden; }
-.barchart--padat .barchart__col:nth-child(even) .barchart__tick { visibility: hidden; }
+.barchart--padat .barchart__tick { overflow: visible; max-width: none; }
+.barchart--padat .barchart__col:first-child .barchart__tick { align-self: flex-start; }
+.barchart__tick--sembunyi { visibility: hidden; }
 
 .barchart__target {
     position: absolute;
