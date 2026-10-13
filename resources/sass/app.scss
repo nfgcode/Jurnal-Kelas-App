@@ -322,14 +322,12 @@ body {
 }
 
 /* Row actions. Tables link to a record through a visible button here rather than
-   hiding the link inside a cell's text, so it is obvious what can be opened. */
-.tbl__aksi {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-    white-space: nowrap;
-}
+   hiding the link inside a cell's text, so it is obvious what can be opened.
+   The cell stays a table cell - a flex <td> drops out of the row, so its divider
+   and height stop lining up - and its buttons wrap onto a second line when the
+   column is narrow. The buttons' own margins replace the cell's vertical padding. */
+.tbl tbody td.tbl__aksi { padding-top: 3px; padding-bottom: 3px; }
+.tbl__aksi > * { margin: 3px 0 3px 6px; }
 
 /* Compact field, same idea as .btn-hifi--sm — used by the pager's row-count and
    jump-to-page controls, which sit inside a card footer. */
@@ -1575,7 +1573,7 @@ textarea.input-hifi {
     }
 
     // Row actions stack rather than squeeze the last column to nothing.
-    .tbl__aksi { justify-content: flex-start; }
+    .tbl .tbl__aksi { text-align: left; }
 
     // Custom period range: two date inputs plus a separator do not fit on one
     // line at ~320px, so let them take a line each rather than overflow.
