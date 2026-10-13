@@ -150,7 +150,7 @@ class CadanganData
     }
 
     /**
-     * Restore from a decoded backup array. $mode is 'gabung' (upsert by id, keeps
+     * Restore from a decoded backup array. $mode is 'gabung' (upsert by primary key, keeps
      * everything else) or 'ganti' (wipe the covered tables, then reinsert the
      * snapshot). Only tables the file actually carries are touched, so a partial
      * file can never blank a table it does not mention.
@@ -185,6 +185,10 @@ class CadanganData
         // is a no-op once a transaction is open, so the order here matters.
         Schema::withoutForeignKeyConstraints(function () use ($urut, $tabel, $mode, &$hasil) {
             DB::transaction(function () use ($urut, $tabel, $mode, &$hasil) {
+                $kelasSiswa = $mode === 'ganti' && in_array('kelas', $urut, true) && ! in_array('siswa', $urut, true)
+                    ? DB::table('siswa')->whereNotNull('kelas_id')->pluck('kelas_id', 'nis')
+                    : collect();
+
                 if ($mode === 'ganti') {
                     // DELETE, not TRUNCATE — TRUNCATE implicitly commits on MySQL and
                     // would break the surrounding transaction.
@@ -195,6 +199,19 @@ class CadanganData
 
                 foreach ($urut as $tabelNama) {
                     $hasil[$tabelNama] = $this->tulisTabel($tabelNama, $tabel[$tabelNama], $mode);
+                }
+
+                $kelasAda = DB::table('kelas')->whereIn('id', $kelasSiswa->unique())->pluck('id')->all();
+                foreach ($kelasSiswa->groupBy(fn ($id) => $id, preserveKeys: true) as $kelasId => $siswa) {
+                    if (in_array($kelasId, $kelasAda)) {
+                        DB::table('siswa')->whereIn('nis', $siswa->keys())->update(['kelas_id' => $kelasId]);
+                    }
+                }
+
+                if (array_intersect($urut, ['kelas', 'siswa']) !== []) {
+                    DB::table('siswa')->update([
+                        'jurusan_kode' => DB::raw('(SELECT jurusan_kode FROM kelas WHERE kelas.id = siswa.kelas_id)'),
+                    ]);
                 }
             });
         });
@@ -241,18 +258,35 @@ class CadanganData
         }
 
         $cols = array_keys((array) $rows[0]);
-        $update = array_values(array_diff($cols, ['id']));
+        $primer = collect(Schema::getIndexes($tabel))->firstWhere('primary', true)['columns'];
+        $update = array_values(array_diff($cols, $primer));
+        $jurnalLama = $tabel === 'jurnal' && ! in_array('siswa_nis', $cols, true);
+
+        if ($jurnalLama) {
+            $update[] = 'siswa_nis';
+        }
+
         $ditulis = 0;
 
         foreach (array_chunk($rows, 500) as $chunk) {
             $chunk = array_map(fn ($r) => (array) $r, $chunk);
+
+            if ($jurnalLama) {
+                $pengisi = DB::table('users')->where('role', 'siswa')
+                    ->whereIn('id', array_column($chunk, 'diisi_oleh_id'))->pluck('nis', 'id');
+
+                foreach ($chunk as &$row) {
+                    $row['siswa_nis'] = $pengisi[$row['diisi_oleh_id'] ?? null] ?? null;
+                }
+                unset($row);
+            }
 
             if ($mode === 'ganti') {
                 DB::table($tabel)->insert($chunk);
             } elseif ($update === []) {
                 DB::table($tabel)->insertOrIgnore($chunk);
             } else {
-                DB::table($tabel)->upsert($chunk, ['id'], $update);
+                DB::table($tabel)->upsert($chunk, $primer, $update);
             }
 
             $ditulis += count($chunk);

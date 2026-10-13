@@ -68,7 +68,6 @@ class Jurusan extends Model
         return $this->hasMany(Kelas::class, 'jurusan_kode', 'kode');
     }
 
-    /** Students recorded under this jurusan (`siswa.jurusan_kode`, Oct 2026). */
     public function siswa(): HasMany
     {
         return $this->hasMany(Siswa::class, 'jurusan_kode', 'kode');

@@ -44,7 +44,7 @@
     --n-200: #e5e5e5;
     --n-300: #cbcbcb;
     --n-500: #969696;
-    --n-600: #7c7c7c;
+    --n-600: #626262;
     --n-700: #626262;
     --n-800: #474747;
     --n-900: #2d2d2d;
@@ -55,6 +55,11 @@
     --yellow-100: #ffdb43;
     --yellow-200: #dfb400;
     --red-100: #fb3748;
+    --danger-text: #b42332;
+    --danger-fill: #b42332;
+    --p-ink: #23371d;
+    --sidebar-bg: #23371d;
+    --sidebar-active: #3b5d32;
 
     --radius-card: 10px;
     --radius-control: 8px;
@@ -76,7 +81,7 @@ body {
     position: fixed;
     inset: 0 auto 0 0;
     width: var(--sidebar-w);
-    background: var(--p-500);
+    background: var(--sidebar-bg);
     display: flex;
     flex-direction: column;
     z-index: 1040;
@@ -129,7 +134,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    height: 42px;
+    min-height: 44px;
     padding: 0 24px;
     color: rgba(255, 255, 255, 0.72);
     font-size: 13.5px;
@@ -154,7 +159,7 @@ body {
 
     &.is-active {
         color: #fff;
-        background: var(--p-300);
+        background: var(--sidebar-active);
         font-weight: 600;
     }
 }
@@ -200,6 +205,9 @@ body {
     color: var(--n-900);
     font-size: 13.5px;
     font-weight: 500;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
 }
 
 .avatar {
@@ -266,7 +274,8 @@ body {
 }
 
 %control-base {
-    height: 36px;
+    min-height: 44px;
+    min-width: 44px;
     border-radius: var(--radius-control);
     font-size: 12.5px;
     font-weight: 500;
@@ -301,20 +310,13 @@ body {
 .btn-hifi--danger {
     background: var(--n-100);
     border: 1px solid var(--n-300);
-    color: var(--red-100);
+    color: var(--danger-text);
 
-    &:hover { background: var(--red-100); border-color: var(--red-100); color: #fff; }
-}
-
-// A button that cannot be used right now; the reason is written beside it.
-.btn-hifi:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    pointer-events: none;
+    &:hover { background: var(--danger-fill); border-color: var(--danger-fill); color: #fff; }
 }
 
 .btn-hifi--sm {
-    height: 28px;
+    min-height: 44px;
     padding: 0 10px;
     font-size: 11px;
 }
@@ -333,7 +335,7 @@ body {
    jump-to-page controls, which sit inside a card footer. */
 .select-hifi--sm,
 .input-hifi--sm {
-    height: 28px;
+    min-height: 44px;
     padding: 0 8px;
     font-size: 11px;
 }
@@ -369,6 +371,30 @@ body {
     background-position: right 11px center;
     background-size: 12px;
 }
+
+.input-hifi::placeholder { color: var(--n-600); opacity: 1; }
+
+:is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid var(--n-1000);
+    outline-offset: 3px;
+}
+
+.sidebar :is(a, button):focus-visible {
+    outline-color: #fff;
+    outline-offset: -3px;
+}
+
+.processing-status {
+    padding: 10px 14px;
+    border: 1px solid var(--n-300);
+    border-radius: var(--radius-control);
+    background: var(--n-100);
+    color: var(--n-800);
+    font-size: 12.5px;
+}
+
+.processing-status[hidden] { display: none; }
+[aria-disabled='true'] { cursor: wait; }
 
 .filter-bar {
     display: flex;
@@ -446,6 +472,7 @@ body {
     font-size: 10.5px;
     color: var(--n-600);
     border-top: 1px solid var(--n-200);
+    flex-wrap: wrap;
 }
 
 .grid-row {
@@ -541,7 +568,7 @@ body {
 
 .chip--green { background: var(--green-100); color: #0b4a2b; }
 .chip--yellow { background: var(--yellow-100); color: #4a3b00; }
-.chip--red { background: var(--red-100); color: #fff; }
+.chip--red { background: var(--danger-fill); color: #fff; }
 .chip--khaki { background: var(--s-100); color: var(--s-500); }
 .chip--neutral { background: var(--n-200); color: var(--n-700); }
 .chip--solid { background: var(--p-300); color: #fff; }
@@ -657,11 +684,13 @@ a.name-cell:hover { text-decoration: underline; }
     color: inherit;
     text-decoration: none;
     cursor: pointer;
+    min-height: 44px;
+    min-width: 44px;
 
-    &:hover { color: var(--p-400); }
+    &:hover { color: var(--p-ink); }
 
     &.is-active {
-        color: var(--p-500);
+        color: var(--p-ink);
         font-weight: 700;
     }
 }
@@ -689,7 +718,7 @@ a.name-cell:hover { text-decoration: underline; }
     vertical-align: middle;
 }
 
-.tbl tbody tr:nth-child(even) { background: rgba(229, 229, 229, 0.35); }
+.tbl tbody tr:nth-child(even) { background: color-mix(in srgb, var(--n-200) 35%, transparent); }
 
 .tbl tbody tr:last-child td { border-bottom: 0; }
 
@@ -740,8 +769,8 @@ a.name-cell:hover { text-decoration: underline; }
     gap: 4px;
 
     a, span {
-        min-width: 20px;
-        height: 20px;
+        min-width: 44px;
+        min-height: 44px;
         border-radius: 4px;
         display: inline-grid;
         place-items: center;
@@ -903,11 +932,19 @@ a.name-cell:hover { text-decoration: underline; }
     color: var(--n-800);
 }
 
-.field__req { color: var(--red-100); }
+.field__req { color: var(--danger-text); }
 
 .field__hint { font-size: 10.5px; color: var(--n-600); }
 
-.field__error { font-size: 10.5px; color: var(--red-100); }
+.field__error { font-size: 10.5px; color: var(--danger-text); }
+
+.field-confirm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    cursor: pointer;
+}
 
 textarea.input-hifi {
     height: auto;
@@ -1371,6 +1408,8 @@ textarea.input-hifi {
     color: var(--n-900);
     padding: 0;
     margin-right: 12px;
+    min-width: 44px;
+    min-height: 44px;
 }
 
 .sidebar-scrim {
@@ -1469,7 +1508,7 @@ textarea.input-hifi {
     // Comfortable tap targets on touch screens.
     .btn-hifi,
     .select-hifi,
-    .input-hifi { min-height: 42px; }
+    .input-hifi { min-height: 44px; }
 }
 
 /* =========================================================================
@@ -1494,6 +1533,7 @@ textarea.input-hifi {
     // full-width line rather than staying at a fixed 150–190px and overflowing.
     .filter-bar { gap: 8px; }
     .filter-bar__search { flex: 1 1 100%; max-width: none; }
+    .filter-bar > label { width: 100%; }
     .filter-bar .select-hifi,
     .filter-bar .ss { width: 100% !important; flex: 1 1 100%; }
     .filter-bar__note { margin-left: 0; width: 100%; }
@@ -1577,6 +1617,8 @@ textarea.input-hifi {
     --yellow-100: #ffdb43;
     --yellow-200: #f0c400;
     --red-100: #ff5a68;
+    --danger-text: #ff8791;
+    --p-ink: #a9cca0;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
     color-scheme: dark;
@@ -1631,6 +1673,19 @@ textarea.input-hifi {
 :root[data-font="ekstra"] body { zoom: 1.20; }
 
 /* --- The "Tampilan" preferences panel in the topbar. -------------------- */
+.dropdown-menu {
+    --bs-dropdown-bg: var(--n-100);
+    --bs-dropdown-color: var(--n-900);
+    --bs-dropdown-border-color: var(--n-300);
+    --bs-dropdown-link-color: var(--n-900);
+    --bs-dropdown-link-hover-color: var(--n-1000);
+    --bs-dropdown-link-hover-bg: var(--n-200);
+    --bs-dropdown-divider-bg: var(--n-300);
+}
+
+.topbar .dropdown-menu .text-muted { color: var(--n-600) !important; }
+.topbar .dropdown-menu .text-danger { color: var(--danger-text) !important; }
+
 .pref-panel { min-width: 246px; padding: 12px 14px; }
 
 .pref-group { margin-bottom: 12px; }
@@ -1657,6 +1712,8 @@ textarea.input-hifi {
     color: var(--n-800);
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease;
+    min-height: 44px;
+    min-width: 44px;
 }
 
 .pref-seg button:hover { border-color: var(--p-300); }
@@ -1670,7 +1727,10 @@ textarea.input-hifi {
     color: var(--n-900);
     cursor: pointer;
     padding: 5px 0;
+    min-height: 44px;
 }
+
+.dropdown-item { min-height: 44px; display: flex; align-items: center; }
 
 /* Account session status (Akun Pengguna): Online / Offline dot. */
 .sesi {

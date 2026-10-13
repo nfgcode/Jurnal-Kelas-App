@@ -105,12 +105,17 @@ class PeriodeFilterTest extends TestCase
             ->assertViewHas('jurnals', fn ($jurnals) => $jurnals
                 ->every(fn ($jurnal) => $jurnal->jadwal->guru_nip === $this->guru->nip));
 
-        // ...and a student only their own class's.
+        // A regular student remains denied even with the widest period.
         $this->actingAs($this->siswa)
+            ->get('/jurnal?preset=tahun_ini&per=100')
+            ->assertForbidden();
+
+        $ketua = $this->akunSiswaKelas($this->siswa->kelas_id, true);
+        $this->actingAs($ketua)
             ->get('/jurnal?preset=tahun_ini&per=100')
             ->assertOk()
             ->assertViewHas('jurnals', fn ($jurnals) => $jurnals
-                ->every(fn ($jurnal) => $jurnal->jadwal->kelas_id === $this->siswa->kelas_id));
+                ->every(fn ($jurnal) => $jurnal->jadwal->kelas_id === $ketua->kelas_id && $jurnal->tanggal->isToday()));
     }
 
     public function test_attendance_screens_follow_the_period_too(): void
@@ -123,12 +128,10 @@ class PeriodeFilterTest extends TestCase
             ->assertViewHas('baris', fn ($baris) => collect($baris->items())
                 ->every(fn ($hari) => Carbon::parse($hari->tanggal)->isToday()));
 
-        // The student's personal recap is a different screen; it must carry the
-        // period as well, otherwise its cards contradict the table.
+        // Changing the period cannot bypass the web-only student restriction.
         $this->actingAs($this->siswa)
             ->get('/presensi?preset=hari_ini')
-            ->assertOk()
-            ->assertViewHas('periode', fn ($periode) => $periode->preset === 'hari_ini');
+            ->assertForbidden();
     }
 
     public function test_other_filters_survive_a_change_of_period(): void

@@ -144,7 +144,7 @@ class LaporanController extends Controller
     private function kueriJurnal(array $filters, ?Periode $periode = null)
     {
         return Jurnal::query()
-            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
+            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan'])
             ->when($periode, fn ($query) => $query->whereBetween('tanggal', [$periode->mulaiString(), $periode->selesaiString()]))
             ->when($filters['kelas_id'] ?? null, fn ($query, $id) => $query->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $id)))
             ->when($filters['tingkat'] ?? null, fn ($query, $t) => $query->whereHas('jadwal.kelas', fn ($k) => $k->where('tingkat', $t)))
@@ -172,7 +172,7 @@ class LaporanController extends Controller
      */
     private function eksporJurnal($query, Periode $periode)
     {
-        $header = ['Tanggal', 'Kelas', 'Mata Pelajaran', 'Guru', 'Materi', 'Tugas', 'Jml Siswa', 'Hadir', 'Status'];
+        $header = ['Tanggal', 'Kelas', 'Jurusan Siswa Pengisi', 'Mata Pelajaran', 'Guru', 'Materi', 'Tugas', 'Jml Siswa', 'Hadir', 'Status'];
 
         $rows = function () use ($query) {
             // lazy() chunks and eager-loads the jadwal/kelas relations per chunk
@@ -181,6 +181,7 @@ class LaporanController extends Controller
                 yield [
                     $j->tanggal->format('Y-m-d'),
                     $j->jadwal?->kelas?->nama_kelas,
+                    $j->siswa?->jurusan?->nama,
                     $j->jadwal?->mataPelajaran?->nama,
                     $j->guru?->nama,
                     $j->materiKosong() ? 'Belum diisi' : $j->materi,

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CadanganController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\ImporController;
+use App\Http\Controllers\Admin\JurusanController;
 use App\Http\Controllers\Admin\KelasQrController;
 use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\PresensiLogController;
@@ -44,7 +45,7 @@ Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Protected routes (require authentication)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'akses-web'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -163,6 +164,7 @@ Route::middleware('auth')->group(function () {
         // the school's records; /akun holds only what someone signs in with.
         Route::resource('guru', GuruController::class);
         Route::resource('siswa', SiswaController::class);
+        Route::resource('jurusan', JurusanController::class)->except('show');
         Route::resource('akun', AkunController::class);
 
         // Bulk account creation from a spreadsheet: template out, filled file

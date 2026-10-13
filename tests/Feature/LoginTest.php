@@ -38,10 +38,14 @@ class LoginTest extends TestCase
 
     private function siswa(): User
     {
-        return $this->buatSiswa(
-            ['nis' => '20240001', 'nama' => 'Ahmad Fauzi'],
+        $kelas = $this->buatKelas();
+        $user = $this->buatSiswa(
+            ['nis' => '20240001', 'nama' => 'Ahmad Fauzi', 'kelas_id' => $kelas->id],
             ['username' => 'ahmad.fauzi', 'email' => 'ahmad@siswa.app', 'password' => Hash::make('password')],
         );
+        $kelas->update(['ketua_nis' => $user->nis]);
+
+        return $user;
     }
 
     public function test_login_form_asks_for_nip_or_nis(): void

@@ -162,6 +162,7 @@
             <x-card title="Konteks Pertemuan">
                 <div class="deflist">
                     <div class="deflist__row"><span class="deflist__key">Kelas</span><span class="deflist__val">{{ $jurnal->jadwal?->kelas?->nama_kelas ?? '—' }}</span></div>
+                    <div class="deflist__row"><span class="deflist__key">Jurusan Siswa Pengisi</span><span class="deflist__val">{{ $jurnal->siswa?->jurusan?->nama ?? 'Tidak tersedia' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Mata Pelajaran</span><span class="deflist__val">{{ $jurnal->jadwal?->mataPelajaran?->nama ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Guru</span><span class="deflist__val">{{ $jurnal->guru?->nama ?? '—' }}</span></div>
                     <div class="deflist__row"><span class="deflist__key">Jam Ke</span><span class="deflist__val">{{ $jurnal->jadwal?->jpLabel() ?? '—' }}</span></div>

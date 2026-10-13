@@ -450,3 +450,59 @@ document.addEventListener('submit', (e) => {
         e.preventDefault();
     }
 });
+
+(() => {
+    const content = document.querySelector('[data-page-processing]');
+    const status = content?.querySelector('[data-processing-status]');
+    if (!status) return;
+
+    const show = (message) => {
+        status.textContent = message;
+        status.hidden = false;
+    };
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!form.matches('form[data-processing]') || event.defaultPrevented) return;
+        if (form.getAttribute('aria-busy') === 'true') {
+            event.preventDefault();
+            return;
+        }
+
+        form.setAttribute('aria-busy', 'true');
+        form.querySelectorAll('[type="submit"]').forEach((button) => {
+            button.setAttribute('aria-disabled', 'true');
+            button.dataset.processingLabel = button.textContent;
+            button.textContent = 'Memproses...';
+        });
+        show(form.dataset.processing);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('[aria-disabled="true"]')) {
+            event.preventDefault();
+            return;
+        }
+
+        const link = event.target.closest('a[href]');
+        if (!link || !content.contains(link) || event.defaultPrevented || event.button !== 0
+            || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey
+            || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+        const url = new URL(link.href, location.href);
+        if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
+        show(content.dataset.pageProcessing);
+    });
+
+    window.addEventListener('pageshow', () => {
+        status.hidden = true;
+        status.textContent = '';
+        content.querySelectorAll('[aria-busy="true"]').forEach((form) => form.removeAttribute('aria-busy'));
+        content.querySelectorAll('[aria-disabled="true"]').forEach((button) => {
+            button.removeAttribute('aria-disabled');
+            if (button.dataset.processingLabel) {
+                button.textContent = button.dataset.processingLabel;
+                delete button.dataset.processingLabel;
+            }
+        });
+    });
+})();

@@ -31,10 +31,11 @@ class JurnalController extends Controller
         $dir = $filters['dir'] ?? 'desc';
 
         $jurnals = Jurnal::query()
-            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])
+            ->with(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan'])
             ->denganPresensi()
             ->when($user->isGuru(), fn ($q) => $q->diampu($user->nip))
             ->when($user->isSiswa(), fn ($q) => $q->whereHas('jadwal', fn ($j) => $j->where('kelas_id', $user->kelas_id)))
+            ->when($user->isKetuaKelas(), fn ($q) => $q->whereDate('tanggal', today()))
             ->when($filters['q'] ?? null, fn ($query, $q) => $query->cariTeks($q))
             ->orderBy($sort, $dir)
             ->orderBy('id', 'desc')
@@ -63,7 +64,7 @@ class JurnalController extends Controller
     {
         Gate::authorize('view', $jurnal);
 
-        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh', 'presensis.siswa']);
+        $jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'diisiOleh', 'presensis.siswa', 'siswa.jurusan']);
 
         return new JurnalResource($jurnal);
     }
@@ -107,6 +108,7 @@ class JurnalController extends Controller
         // A guru writes their own; otherwise the slot's teacher owns the entry.
         $data['diisi_oleh_id'] = $user->id;
         $data['diisi_oleh_peran'] = $peran;
+        $data['siswa_nis'] = $user->isSiswa() ? $user->nis : null;
         $data['kehadiran_guru_status'] ??= 'hadir';
 
         try {
@@ -119,7 +121,7 @@ class JurnalController extends Controller
             return $this->responsGanda(Jurnal::sudahAda($jadwal->id, $data['tanggal'], $peran), $peran);
         }
 
-        return (new JurnalResource($jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru'])))
+        return (new JurnalResource($jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan'])))
             ->response()->setStatusCode(201);
     }
 
@@ -162,7 +164,7 @@ class JurnalController extends Controller
 
         $jurnal->update($data);
 
-        return new JurnalResource($jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru']));
+        return new JurnalResource($jurnal->load(['jadwal.kelas', 'jadwal.mataPelajaran', 'guru', 'siswa.jurusan']));
     }
 
     /** The 422 a duplicate journal gets, pointing at the row already on file. */

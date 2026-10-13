@@ -46,6 +46,12 @@ class LoginController extends Controller
             ])->onlyInput('user');
         }
 
+        if ($user?->isSiswa() && ! $user->isKetuaKelas()) {
+            return back()->withErrors([
+                'user' => 'Akses web siswa hanya tersedia untuk ketua kelas. Hubungi admin sekolah.',
+            ])->onlyInput('user');
+        }
+
         if ($user && Auth::attempt(
             ['email' => $user->email, 'password' => $credentials['password']],
             $request->boolean('remember'),

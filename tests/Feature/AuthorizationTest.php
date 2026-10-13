@@ -57,10 +57,10 @@ class AuthorizationTest extends TestCase
         $this->assertDatabaseMissing('kelas', ['nama_kelas' => 'Hacked']);
     }
 
-    public function test_siswa_may_still_see_their_own_timetable_and_journals(): void
+    public function test_a_regular_siswa_cannot_access_the_web_application(): void
     {
         foreach (['/jadwal', '/jurnal', '/presensi'] as $url) {
-            $this->actingAs($this->siswa)->get($url)->assertOk("GET {$url} should be visible to a siswa");
+            $this->actingAs($this->siswa)->get($url)->assertForbidden();
         }
     }
 
@@ -122,14 +122,13 @@ class AuthorizationTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_a_student_with_no_class_sees_no_journals(): void
+    public function test_a_student_with_no_class_cannot_access_journals(): void
     {
         $lepas = $this->buatSiswa();
 
         $this->actingAs($lepas)
             ->get('/jurnal')
-            ->assertOk()
-            ->assertSee('Belum ada jurnal kelas.');
+            ->assertForbidden();
     }
 
     public function test_a_guru_cannot_edit_another_gurus_journal(): void
