@@ -15,15 +15,21 @@
         $kunciDraf = 'jurnal:' . ($jurnal ? 'ubah:' . $jurnal->public_id : 'baru:' . $tanggalAktif->toDateString() . ':' . ($jadwal?->id ?? '-'));
     @endphp
 
+    {{-- This is the teacher's (or admin's) form; the class files its own journal
+         on jurnal/mengisi. Editing the ketua's entry keeps its "Jurnal Kelas" name. --}}
     <x-page-head
-        :title="$jurnal ? 'Ubah Jurnal Kelas' : 'Isi Jurnal Kelas'"
+        :title="match (true) {
+            $jurnal === null => 'Isi Jurnal Mengajar',
+            $jurnal->diisi_oleh_peran === 'siswa' => 'Ubah Jurnal Kelas',
+            default => 'Ubah Jurnal Mengajar',
+        }"
         :sub="collect([$kelas?->nama_kelas, $jadwal?->mataPelajaran?->nama, $jadwal ? 'JP ' . $jadwal->jpLabel() : null, $tanggalAktif->translatedFormat('l, j F Y')])->filter()->join(' · ')">
         <a class="btn-hifi btn-hifi--ghost" href="{{ route('jurnal.index') }}">← Daftar Jurnal</a>
         <span class="draf-status" data-draf-status="formJurnal">Draf disimpan otomatis di perangkat ini</span>
     </x-page-head>
 
     <div class="grid-row grid-row--editor">
-        <x-card :title="$jurnal ? 'Form Jurnal Mengajar' : 'Form Jurnal Mengajar'">
+        <x-card title="Form Jurnal Mengajar">
             <x-slot:actions>
                 <span class="card-hifi__meta">* wajib diisi</span>
             </x-slot:actions>

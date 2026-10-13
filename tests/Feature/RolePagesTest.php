@@ -203,8 +203,11 @@ class RolePagesTest extends TestCase
         }
         $this->travelTo($tanggal->copy()->setTime(9, 0));
 
+        // The teacher's form is named for the teacher's journal, not the class's.
         $this->actingAs($this->guru)->get('/jurnal/create')
             ->assertOk()
+            ->assertSee('Isi Jurnal Mengajar')
+            ->assertDontSee('Isi Jurnal Kelas')
             ->assertViewHas('jadwalList', fn ($list) => $list->isNotEmpty()
                 && $list->every(fn ($j) => $j->guru_nip === $this->guru->nip));
 
@@ -224,7 +227,9 @@ class RolePagesTest extends TestCase
         $this->assertSame('guru', $jurnal->diisi_oleh_peran);
 
         // ...and it is theirs to edit.
-        $this->actingAs($this->guru)->get("/jurnal/{$jurnal->public_id}/edit")->assertOk();
+        $this->actingAs($this->guru)->get("/jurnal/{$jurnal->public_id}/edit")
+            ->assertOk()
+            ->assertSee('Ubah Jurnal Mengajar');
         $this->actingAs($lain)->get("/jurnal/{$jurnal->public_id}/edit")->assertForbidden();
     }
 
