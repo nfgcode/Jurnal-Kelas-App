@@ -137,8 +137,8 @@
                    class="sidebar__link {{ request()->routeIs('admin.impor.*') ? 'is-active' : '' }}">
                     <x-ikon nama="file-earmark-arrow-up" /><span>Impor Data</span>
                 </a>
-                <a href="{{ route('admin.transisi.index') }}"
-                   class="sidebar__link {{ request()->routeIs('admin.transisi.*') ? 'is-active' : '' }}">
+                <a href="{{ route('admin.tahun-ajaran.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.tahun-ajaran.*') ? 'is-active' : '' }}">
                     <x-ikon nama="calendar3" /><span>Tahun Ajaran</span>
                 </a>
                 @endunless
@@ -164,6 +164,13 @@
                 </a>
                 <a href="{{ route('admin.hari-libur.index') }}" class="sidebar__link {{ request()->routeIs('admin.hari-libur.*') ? 'is-active' : '' }}">
                     <x-ikon nama="calendar3" /><span>Hari Libur</span>
+                </a>
+
+                <div class="sidebar__section">Manajemen Akademik</div>
+
+                <a href="{{ route('admin.transisi.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.transisi.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="mortarboard" /><span>Kenaikan &amp; Kelulusan</span>
                 </a>
             @endif
 

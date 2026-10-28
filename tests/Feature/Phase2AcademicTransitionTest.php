@@ -325,22 +325,31 @@ class Phase2AcademicTransitionTest extends TestCase
         $admin = $this->admin();
         $this->tahunAjaran('2026/2027', aktif: true);
 
-        // 1. Akses halaman index
-        $resp = $this->actingAs($admin)->get('/admin/transisi');
+        // 1. Akses halaman Tahun Ajaran
+        $resp = $this->actingAs($admin)->get('/admin/tahun-ajaran');
         $resp->assertOk();
-        $resp->assertSee('Tahun Ajaran & Transisi Akademik');
+        $resp->assertSee('Tahun Ajaran');
+        $resp->assertSee('Daftar Tahun Ajaran');
 
-        // 2. Tambah tahun ajaran baru via POST
-        $resp = $this->actingAs($admin)->post('/admin/transisi/tahun-ajaran', [
+        // 2. Tambah tahun ajaran baru via POST /admin/tahun-ajaran
+        $resp = $this->actingAs($admin)->post('/admin/tahun-ajaran', [
             'kode' => '2027/2028',
             'mulai' => '2027-07-01',
             'selesai' => '2028-06-30',
         ]);
-        $resp->assertRedirect('/admin/transisi');
-        $this->assertDatabaseHas('tahun_ajaran', ['kode' => '2027/2028']);
+        $resp->assertRedirect('/admin/tahun-ajaran');
+        $this->assertDatabaseHas('tahun_ajaran', ['kode' => '2027/2028', 'aktif' => false]);
 
-        // 3. Siapkan rombel kelas
-        $this->kelas('X TKJ 1', 'X', '2026/2027');
+        // 3. Akses halaman Kenaikan & Kelulusan (Transisi)
+        $resp = $this->actingAs($admin)->get('/admin/transisi');
+        $resp->assertOk();
+        $resp->assertSee('Kenaikan & Kelulusan');
+        $resp->assertSee('1. Siapkan Rombel Kelas Tujuan');
+
+        // 4. Siapkan rombel kelas dan siswa
+        $kX = $this->kelas('X TKJ 1', 'X', '2026/2027');
+        $this->siswa('1009', 'Siswa Promosi Web', $kX);
+
         $resp = $this->actingAs($admin)->post('/admin/transisi/siapkan-kelas', [
             'tahun_asal' => '2026/2027',
             'tahun_tujuan' => '2027/2028',
@@ -348,12 +357,14 @@ class Phase2AcademicTransitionTest extends TestCase
         $resp->assertRedirect('/admin/transisi');
         $this->assertDatabaseHas('kelas', ['nama_kelas' => 'XI TKJ 1', 'tahun_ajaran_kode' => '2027/2028']);
 
-        // 4. Buka pratinjau
+        // 5. Buka pratinjau
         $resp = $this->actingAs($admin)->get('/admin/transisi/pratinjau?tahun_asal=2026/2027&tahun_tujuan=2027/2028');
         $resp->assertOk();
         $resp->assertSee('Pratinjau Transisi');
+        $resp->assertSee('Naik Kelas');
+        $resp->assertSee('Lulus');
 
-        // 5. Eksekusi transisi via web
+        // 6. Eksekusi transisi via web
         $resp = $this->actingAs($admin)->post('/admin/transisi/eksekusi', [
             'tahun_asal' => '2026/2027',
             'tahun_tujuan' => '2027/2028',
@@ -368,5 +379,15 @@ class Phase2AcademicTransitionTest extends TestCase
             'tahun_tujuan' => '2027/2028',
             'status' => 'selesai',
         ]);
+
+        // 7. Role check: non-admin dilarang mengakses
+        $guru = User::create([
+            'username' => 'guru.test',
+            'email' => 'guru.test@jurnalkelas.app',
+            'password' => Hash::make('password'),
+            'role' => 'guru',
+        ]);
+        $this->actingAs($guru)->get('/admin/tahun-ajaran')->assertForbidden();
+        $this->actingAs($guru)->get('/admin/transisi')->assertForbidden();
     }
 }

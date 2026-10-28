@@ -95,9 +95,9 @@
                                         </td>
                                         <td>
                                             <select class="select-hifi select-hifi--sm" name="pengecualian[{{ $cp['nis'] }}][aksi]" style="width: 170px;">
-                                                <option value="promosi">Promosi Normal</option>
+                                                <option value="promosi">Naik Kelas</option>
                                                 <option value="tinggal_kelas">Tinggal Kelas</option>
-                                                <option value="keluar">Keluar / Pindah</option>
+                                                <option value="keluar">Pindah/Keluar</option>
                                             </select>
                                         </td>
                                     </tr>
@@ -135,9 +135,9 @@
                                         </td>
                                         <td>
                                             <select class="select-hifi select-hifi--sm" name="pengecualian[{{ $cl['nis'] }}][aksi]" style="width: 170px;">
-                                                <option value="lulus">Lulus Reguler</option>
-                                                <option value="tunda_lulus">Belum Lulus / Mengulang</option>
-                                                <option value="keluar">Keluar / Pindah</option>
+                                                <option value="lulus">Lulus</option>
+                                                <option value="tunda_lulus">Belum Lulus</option>
+                                                <option value="keluar">Pindah/Keluar</option>
                                             </select>
                                         </td>
                                     </tr>

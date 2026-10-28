@@ -10,25 +10,25 @@ use App\Models\TransisiTahunAjaran;
 use App\Support\AuditAdmin;
 use App\Support\TransisiAkademik;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class TransisiController extends Controller
 {
     /**
-     * Tampilan utama manajemen tahun ajaran dan transisi akademik.
+     * Tampilan utama manajemen kenaikan kelas & kelulusan siswa (transisi akademik).
      */
     public function index()
     {
-        $tahunList = TahunAjaran::withCount('kelas')->orderByDesc('kode')->get();
+        $tahunList = TahunAjaran::orderByDesc('kode')->get();
         $tahunAktif = TahunAjaran::berjalan();
 
         $transisiList = TransisiTahunAjaran::with(['diprosesOleh', 'tahunAsal', 'tahunTujuan'])
             ->latest('id')
             ->get();
 
-        // Hitung statistik siswa per tingkat di tahun ajaran aktif
+        // Hitung statistik siswa per tingkat di tahun ajaran aktif berjalan
         $statistik = [
+            'tahun_kode' => $tahunAktif?->kode ?? 'Belum Ditentukan',
             'total_siswa' => Siswa::where('status', 'aktif')->count(),
             'tingkat_x' => Siswa::where('status', 'aktif')
                 ->whereIn('kelas_id', Kelas::where('tingkat', 'X')->select('id'))
@@ -47,66 +47,6 @@ class TransisiController extends Controller
             'transisiList' => $transisiList,
             'statistik' => $statistik,
         ]);
-    }
-
-    /**
-     * Tambah tahun ajaran baru.
-     */
-    public function storeTahunAjaran(Request $request)
-    {
-        $data = $request->validate([
-            'kode' => ['required', 'string', 'max:9', 'unique:tahun_ajaran,kode'],
-            'mulai' => ['nullable', 'date'],
-            'selesai' => ['nullable', 'date', 'after_or_equal:mulai'],
-            'aktif' => ['nullable', 'boolean'],
-        ], [
-            'kode.unique' => 'Tahun ajaran dengan kode ini sudah terdaftar.',
-            'selesai.after_or_equal' => 'Tanggal selesai harus setelah atau sama dengan tanggal mulai.',
-        ]);
-
-        if (! TahunAjaran::formatValid($data['kode'])) {
-            throw ValidationException::withMessages([
-                'kode' => 'Format kode tahun ajaran harus berupa "YYYY/YYYY" berurutan (contoh: 2027/2028).',
-            ]);
-        }
-
-        $tahun = TahunAjaran::create([
-            'kode' => $data['kode'],
-            'mulai' => $data['mulai'] ?? null,
-            'selesai' => $data['selesai'] ?? null,
-            'aktif' => (bool) ($data['aktif'] ?? false),
-        ]);
-
-        AuditAdmin::catat(
-            aksi: 'tahun_ajaran.tambah',
-            tipeEntitas: 'tahun_ajaran',
-            entitasId: $tahun->kode,
-            deskripsi: "Menambahkan tahun ajaran baru: {$tahun->kode}",
-            metadata: ['kode' => $tahun->kode, 'aktif' => $tahun->aktif],
-        );
-
-        return redirect()->route('admin.transisi.index')
-            ->with('success', "Tahun ajaran {$tahun->kode} berhasil ditambahkan.");
-    }
-
-    /**
-     * Aktifkan tahun ajaran tertentu.
-     */
-    public function aktifkanTahunAjaran(TahunAjaran $tahunAjaran)
-    {
-        $tahunLama = TahunAjaran::berjalan()?->kode;
-        $tahunAjaran->aktifkan();
-
-        AuditAdmin::catat(
-            aksi: 'tahun_ajaran.aktifkan',
-            tipeEntitas: 'tahun_ajaran',
-            entitasId: $tahunAjaran->kode,
-            deskripsi: "Mengaktifkan tahun ajaran {$tahunAjaran->kode} (menggantikan {$tahunLama})",
-            metadata: ['tahun_lama' => $tahunLama, 'tahun_baru' => $tahunAjaran->kode],
-        );
-
-        return redirect()->route('admin.transisi.index')
-            ->with('success', "Tahun ajaran {$tahunAjaran->kode} kini aktif.");
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\PresensiLogController;
 use App\Http\Controllers\Admin\SistemController;
 use App\Http\Controllers\Admin\SiswaController;
+use App\Http\Controllers\Admin\TahunAjaranController;
 use App\Http\Controllers\Admin\TransisiController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
@@ -201,13 +202,20 @@ Route::middleware(['auth', 'akses-web', 'pantau'])->group(function () {
         Route::get('/cadangan/xlsx', [CadanganController::class, 'unduhXlsx'])->name('cadangan.xlsx');
         Route::post('/cadangan/pulihkan', [CadanganController::class, 'pulihkan'])->name('cadangan.pulihkan');
 
-        // Transisi Tahun Ajaran, Kenaikan Kelas, dan Kelulusan
+        // Tahun Ajaran
+        Route::get('/tahun-ajaran', [TahunAjaranController::class, 'index'])->name('tahun-ajaran.index');
+        Route::post('/tahun-ajaran', [TahunAjaranController::class, 'store'])->name('tahun-ajaran.store');
+        Route::post('/tahun-ajaran/{tahunAjaran}/aktifkan', [TahunAjaranController::class, 'aktifkan'])->name('tahun-ajaran.aktifkan');
+
+        // Kenaikan & Kelulusan (Transisi)
         Route::get('/transisi', [TransisiController::class, 'index'])->name('transisi.index');
-        Route::post('/transisi/tahun-ajaran', [TransisiController::class, 'storeTahunAjaran'])->name('transisi.tahun-ajaran.store');
-        Route::post('/transisi/tahun-ajaran/{tahunAjaran}/aktifkan', [TransisiController::class, 'aktifkanTahunAjaran'])->name('transisi.tahun-ajaran.aktifkan');
         Route::post('/transisi/siapkan-kelas', [TransisiController::class, 'siapkanKelas'])->name('transisi.siapkan-kelas');
         Route::get('/transisi/pratinjau', [TransisiController::class, 'pratinjau'])->name('transisi.pratinjau');
         Route::post('/transisi/eksekusi', [TransisiController::class, 'eksekusi'])->name('transisi.eksekusi');
+
+        // Legacy / Alias routes to preserve backward compatibility
+        Route::post('/transisi/tahun-ajaran', [TahunAjaranController::class, 'store'])->name('transisi.tahun-ajaran.store');
+        Route::post('/transisi/tahun-ajaran/{tahunAjaran}/aktifkan', [TahunAjaranController::class, 'aktifkan'])->name('transisi.tahun-ajaran.aktifkan');
 
         /*
         |------------------------------------------------------------------
