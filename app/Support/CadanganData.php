@@ -64,6 +64,7 @@ class CadanganData
         'alumni',
         'riwayat_kelas_siswa',
         'transisi_tahun_ajaran',
+        'tinjauan_retensi',
         'admin_audit_log',
         'pengumuman',
         'laporan_error',

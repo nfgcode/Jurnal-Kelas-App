@@ -41,4 +41,9 @@ class Alumni extends Model
     {
         return $this->belongsTo(TahunAjaran::class, 'tahun_lulus', 'kode');
     }
+
+    public function evaluasiRetensi(): array
+    {
+        return \App\Support\KebijakanRetensi::evaluasi($this->siswa);
+    }
 }

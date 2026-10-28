@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AkunController;
+use App\Http\Controllers\Admin\AlumniController;
 use App\Http\Controllers\Admin\CadanganController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\GuruController;
@@ -212,6 +213,12 @@ Route::middleware(['auth', 'akses-web', 'pantau'])->group(function () {
         Route::post('/transisi/siapkan-kelas', [TransisiController::class, 'siapkanKelas'])->name('transisi.siapkan-kelas');
         Route::get('/transisi/pratinjau', [TransisiController::class, 'pratinjau'])->name('transisi.pratinjau');
         Route::post('/transisi/eksekusi', [TransisiController::class, 'eksekusi'])->name('transisi.eksekusi');
+
+        // Data Alumni & Manajemen Siklus Hidup
+        Route::get('/alumni', [AlumniController::class, 'index'])->name('alumni.index');
+        Route::get('/alumni/{alumni}', [AlumniController::class, 'show'])->name('alumni.show');
+        Route::post('/alumni/{alumni}/tinjauan', [AlumniController::class, 'simpanTinjauan'])->name('alumni.tinjauan');
+        Route::post('/alumni/{alumni}/akun', [AlumniController::class, 'alihkanAkun'])->name('alumni.akun');
 
         // Legacy / Alias routes to preserve backward compatibility
         Route::post('/transisi/tahun-ajaran', [TahunAjaranController::class, 'store'])->name('transisi.tahun-ajaran.store');

@@ -158,4 +158,9 @@ class Siswa extends Model
     {
         return $this->hasMany(RiwayatKelasSiswa::class, 'siswa_nis', 'nis');
     }
+
+    public function tinjauanRetensi(): HasMany
+    {
+        return $this->hasMany(TinjauanRetensi::class, 'siswa_nis', 'nis');
+    }
 }

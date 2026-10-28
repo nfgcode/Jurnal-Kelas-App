@@ -172,6 +172,10 @@
                    class="sidebar__link {{ request()->routeIs('admin.transisi.*') ? 'is-active' : '' }}">
                     <x-ikon nama="mortarboard" /><span>Kenaikan &amp; Kelulusan</span>
                 </a>
+                <a href="{{ route('admin.alumni.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.alumni.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="people" /><span>Data Alumni</span>
+                </a>
             @endif
 
             <div class="sidebar__section">Kegiatan</div>
