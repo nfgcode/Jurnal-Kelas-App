@@ -127,7 +127,7 @@ class AlumniController extends Controller
             metadata: [
                 'siswa_nis' => $siswa->nis,
                 'status_tinjauan' => $data['status_tinjauan'],
-                'catatan' => $data['catatan'] ?? null,
+                'memiliki_catatan' => filled($data['catatan'] ?? null),
                 'status_kelayakan' => $evaluasi['status_kelayakan'],
                 'total_dependensi' => $evaluasi['ringkasan_dependensi']['total_dependensi'],
             ],

@@ -241,6 +241,15 @@ class Phase3LifecycleAndRetentionTest extends TestCase
 
         $log = AdminAuditLog::where('aksi', 'retensi.tinjauan')->latest()->firstOrFail();
         $this->assertEquals(TinjauanRetensi::STATUS_DISETUJUI_ARSIP, $log->metadata['status_tinjauan']);
+        $this->assertTrue($log->metadata['memiliki_catatan']);
+        $this->assertArrayNotHasKey('catatan', $log->metadata, 'Teks catatan mentah tidak boleh masuk metadata audit');
+
+        // Pastikan catatan lengkap tetap tersimpan di tabel tinjauan_retensi
+        $this->assertDatabaseHas('tinjauan_retensi', [
+            'siswa_nis' => $siswa->nis,
+            'status_tinjauan' => TinjauanRetensi::STATUS_DISETUJUI_ARSIP,
+            'catatan' => 'Data riwayat lengkap, disetujui untuk diarsipkan secara aman.',
+        ]);
     }
 
     public function test_explicit_account_deactivation_for_alumni(): void
