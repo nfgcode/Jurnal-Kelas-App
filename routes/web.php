@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\PresensiLogController;
 use App\Http\Controllers\Admin\SistemController;
 use App\Http\Controllers\Admin\SiswaController;
+use App\Http\Controllers\Admin\TransisiController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JadwalController;
@@ -199,6 +200,14 @@ Route::middleware(['auth', 'akses-web', 'pantau'])->group(function () {
         Route::get('/cadangan/json', [CadanganController::class, 'unduhJson'])->name('cadangan.json');
         Route::get('/cadangan/xlsx', [CadanganController::class, 'unduhXlsx'])->name('cadangan.xlsx');
         Route::post('/cadangan/pulihkan', [CadanganController::class, 'pulihkan'])->name('cadangan.pulihkan');
+
+        // Transisi Tahun Ajaran, Kenaikan Kelas, dan Kelulusan
+        Route::get('/transisi', [TransisiController::class, 'index'])->name('transisi.index');
+        Route::post('/transisi/tahun-ajaran', [TransisiController::class, 'storeTahunAjaran'])->name('transisi.tahun-ajaran.store');
+        Route::post('/transisi/tahun-ajaran/{tahunAjaran}/aktifkan', [TransisiController::class, 'aktifkanTahunAjaran'])->name('transisi.tahun-ajaran.aktifkan');
+        Route::post('/transisi/siapkan-kelas', [TransisiController::class, 'siapkanKelas'])->name('transisi.siapkan-kelas');
+        Route::get('/transisi/pratinjau', [TransisiController::class, 'pratinjau'])->name('transisi.pratinjau');
+        Route::post('/transisi/eksekusi', [TransisiController::class, 'eksekusi'])->name('transisi.eksekusi');
 
         /*
         |------------------------------------------------------------------

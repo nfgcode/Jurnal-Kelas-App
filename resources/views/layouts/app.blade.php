@@ -137,6 +137,10 @@
                    class="sidebar__link {{ request()->routeIs('admin.impor.*') ? 'is-active' : '' }}">
                     <x-ikon nama="file-earmark-arrow-up" /><span>Impor Data</span>
                 </a>
+                <a href="{{ route('admin.transisi.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.transisi.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="calendar3" /><span>Tahun Ajaran</span>
+                </a>
                 @endunless
             @endif
 

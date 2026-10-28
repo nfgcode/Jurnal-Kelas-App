@@ -74,4 +74,34 @@ class TahunAjaran extends Model
     {
         return $this->hasMany(Kelas::class, 'tahun_ajaran_kode', 'kode');
     }
+
+    public function transisiAsal(): HasMany
+    {
+        return $this->hasMany(TransisiTahunAjaran::class, 'tahun_asal', 'kode');
+    }
+
+    public function transisiTujuan(): HasMany
+    {
+        return $this->hasMany(TransisiTahunAjaran::class, 'tahun_tujuan', 'kode');
+    }
+
+    /**
+     * Aktifkan tahun ajaran ini dan nonaktifkan tahun ajaran lainnya.
+     */
+    public function aktifkan(): void
+    {
+        $this->update(['aktif' => true]);
+    }
+
+    /**
+     * Validasi format kode tahun ajaran: YYYY/YYYY (contoh: 2026/2027).
+     */
+    public static function formatValid(string $kode): bool
+    {
+        if (! preg_match('/^(\d{4})\/(\d{4})$/', $kode, $m)) {
+            return false;
+        }
+
+        return ((int) $m[2]) === ((int) $m[1] + 1);
+    }
 }
