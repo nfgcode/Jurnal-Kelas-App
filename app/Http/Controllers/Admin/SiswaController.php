@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\SiswaRequest;
 use App\Models\Kelas;
 use App\Models\Siswa;
+use App\Support\AuditAdmin;
 use App\Support\Halaman;
 use App\Support\PendaftaranPengguna;
 use App\Support\Urutan;
@@ -80,6 +81,13 @@ class SiswaController extends Controller
         $siswa->update(['status' => $data['status'] ?? 'aktif']);
         $this->syncKetua($siswa, (bool) ($data['is_ketua_kelas'] ?? false));
 
+        AuditAdmin::siswaDibuat($siswa, [
+            'nis' => $siswa->nis,
+            'nama' => $siswa->nama,
+            'kelas_id' => $siswa->kelas_id,
+            'status' => $siswa->status,
+        ]);
+
         return redirect()->route('admin.siswa.index')
             ->with('success', "Siswa {$siswa->nama} berhasil ditambahkan beserta akunnya.");
     }
@@ -107,6 +115,8 @@ class SiswaController extends Controller
     public function update(SiswaRequest $request, Siswa $siswa)
     {
         $data = $request->validated();
+        $statusLama = $siswa->status;
+        $kelasLama = $siswa->kelas_id;
 
         DB::transaction(function () use ($siswa, $data) {
             $siswa->update([
@@ -123,6 +133,13 @@ class SiswaController extends Controller
             $this->syncKetua($siswa, (bool) ($data['is_ketua_kelas'] ?? false));
         });
 
+        AuditAdmin::siswaDiperbarui($siswa, [
+            'status_lama' => $statusLama,
+            'status_baru' => $data['status'],
+            'kelas_id_lama' => $kelasLama,
+            'kelas_id_baru' => $data['kelas_id'] ?? null,
+        ]);
+
         return redirect()->route('admin.siswa.show', $siswa)
             ->with('success', 'Data siswa berhasil diperbarui.');
     }
@@ -135,21 +152,40 @@ class SiswaController extends Controller
     public function destroy(Siswa $siswa)
     {
         if ($siswa->jurnals()->exists()) {
+            AuditAdmin::siswaHapusDitolak($siswa->nis, $siswa->nama, 'Siswa masih dirujuk jurnal.');
+
             return back()->with('error', 'Siswa masih dirujuk jurnal. Ubah status menjadi Nonaktif atau Lulus, bukan menghapusnya.');
         }
 
         $jejak = $siswa->presensiHarian()->count();
+        $jejakLegacy = $siswa->presensis()->count();
 
-        if ($jejak > 0) {
-            return back()->with('error', sprintf(
+        if ($jejak > 0 || $jejakLegacy > 0) {
+            $total = $jejak + $jejakLegacy;
+            $pesan = sprintf(
                 '%s punya %s catatan presensi. Ubah statusnya jadi "Lulus" atau "Nonaktif" — menghapusnya akan ikut menghapus riwayat kehadirannya.',
                 $siswa->nama,
-                number_format($jejak, 0, ',', '.'),
-            ));
+                number_format($total, 0, ',', '.'),
+            );
+            AuditAdmin::siswaHapusDitolak($siswa->nis, $siswa->nama, $pesan);
+
+            return back()->with('error', $pesan);
         }
 
+        if ($siswa->alumni()->exists()) {
+            $pesan = 'Siswa terdaftar dalam data alumni dan tidak dapat dihapus.';
+            AuditAdmin::siswaHapusDitolak($siswa->nis, $siswa->nama, $pesan);
+
+            return back()->with('error', $pesan);
+        }
+
+        $nis = $siswa->nis;
         $nama = $siswa->nama;
-        $siswa->delete(); // The account cascades with them.
+
+        DB::transaction(function () use ($siswa, $nis, $nama) {
+            $siswa->delete(); // The account cascades with them.
+            AuditAdmin::siswaDihapus($nis, $nama);
+        });
 
         return redirect()->route('admin.siswa.index')
             ->with('success', "Siswa {$nama} berhasil dihapus beserta akunnya.");

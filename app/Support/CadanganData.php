@@ -61,6 +61,10 @@ class CadanganData
         'presensi_log',
         'presensi_harian',
         'presensi_harian_log',
+        'alumni',
+        'riwayat_kelas_siswa',
+        'transisi_tahun_ajaran',
+        'admin_audit_log',
         'pengumuman',
         'laporan_error',
         'hari_libur',
@@ -195,6 +199,9 @@ class CadanganData
                     // DELETE, not TRUNCATE — TRUNCATE implicitly commits on MySQL and
                     // would break the surrounding transaction.
                     foreach (array_reverse($urut) as $tabelNama) {
+                        if ($tabelNama === 'admin_audit_log') {
+                            continue; // Jejak audit historis tidak boleh dihapus saat pemulihan data
+                        }
                         DB::table($tabelNama)->delete();
                     }
                 }

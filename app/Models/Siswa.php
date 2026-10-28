@@ -58,6 +58,15 @@ class Siswa extends Model
         return Attribute::make(get: fn () => $this->kelas?->ketua_nis === $this->nis);
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Siswa $siswa) {
+            if ($siswa->presensiHarian()->exists() || $siswa->presensis()->exists() || $siswa->jurnals()->exists() || $siswa->alumni()->exists()) {
+                throw new \RuntimeException("Siswa {$siswa->nis} ({$siswa->nama}) tidak dapat dihapus karena memiliki riwayat presensi, jurnal, atau data alumni.");
+            }
+        });
+    }
+
     /**
      * Students who do (or do not) chair a class.
      */
@@ -138,5 +147,15 @@ class Siswa extends Model
     public function presensis(): HasMany
     {
         return $this->hasMany(Presensi::class, 'siswa_nis', 'nis');
+    }
+
+    public function alumni(): HasOne
+    {
+        return $this->hasOne(Alumni::class, 'siswa_nis', 'nis');
+    }
+
+    public function riwayatKelas(): HasMany
+    {
+        return $this->hasMany(RiwayatKelasSiswa::class, 'siswa_nis', 'nis');
     }
 }

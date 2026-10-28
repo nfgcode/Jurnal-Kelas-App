@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
+use App\Support\AuditAdmin;
 use App\Support\ImporPengguna;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -142,10 +143,27 @@ class ImporController extends Controller
         } catch (RuntimeException $e) {
             Storage::disk(self::DISK)->delete($path);
 
+            AuditAdmin::catat(
+                aksi: "impor.{$data['jenis']}",
+                tipeEntitas: 'impor',
+                entitasId: $data['berkas'],
+                deskripsi: "Impor {$data['jenis']} gagal: ".$e->getMessage(),
+                metadata: ['jenis' => $data['jenis'], 'berkas' => $data['berkas']],
+                status: 'gagal',
+            );
+
             return redirect()->route('admin.impor.index')->with('error', $e->getMessage());
         }
 
         $ringkas = ImporPengguna::simpan($hasil['baris'], $data['jenis']);
+
+        AuditAdmin::imporSelesai(
+            $data['jenis'],
+            (int) ($ringkas['baru'] ?? 0),
+            (int) ($ringkas['perbarui'] ?? 0),
+            (int) ($ringkas['dilewati'] ?? 0),
+            $data['berkas'],
+        );
 
         // The file has served its purpose; keeping it would leave a pile of
         // spreadsheets full of personal data on disk.
