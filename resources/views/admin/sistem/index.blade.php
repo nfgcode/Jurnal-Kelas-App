@@ -16,12 +16,12 @@
     .log-entri__atas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .log-entri__waktu { font-size: 10.5px; color: var(--n-600); font-variant-numeric: tabular-nums; }
     .log-entri__pesan { font-size: 11.5px; color: var(--n-900); margin-top: 3px; word-break: break-word; }
-    .log-entri pre {
+    .log-entri pre, .audit-pre {
         margin: 8px 0 0; padding: 9px 11px; background: var(--n-200);
         border-radius: 8px; font-size: 10px; line-height: 1.5;
         max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word;
     }
-    .log-entri summary { font-size: 10.5px; color: var(--p-400); cursor: pointer; margin-top: 4px; }
+    .log-entri summary, .audit-summary { font-size: 10.5px; color: var(--p-400); cursor: pointer; margin-top: 4px; }
 </style>
 @endpush
 
@@ -79,8 +79,172 @@
         </div>
     </x-card>
 
-    {{-- 3. Laporan dari pengguna --}}
-    <x-card title="Laporan Error dari Pengguna" flush>
+    {{-- 3. Tab Navigasi Log: Log Sistem vs Aktivitas Admin --}}
+    <ul class="nav nav-tabs my-4" id="sistemNavTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link fw-semibold {{ $tabAktif === 'log-sistem' ? 'active' : '' }}"
+               href="{{ request()->fullUrlWithQuery(['tab' => 'log-sistem']) }}">
+                <x-ikon nama="activity" /> Log Sistem &amp; Error
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link fw-semibold {{ $tabAktif === 'aktivitas-admin' ? 'active' : '' }}"
+               href="{{ request()->fullUrlWithQuery(['tab' => 'aktivitas-admin']) }}">
+                <x-ikon nama="shield-lock" /> Aktivitas Admin ({{ number_format($auditLogs->total(), 0, ',', '.') }})
+            </a>
+        </li>
+    </ul>
+
+    @if ($tabAktif === 'aktivitas-admin')
+        {{-- ========================================== --}}
+        {{-- TAB AKTIVITAS ADMIN (AUDIT LOG TERSTRUKTUR) --}}
+        {{-- ========================================== --}}
+        <x-card title="Log Aktivitas & Audit Administratif" flush>
+            <x-slot:actions>
+                <span class="card-hifi__meta">
+                    Total {{ number_format($auditLogs->total(), 0, ',', '.') }} rekaman audit
+                </span>
+            </x-slot:actions>
+
+            {{-- Filter Bar Audit --}}
+            <div class="card-hifi__body border-bottom" style="padding-bottom: 14px">
+                <form class="filter-bar" method="GET">
+                    <input type="hidden" name="tab" value="aktivitas-admin">
+
+                    <label class="filter-bar__search">
+                        <x-ikon nama="search" />
+                        <input class="input-hifi" type="search" name="audit_q" value="{{ $filter['audit_q'] ?? '' }}"
+                               placeholder="Cari deskripsi, entitas...">
+                    </label>
+
+                    @if ($pelaksanaAuditTersedia->isNotEmpty())
+                        <select class="select-hifi" name="audit_user" style="width: 160px" onchange="this.form.submit()">
+                            <option value="">Semua Pelaksana</option>
+                            @foreach ($pelaksanaAuditTersedia as $p)
+                                <option value="{{ $p }}" @selected(($filter['audit_user'] ?? null) === $p)>
+                                    {{ $p }}
+                                </option>
+                            @endforeach
+                        </select>
+                    @endif
+
+                    <select class="select-hifi" name="audit_aksi" style="width: 170px" onchange="this.form.submit()">
+                        <option value="">Semua Aksi</option>
+                        @foreach ($aksiAuditTersedia as $aksi)
+                            <option value="{{ $aksi }}" @selected(($filter['audit_aksi'] ?? null) === $aksi)>
+                                {{ $aksi }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <select class="select-hifi" name="audit_status" style="width: 140px" onchange="this.form.submit()">
+                        <option value="">Semua Status</option>
+                        <option value="berhasil" @selected(($filter['audit_status'] ?? null) === 'berhasil')>Berhasil</option>
+                        <option value="gagal" @selected(($filter['audit_status'] ?? null) === 'gagal')>Gagal</option>
+                        <option value="diproses" @selected(($filter['audit_status'] ?? null) === 'diproses')>Diproses</option>
+                    </select>
+
+                    <input class="input-hifi" type="date" name="audit_dari" value="{{ $filter['audit_dari'] ?? '' }}"
+                           title="Dari Tanggal" style="width: 135px" onchange="this.form.submit()">
+                    <span class="text-muted small">s/d</span>
+                    <input class="input-hifi" type="date" name="audit_sampai" value="{{ $filter['audit_sampai'] ?? '' }}"
+                           title="Sampai Tanggal" style="width: 135px" onchange="this.form.submit()">
+
+                    @if ($filter['audit_q'] ?? $filter['audit_user'] ?? $filter['audit_aksi'] ?? $filter['audit_status'] ?? $filter['audit_dari'] ?? $filter['audit_sampai'] ?? false)
+                        <a href="{{ route('admin.sistem.index', ['tab' => 'aktivitas-admin']) }}" class="btn-hifi btn-hifi--ghost btn-hifi--sm">
+                            Reset
+                        </a>
+                    @endif
+                </form>
+            </div>
+
+            {{-- Tabel Audit --}}
+            <div class="tbl-wrap">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>Pelaksana</th>
+                            <th>Aksi</th>
+                            <th>Entitas</th>
+                            <th class="is-num">Status</th>
+                            <th>Deskripsi Operasi</th>
+                            <th>Rincian Metadata</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($auditLogs as $logItem)
+                            @php
+                                $statusTone = match ($logItem->status) {
+                                    'berhasil' => 'green',
+                                    'gagal' => 'red',
+                                    'diproses' => 'yellow',
+                                    default => 'neutral',
+                                };
+                                $sanitized = $logItem->metadata_sanitasi;
+                            @endphp
+                            <tr>
+                                <td class="is-muted is-nowrap small">
+                                    {{ $logItem->created_at ? $logItem->created_at->format('d/m/Y H:i:s') : '—' }}
+                                </td>
+                                <td>
+                                    <span class="is-strong">{{ $logItem->nama_user ?? 'Sistem' }}</span>
+                                    <span class="is-muted small d-block">{{ ucfirst($logItem->role_user ?? 'admin') }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary font-monospace" style="font-size: 10.5px">
+                                        {{ $logItem->aksi }}
+                                    </span>
+                                </td>
+                                <td class="is-muted small">
+                                    <span class="text-dark fw-semibold">{{ $logItem->tipe_entitas }}</span>
+                                    @if ($logItem->entitas_id)
+                                        <br><span class="font-monospace text-secondary" style="font-size: 10px">{{ Str::limit($logItem->entitas_id, 24) }}</span>
+                                    @endif
+                                </td>
+                                <td class="is-num">
+                                    <x-chip :tone="$statusTone" :label="ucfirst($logItem->status)" />
+                                </td>
+                                <td class="small" style="max-width: 280px; word-break: break-word">
+                                    {{ $logItem->deskripsi }}
+                                </td>
+                                <td class="small">
+                                    @if (! empty($sanitized))
+                                        <details class="audit-details">
+                                            <summary class="audit-summary">Metadata ({{ count($sanitized) }})</summary>
+                                            <pre class="audit-pre">{{ json_encode($sanitized, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                        </details>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="empty-state">Belum ada catatan aktivitas admin yang sesuai dengan filter.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if ($auditLogs->hasPages())
+                <x-slot:foot>
+                    <span>
+                        Menampilkan {{ $auditLogs->firstItem() ?? 0 }}–{{ $auditLogs->lastItem() ?? 0 }}
+                        dari {{ number_format($auditLogs->total(), 0, ',', '.') }} aktivitas
+                    </span>
+                    <x-pager :paginator="$auditLogs" />
+                </x-slot:foot>
+            @endif
+        </x-card>
+    @else
+        {{-- ========================================== --}}
+        {{-- TAB LOG SISTEM & ERROR (DEFAULT)           --}}
+        {{-- ========================================== --}}
+
+        {{-- Laporan dari pengguna --}}
+        <x-card title="Laporan Error dari Pengguna" flush>
         <x-slot:actions>
             <span class="card-hifi__meta">
                 {{ $jumlahBaru }} baru · {{ number_format($laporan->total(), 0, ',', '.') }} total
@@ -289,4 +453,5 @@
             </form>
         </x-slot:foot>
     </x-card>
+    @endif
 @endsection

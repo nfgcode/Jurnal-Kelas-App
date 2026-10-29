@@ -27,6 +27,7 @@ class SistemController extends Controller
             'status' => ['nullable', Rule::in(LaporanError::STATUS)],
             'tab' => ['nullable', 'string', 'in:log-sistem,aktivitas-admin'],
             'audit_q' => ['nullable', 'string', 'max:255'],
+            'audit_user' => ['nullable', 'string', 'max:255'],
             'audit_aksi' => ['nullable', 'string', 'max:50'],
             'audit_status' => ['nullable', 'string', 'in:berhasil,gagal,diproses'],
             'audit_dari' => ['nullable', 'date'],
@@ -57,6 +58,12 @@ class SistemController extends Controller
                         ->orWhere('nama_user', 'like', "%{$cari}%");
                 });
             })
+            ->when($filter['audit_user'] ?? null, function ($q, $user) {
+                $q->where(function ($sub) use ($user) {
+                    $sub->where('nama_user', 'like', "%{$user}%")
+                        ->orWhere('user_id', $user);
+                });
+            })
             ->when($filter['audit_aksi'] ?? null, fn ($q, $aksi) => $q->where('aksi', $aksi))
             ->when($filter['audit_status'] ?? null, fn ($q, $st) => $q->where('status', $st))
             ->when($filter['audit_dari'] ?? null, fn ($q, $dari) => $q->whereDate('created_at', '>=', $dari))
@@ -65,8 +72,9 @@ class SistemController extends Controller
 
         $auditLogs = $auditQuery->paginate(20, ['*'], 'audit_page')->withQueryString();
         $aksiAuditTersedia = AdminAuditLog::distinct('aksi')->orderBy('aksi')->pluck('aksi');
+        $pelaksanaAuditTersedia = AdminAuditLog::whereNotNull('nama_user')->distinct('nama_user')->orderBy('nama_user')->pluck('nama_user');
 
-        $tabAktif = $filter['tab'] ?? ($request->hasAny(['audit_page', 'audit_q', 'audit_aksi', 'audit_status', 'audit_dari', 'audit_sampai']) ? 'aktivitas-admin' : 'log-sistem');
+        $tabAktif = $filter['tab'] ?? ($request->hasAny(['audit_page', 'audit_q', 'audit_user', 'audit_aksi', 'audit_status', 'audit_dari', 'audit_sampai']) ? 'aktivitas-admin' : 'log-sistem');
 
         return view('admin.sistem.index', [
             'cek' => SistemStatus::lengkap(),
@@ -80,6 +88,7 @@ class SistemController extends Controller
             'tabAktif' => $tabAktif,
             'auditLogs' => $auditLogs,
             'aksiAuditTersedia' => $aksiAuditTersedia,
+            'pelaksanaAuditTersedia' => $pelaksanaAuditTersedia,
         ]);
     }
 
