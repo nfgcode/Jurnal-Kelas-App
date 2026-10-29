@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk · Jurnal Kelas</title>
 
+    {{-- Default theme is Light Mode; restore Dark Mode only if manually chosen --}}
+    <script>
+        (function () {
+            try {
+                var d = document.documentElement, ls = window.localStorage;
+                var t = ls.getItem('pref-theme');
+                if (t === 'dark') {
+                    d.setAttribute('data-theme', 'dark');
+                } else {
+                    d.setAttribute('data-theme', 'light');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
 
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 </head>

@@ -100,10 +100,31 @@
         flex-direction: column;
         gap: 4px;
     }
-    .checklist-op-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--n-800, #1e293b);
+    /* Mobile Responsiveness Improvements */
+    @media (max-width: 767.98px) {
+        .grid-row--4 {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+        }
+        .grid-row--2 {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+        }
+        .checklist-summary-box {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+        }
+        .transisi-callout .d-flex {
+            flex-direction: column !important;
+        }
+        .transisi-btn {
+            width: 100% !important;
+        }
+    }
+    @media (max-width: 480px) {
+        .grid-row--4 {
+            grid-template-columns: 1fr !important;
+        }
     }
 </style>
 @endpush
@@ -158,6 +179,18 @@
     </div>
 
     {{-- 2. Checklist Kesiapan Transisi Akademik --}}
+    @php
+        $totalPemeriksaan = count($checklist['item']);
+        $pemeriksaanTerpenuhi = $checklist['jumlah_siap'];
+        $pesanStatusKeseluruhan = match ($checklist['status_keseluruhan']) {
+            'belum_dikonfigurasi' => 'Persiapan belum lengkap — tahun ajaran tujuan belum tersedia.',
+            'terhambat' => 'Persiapan belum lengkap — terdapat ' . $checklist['jumlah_terhambat'] . ' masalah yang wajib diperbaiki.',
+            'perlu_ditinjau' => 'Perlu perhatian — terdapat ' . $checklist['jumlah_perlu_ditinjau'] . ' hal yang perlu diperiksa.',
+            'siap' => 'Seluruh persiapan lengkap — transisi akademik siap disimulasikan.',
+            default => 'Pemeriksaan status kesiapan transisi akademik.',
+        };
+    @endphp
+
     <x-card title="Pemeriksaan Kesiapan Transisi Akademik" class="mb-4">
         <x-slot:actions>
             <div class="d-flex align-items-center gap-2">
@@ -185,19 +218,12 @@
                 </div>
             </div>
 
-            <div class="d-flex align-items-center gap-2">
-                @if ($checklist['jumlah_terhambat'] > 0)
-                    <span class="badge bg-danger p-2" style="font-size: 13.5px">
-                        {{ $checklist['jumlah_terhambat'] }} Masalah Wajib Diperbaiki
-                    </span>
-                @endif
-                @if ($checklist['jumlah_perlu_ditinjau'] > 0)
-                    <span class="badge bg-warning text-dark p-2" style="font-size: 13.5px">
-                        {{ $checklist['jumlah_perlu_ditinjau'] }} Perlu Pemeriksaan
-                    </span>
-                @endif
+            <div class="d-flex flex-column align-items-md-end gap-1">
                 <span class="badge bg-success p-2" style="font-size: 13.5px">
-                    {{ $checklist['jumlah_siap'] }} Prasyarat Siap
+                    {{ $pemeriksaanTerpenuhi }} dari {{ $totalPemeriksaan }} pemeriksaan terpenuhi
+                </span>
+                <span class="text-secondary small fw-semibold mt-1">
+                    Status: <strong class="text-dark">{{ $pesanStatusKeseluruhan }}</strong>
                 </span>
             </div>
         </div>
@@ -206,14 +232,14 @@
         @if ($checklist['jumlah_terhambat'] > 0)
             <div class="alert alert-danger mb-3 p-3" role="alert" style="font-size: 14.5px">
                 <strong class="d-block mb-1">Perhatian Administrasi:</strong>
-                Transisi akademik belum dapat diproses karena ada persiapan yang belum tuntas. Periksa rincian tabel di bawah untuk melihat langkah perbaikan yang diperlukan.
+                {{ $pesanStatusKeseluruhan }} Periksa rincian tabel di bawah untuk melihat tindakan perbaikan yang diperlukan.
             </div>
         @endif
 
         {{-- Rincian Kriteria Penilaian (Progressive Disclosure) --}}
         <details class="mt-2" @open($checklist['jumlah_terhambat'] > 0 || request()->has('detail_kesiapan'))>
             <summary class="fw-semibold text-primary cursor-pointer mb-3" style="font-size: 14.5px">
-                Klik di sini untuk melihat rincian pemeriksaan data ({{ count($checklist['item']) }} kriteria penilaian)
+                Klik di sini untuk melihat rincian pemeriksaan data ({{ $totalPemeriksaan }} kriteria penilaian)
             </summary>
 
             <div class="tbl-wrap mt-2">
@@ -260,14 +286,17 @@
 
     {{-- Alur Tindakan Bertahap: Langkah 1 & Langkah 2 --}}
     <div class="grid-row grid-row--2 mb-4 align-items-stretch">
-        {{-- KARTU LANGKAH 1: PENYIAPAN ROMBEL --}}
-        <x-card title="1. Siapkan Rombel Kelas Tujuan">
-            <span class="transisi-badge-aksi transisi-badge-aksi--ubah">
-                Langkah 1 &middot; Mengubah Data Master Kelas
-            </span>
+        {{-- KARTU LANGKAH 1: PENYIAPAN KELAS --}}
+        <x-card title="Langkah 1 — Siapkan Kelas Tahun Ajaran Baru">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="transisi-badge-aksi transisi-badge-aksi--ubah">
+                    Langkah 1 &middot; Mengubah Data Master Kelas
+                </span>
+                <span class="text-muted small fw-semibold">1. Siapkan Rombel Kelas Tujuan</span>
+            </div>
 
             <p class="transisi-desc">
-                Sistem akan membuat rombel kelas di tahun ajaran tujuan secara otomatis dengan mempertahankan <strong>jurusan dan nomor paralel</strong> yang sama (contoh: <code>X TKJ 1</code> &rarr; <code>XI TKJ 1</code>, dan <code>XI TKJ 1</code> &rarr; <code>XII TKJ 1</code>).
+                Sistem akan menyiapkan kelas untuk tahun ajaran baru berdasarkan jurusan dan nomor kelas saat ini (contoh: <code>X TKJ 1</code> &rarr; <code>XI TKJ 1</code>, dan <code>XI TKJ 1</code> &rarr; <code>XII TKJ 1</code>).
             </p>
 
             <form method="POST" action="{{ route('admin.transisi.siapkan-kelas') }}" class="form-grid">
@@ -305,7 +334,7 @@
 
                 <div class="d-flex flex-column align-items-end mt-3">
                     <button class="btn-hifi transisi-btn" type="submit" @disabled(! $adaTahunTujuan)>
-                        <x-ikon nama="building" /> Siapkan Rombel Kelas Baru
+                        <x-ikon nama="building" /> Siapkan Kelas Tahun Ajaran Baru
                     </button>
                     @if (! $adaTahunTujuan)
                         <span class="text-danger small mt-1 fw-semibold">
@@ -317,13 +346,16 @@
         </x-card>
 
         {{-- KARTU LANGKAH 2: SIMULASI & EKSEKUSI --}}
-        <x-card title="Langkah 2: Simulasi Kenaikan Kelas & Kelulusan">
-            <span class="transisi-badge-aksi transisi-badge-aksi--aman">
-                Aman &middot; Simulasi Tidak Mengubah Data Siswa
-            </span>
+        <x-card title="Langkah 2 — Lihat Simulasi Kenaikan & Kelulusan">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="transisi-badge-aksi transisi-badge-aksi--aman">
+                    Langkah 2 &middot; Aman (Simulasi Tidak Mengubah Data)
+                </span>
+                <span class="text-muted small fw-semibold">2. Pratinjau &amp; Eksekusi Transisi</span>
+            </div>
 
             <p class="transisi-desc">
-                Buka simulasi pratinjau untuk meninjau daftar siswa yang akan naik kelas, siswa yang tinggal kelas (pengecualian), dan siswa kelas XII yang akan lulus sebelum diproses secara permanen.
+                Buka simulasi pratinjau untuk meninjau penempatan kelas siswa dan calon kelulusan kelas XII. Simulasi aman dijalankan dan tidak mengubah data siswa.
             </p>
 
             <form method="GET" action="{{ route('admin.transisi.pratinjau') }}" class="form-grid">

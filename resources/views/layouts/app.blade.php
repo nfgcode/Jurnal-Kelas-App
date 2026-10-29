@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    {{-- Apply saved appearance prefs before first paint (no flash of light theme).
-         Defaults follow the OS via CSS media queries when no override is stored. --}}
+    {{-- Apply saved appearance prefs before first paint (no flash of dark theme).
+         Default is ALWAYS Light Mode unless the user explicitly saved 'dark'. --}}
     <script>
         (function () {
             try {
                 var d = document.documentElement, ls = window.localStorage;
                 var t = ls.getItem('pref-theme');
-                if (t === 'dark' || t === 'light') d.setAttribute('data-theme', t);
+                if (t === 'dark') {
+                    d.setAttribute('data-theme', 'dark');
+                } else {
+                    d.setAttribute('data-theme', 'light');
+                }
                 var f = ls.getItem('pref-font');
                 if (f && f !== 'normal') d.setAttribute('data-font', f);
                 if (ls.getItem('pref-contrast') === '1') d.setAttribute('data-contrast', 'more');
@@ -385,8 +389,15 @@
             document.querySelectorAll(`.pref-seg[data-pref="${pref}"] button`).forEach(
                 (b) => b.classList.toggle('is-active', b.dataset.value === val));
 
-        // Reflect the stored state onto the controls.
-        syncSeg('theme', get('pref-theme', 'system'));
+        // Reflect the stored state onto the controls (Default to Light Mode)
+        const savedTheme = get('pref-theme', 'light');
+        syncSeg('theme', savedTheme);
+        if (savedTheme === 'dark') {
+            d.setAttribute('data-theme', 'dark');
+        } else {
+            d.setAttribute('data-theme', 'light');
+        }
+
         syncSeg('font', get('pref-font', 'normal'));
         const cEl = document.querySelector('[data-pref-toggle="contrast"]');
         const mEl = document.querySelector('[data-pref-toggle="motion"]');
@@ -396,8 +407,13 @@
         document.querySelectorAll('.pref-seg[data-pref="theme"] button').forEach((b) =>
             b.addEventListener('click', () => {
                 const v = b.dataset.value;
-                v === 'system' ? d.removeAttribute('data-theme') : d.setAttribute('data-theme', v);
-                set('pref-theme', v);
+                if (v === 'dark') {
+                    d.setAttribute('data-theme', 'dark');
+                    set('pref-theme', 'dark');
+                } else {
+                    d.setAttribute('data-theme', 'light');
+                    set('pref-theme', 'light');
+                }
                 syncSeg('theme', v);
             }));
 

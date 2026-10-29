@@ -1632,9 +1632,8 @@ textarea.input-hifi {
 
 :root[data-theme="dark"] { @include tokens-gelap; }
 
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { @include tokens-gelap; }
-}
+/* Default aplikasi adalah Light Mode.
+   Dark mode hanya aktif jika pengguna secara eksplisit memilih tema dark (data-theme="dark"). */
 
 /* --- High contrast: borders and muted text move to a stronger step, and
        keyboard focus gets a visible ring. Uses the live token values, so it
