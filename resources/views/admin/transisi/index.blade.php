@@ -101,15 +101,23 @@
         gap: 12px;
         font-size: 13.5px;
     }
+    .transisi-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 14px;
+    }
+
+    @media (max-width: 1024px) {
+        .grid-row--2 {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+        }
+    }
 
     @media (max-width: 767.98px) {
         .grid-row--4 {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 10px !important;
-        }
-        .grid-row--2 {
-            grid-template-columns: 1fr !important;
-            gap: 14px !important;
         }
         .transisi-banner {
             flex-direction: column !important;
@@ -280,7 +288,7 @@
 
             <form method="POST" action="{{ route('admin.transisi.siapkan-kelas') }}" class="form-grid">
                 @csrf
-                <div class="form-grid form-grid--2">
+                <div class="transisi-form-grid">
                     <div>
                         <label for="tahun_asal_siap" class="transisi-label">Tahun Ajaran Asal</label>
                         <select class="select-hifi transisi-select" name="tahun_asal" id="tahun_asal_siap" required>
@@ -319,8 +327,8 @@
             </form>
         </x-card>
 
-        {{-- LANGKAH 2: LIHAT SIMULASI TRANSIASI --}}
-        <x-card title="2. Pratinjau & Eksekusi Transisi">
+        {{-- LANGKAH 2: LIHAT SIMULASI TRANSISI --}}
+        <x-card title="2. Lihat Simulasi Transisi">
             <x-slot:actions>
                 <span class="transisi-tag">Tidak mengubah data</span>
             </x-slot:actions>
@@ -330,7 +338,7 @@
             </p>
 
             <form method="GET" action="{{ route('admin.transisi.pratinjau') }}" class="form-grid">
-                <div class="form-grid form-grid--2">
+                <div class="transisi-form-grid">
                     <div>
                         <label for="tahun_asal_sim" class="transisi-label">Tahun Ajaran Asal</label>
                         <select class="select-hifi transisi-select" name="tahun_asal" id="tahun_asal_sim" required>
@@ -363,7 +371,7 @@
 
                 <div class="d-flex justify-content-end mt-3">
                     <button class="btn-hifi transisi-btn" type="submit" @disabled(! $adaTahunTujuan)>
-                        <x-ikon nama="eye" /> Buka Simulasi Transisi &rarr;
+                        <x-ikon nama="eye" /> Lihat Simulasi Transisi &rarr;
                     </button>
                 </div>
             </form>

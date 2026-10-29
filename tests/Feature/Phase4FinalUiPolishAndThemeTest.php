@@ -101,7 +101,7 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('1. Siapkan Rombel Kelas Tujuan');
-        $response->assertSee('2. Pratinjau &amp; Eksekusi Transisi', false);
+        $response->assertSee('2. Lihat Simulasi Transisi');
         $response->assertSee('Sistem akan menyiapkan kelas untuk tahun ajaran baru');
         $response->assertSee('Simulasikan penempatan kelas siswa dan kelulusan');
     }
