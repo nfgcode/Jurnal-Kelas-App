@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Support\AuditAdmin;
+use App\Support\BantuanImporAi;
 use App\Support\ImporPengguna;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -46,6 +47,9 @@ class ImporController extends Controller
             'kolomSiswa' => ImporPengguna::kolom('siswa'),
             'kolomGuru' => ImporPengguna::kolom('guru'),
             'jumlahKelas' => Kelas::count(),
+            'promptSiswa' => BantuanImporAi::promptSiswa(),
+            'promptGuru' => BantuanImporAi::promptGuru(),
+            'peringatanPrivasi' => BantuanImporAi::PERINGATAN_PRIVASI,
         ]);
     }
 
