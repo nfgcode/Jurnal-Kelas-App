@@ -87,10 +87,10 @@ class Phase4AcademicTransitionChecklistTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('Pemeriksaan Kesiapan Transisi Akademik');
-        $response->assertSee('Kenaikan Kelas X &rarr; XI', false);
-        $response->assertSee('Kenaikan Kelas XI &rarr; XII', false);
-        $response->assertSee('Kelulusan Kelas XII');
+        $response->assertSee('Kesiapan Transisi Akademik');
+        $response->assertSee('Promosi X &rarr; XI', false);
+        $response->assertSee('Promosi XI &rarr; XII', false);
+        $response->assertSee('Kelulusan XII');
         $response->assertSee('Konfigurasi Tahun Ajaran');
     }
 
@@ -103,8 +103,8 @@ class Phase4AcademicTransitionChecklistTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('Langkah Awal: Daftarkan Tahun Ajaran Baru Terlebih Dahulu');
-        $response->assertSee('Belum ada tahun ajaran tujuan (tambahkan di menu Tahun Ajaran)');
+        $response->assertSee('Tahun ajaran tujuan belum tersedia.');
+        $response->assertSee('Tambah Tahun Ajaran');
         $response->assertSee('disabled');
     }
 

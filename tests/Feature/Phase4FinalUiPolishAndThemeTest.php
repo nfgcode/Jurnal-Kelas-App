@@ -88,8 +88,8 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
         $response->assertOk();
         // Format "X dari Y pemeriksaan terpenuhi"
         $response->assertSee('pemeriksaan terpenuhi');
-        $response->assertSee('Status:');
-        $response->assertSee('Persiapan belum lengkap — tahun ajaran tujuan belum tersedia.');
+        $response->assertSee('Langkah berikutnya:');
+        $response->assertSee('Tambahkan tahun ajaran tujuan baru pada menu Tahun Ajaran');
     }
 
     public function test_halaman_transisi_menggunakan_penamaan_langkah_konsisten(): void
@@ -100,10 +100,10 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('Langkah 1 — Siapkan Kelas Tahun Ajaran Baru');
-        $response->assertSee('Langkah 2 — Lihat Simulasi Kenaikan & Kelulusan');
+        $response->assertSee('1. Siapkan Rombel Kelas Tujuan');
+        $response->assertSee('2. Pratinjau &amp; Eksekusi Transisi', false);
         $response->assertSee('Sistem akan menyiapkan kelas untuk tahun ajaran baru');
-        $response->assertSee('Simulasi aman dijalankan dan tidak mengubah data siswa');
+        $response->assertSee('Simulasikan penempatan kelas siswa dan kelulusan');
     }
 
     public function test_empty_state_dropdown_dan_tombol_disabled_saat_belum_ada_tahun_tujuan(): void
@@ -114,9 +114,8 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('Belum ada tahun ajaran tujuan (tambahkan di menu Tahun Ajaran)');
+        $response->assertSee('Tahun ajaran tujuan belum tersedia.');
+        $response->assertSee('Tambah Tahun Ajaran');
         $response->assertSee('disabled');
-        $response->assertSee('Tambahkan tahun ajaran baru terlebih dahulu untuk mengaktifkan tombol ini');
-        $response->assertSee('+ Daftarkan Tahun Ajaran Baru');
     }
 }
