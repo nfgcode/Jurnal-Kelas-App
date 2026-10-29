@@ -8,6 +8,7 @@ use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\TransisiTahunAjaran;
 use App\Support\AuditAdmin;
+use App\Support\KesiapanTransisi;
 use App\Support\TransisiAkademik;
 use Illuminate\Http\Request;
 use Throwable;
@@ -17,14 +18,20 @@ class TransisiController extends Controller
     /**
      * Tampilan utama manajemen kenaikan kelas & kelulusan siswa (transisi akademik).
      */
-    public function index()
+    public function index(Request $request)
     {
         $tahunList = TahunAjaran::orderByDesc('kode')->get();
         $tahunAktif = TahunAjaran::berjalan();
 
+        $tahunAsalPilihan = $request->query('tahun_asal', $tahunAktif?->kode);
+        $tahunTujuanPilihan = $request->query('tahun_tujuan');
+
         $transisiList = TransisiTahunAjaran::with(['diprosesOleh', 'tahunAsal', 'tahunTujuan'])
             ->latest('id')
             ->get();
+
+        // Evaluasi kesiapan transisi akademik (read-only checklist)
+        $checklist = KesiapanTransisi::evaluasi($tahunAsalPilihan, $tahunTujuanPilihan);
 
         // Hitung statistik siswa per tingkat di tahun ajaran aktif berjalan
         $statistik = [
@@ -46,6 +53,9 @@ class TransisiController extends Controller
             'tahunAktif' => $tahunAktif,
             'transisiList' => $transisiList,
             'statistik' => $statistik,
+            'checklist' => $checklist,
+            'tahunAsalPilihan' => $tahunAsalPilihan,
+            'tahunTujuanPilihan' => $tahunTujuanPilihan,
         ]);
     }
 

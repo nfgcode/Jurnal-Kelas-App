@@ -29,6 +29,86 @@
         <x-stat label="Tingkat XII" :value="number_format($statistik['tingkat_xii'], 0, ',', '.')" caption="calon lulusan" />
     </div>
 
+    {{-- Checklist Kesiapan Transisi Akademik --}}
+    <x-card title="Checklist Kesiapan Transisi Akademik" class="mb-4">
+        <x-slot:actions>
+            <div class="d-flex align-items-center gap-2">
+                <span class="card-hifi__meta">
+                    {{ $checklist['tahun_asal'] ?? '—' }} &rarr; {{ $checklist['tahun_tujuan'] ?? 'Belum Ditentukan' }}
+                </span>
+                <x-chip :tone="$checklist['tone_keseluruhan']" :label="$checklist['label_keseluruhan']" />
+            </div>
+        </x-slot:actions>
+
+        {{-- Ringkasan Operasi & Statistik Masalah --}}
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 bg-light rounded mb-3 border">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <div>
+                    <span class="text-muted small d-block">Promosi X &rarr; XI</span>
+                    <x-chip :tone="$checklist['promosi_x_ke_xi']['tone']" :label="$checklist['promosi_x_ke_xi']['label']" />
+                </div>
+                <div class="border-start ps-3">
+                    <span class="text-muted small d-block">Promosi XI &rarr; XII</span>
+                    <x-chip :tone="$checklist['promosi_xi_ke_xii']['tone']" :label="$checklist['promosi_xi_ke_xii']['label']" />
+                </div>
+                <div class="border-start ps-3">
+                    <span class="text-muted small d-block">Kelulusan XII</span>
+                    <x-chip :tone="$checklist['kelulusan_xii']['tone']" :label="$checklist['kelulusan_xii']['label']" />
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 small">
+                @if ($checklist['jumlah_terhambat'] > 0)
+                    <span class="badge bg-danger">{{ $checklist['jumlah_terhambat'] }} Terhambat</span>
+                @endif
+                @if ($checklist['jumlah_perlu_ditinjau'] > 0)
+                    <span class="badge bg-warning text-dark">{{ $checklist['jumlah_perlu_ditinjau'] }} Perlu Ditinjau</span>
+                @endif
+                <span class="badge bg-success">{{ $checklist['jumlah_siap'] }} Siap</span>
+            </div>
+        </div>
+
+        {{-- Tabel Rincian Kriteria Checklist --}}
+        <div class="tbl-wrap">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Kategori Prasyarat</th>
+                        <th>Kriteria Penilaian</th>
+                        <th class="is-num">Status</th>
+                        <th>Keterangan / Diagnostik</th>
+                        <th class="is-num">Tindakan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($checklist['item'] as $item)
+                        <tr>
+                            <td class="is-muted small">{{ $item['kategori'] }}</td>
+                            <td class="is-strong">{{ $item['kriteria'] }}</td>
+                            <td class="is-num">
+                                <x-chip :tone="$item['tone']" :label="$item['label']" />
+                            </td>
+                            <td class="small" style="max-width: 320px; word-break: break-word">
+                                {{ $item['pesan'] }}
+                                @if ($item['jumlah_terdampak'] !== null && $item['jumlah_terdampak'] > 0)
+                                    <span class="badge bg-secondary ms-1">{{ $item['jumlah_terdampak'] }} data</span>
+                                @endif
+                            </td>
+                            <td class="is-num">
+                                @if ($item['tautan'])
+                                    <a href="{{ $item['tautan'] }}" class="btn-hifi btn-hifi--ghost btn-hifi--sm">
+                                        {{ $item['label_tautan'] ?? 'Periksa' }} &rarr;
+                                    </a>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </x-card>
+
     {{-- Alur Transisi Tahunan (1. Penyiapan Kelas & 2. Pratinjau Kenaikan) --}}
     <div class="grid-row grid-row--2 mb-4 align-items-start">
         <x-card title="1. Siapkan Rombel Kelas Tujuan">
