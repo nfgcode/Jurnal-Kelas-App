@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminAuditLog;
 use App\Models\LaporanError;
 use App\Models\Pengumuman;
 use App\Support\Halaman;
 use App\Support\PembacaLog;
+use App\Support\PengingatPemeliharaan;
 use App\Support\SistemStatus;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -23,28 +25,61 @@ class SistemController extends Controller
         $filter = $request->validate([
             'level' => ['nullable', 'string', 'max:20'],
             'status' => ['nullable', Rule::in(LaporanError::STATUS)],
+            'tab' => ['nullable', 'string', 'in:log-sistem,aktivitas-admin'],
+            'audit_q' => ['nullable', 'string', 'max:255'],
+            'audit_aksi' => ['nullable', 'string', 'max:50'],
+            'audit_status' => ['nullable', 'string', 'in:berhasil,gagal,diproses'],
+            'audit_dari' => ['nullable', 'date'],
+            'audit_sampai' => ['nullable', 'date'],
         ]);
 
-        // One read/parse of the log tail yields both the entries and the levels
-        // available for the filter.
+        // 1. Pengingat pemeliharaan data tahunan
+        $pengingat = PengingatPemeliharaan::evaluasiPengingat();
+
+        // 2. Log teknis aplikasi (storage/logs/laravel.log)
         $log = PembacaLog::ringkasan($filter['level'] ?? null);
 
+        // 3. Laporan error dari pengguna
         $laporan = LaporanError::with('pelapor')
             ->when($filter['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
-            // Open reports first, then the most recent activity.
             ->orderByRaw("CASE status WHEN 'baru' THEN 1 WHEN 'diproses' THEN 2 ELSE 3 END")
             ->latest('updated_at')
             ->paginate(Halaman::perHalaman())
             ->withQueryString();
 
+        // 4. Log audit aktivitas admin (tabel admin_audit_log)
+        $auditQuery = AdminAuditLog::query()
+            ->with('user')
+            ->when($filter['audit_q'] ?? null, function ($q, $cari) {
+                $q->where(function ($sub) use ($cari) {
+                    $sub->where('deskripsi', 'like', "%{$cari}%")
+                        ->orWhere('entitas_id', 'like', "%{$cari}%")
+                        ->orWhere('nama_user', 'like', "%{$cari}%");
+                });
+            })
+            ->when($filter['audit_aksi'] ?? null, fn ($q, $aksi) => $q->where('aksi', $aksi))
+            ->when($filter['audit_status'] ?? null, fn ($q, $st) => $q->where('status', $st))
+            ->when($filter['audit_dari'] ?? null, fn ($q, $dari) => $q->whereDate('created_at', '>=', $dari))
+            ->when($filter['audit_sampai'] ?? null, fn ($q, $sampai) => $q->whereDate('created_at', '<=', $sampai))
+            ->latest('id');
+
+        $auditLogs = $auditQuery->paginate(20, ['*'], 'audit_page')->withQueryString();
+        $aksiAuditTersedia = AdminAuditLog::distinct('aksi')->orderBy('aksi')->pluck('aksi');
+
+        $tabAktif = $filter['tab'] ?? ($request->hasAny(['audit_page', 'audit_q', 'audit_aksi', 'audit_status', 'audit_dari', 'audit_sampai']) ? 'aktivitas-admin' : 'log-sistem');
+
         return view('admin.sistem.index', [
             'cek' => SistemStatus::lengkap(),
+            'pengingat' => $pengingat,
             'log' => $log,
             'levelTersedia' => $log['level'],
             'laporan' => $laporan,
             'jumlahBaru' => LaporanError::where('status', 'baru')->count(),
             'pengumuman' => Pengumuman::with('dibuatOleh')->latest('id')->get(),
             'filter' => $filter,
+            'tabAktif' => $tabAktif,
+            'auditLogs' => $auditLogs,
+            'aksiAuditTersedia' => $aksiAuditTersedia,
         ]);
     }
 

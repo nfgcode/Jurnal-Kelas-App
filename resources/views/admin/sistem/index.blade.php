@@ -58,7 +58,28 @@
         </div>
     </x-card>
 
-    {{-- 2. Laporan dari pengguna --}}
+    {{-- 2. Pengingat Administrasi Data Tahunan --}}
+    <x-card title="Pengingat Administrasi Data" class="mt-3">
+        <x-slot:actions>
+            <x-chip :tone="$pengingat['tone']" :label="$pengingat['label']" />
+        </x-slot:actions>
+
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div>
+                <h6 class="fw-bold mb-1">{{ $pengingat['judul'] }}</h6>
+                <p class="text-muted small mb-0">{{ $pengingat['deskripsi'] }}</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap flex-shrink-0">
+                @foreach ($pengingat['tautan'] as $t)
+                    <a href="{{ $t['url'] }}" class="btn-hifi btn-hifi--ghost btn-hifi--sm">
+                        <x-ikon :nama="$t['ikon']" /> {{ $t['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </x-card>
+
+    {{-- 3. Laporan dari pengguna --}}
     <x-card title="Laporan Error dari Pengguna" flush>
         <x-slot:actions>
             <span class="card-hifi__meta">
