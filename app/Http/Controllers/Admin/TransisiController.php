@@ -33,6 +33,8 @@ class TransisiController extends Controller
         // Evaluasi kesiapan transisi akademik (read-only checklist)
         $checklist = KesiapanTransisi::evaluasi($tahunAsalPilihan, $tahunTujuanPilihan);
 
+        $adaTahunTujuan = $tahunList->contains(fn ($t) => ! $t->aktif);
+
         // Hitung statistik siswa per tingkat di tahun ajaran aktif berjalan
         $statistik = [
             'tahun_kode' => $tahunAktif?->kode ?? 'Belum Ditentukan',
@@ -56,6 +58,7 @@ class TransisiController extends Controller
             'checklist' => $checklist,
             'tahunAsalPilihan' => $tahunAsalPilihan,
             'tahunTujuanPilihan' => $tahunTujuanPilihan,
+            'adaTahunTujuan' => $adaTahunTujuan,
         ]);
     }
 

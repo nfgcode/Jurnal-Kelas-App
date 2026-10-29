@@ -87,11 +87,25 @@ class Phase4AcademicTransitionChecklistTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('Checklist Kesiapan Transisi Akademik');
-        $response->assertSee('Promosi X &rarr; XI', false);
-        $response->assertSee('Promosi XI &rarr; XII', false);
-        $response->assertSee('Kelulusan XII');
+        $response->assertSee('Pemeriksaan Kesiapan Transisi Akademik');
+        $response->assertSee('Kenaikan Kelas X &rarr; XI', false);
+        $response->assertSee('Kenaikan Kelas XI &rarr; XII', false);
+        $response->assertSee('Kelulusan Kelas XII');
         $response->assertSee('Konfigurasi Tahun Ajaran');
+    }
+
+    public function test_banner_panduan_awal_muncul_saat_belum_ada_tahun_tujuan(): void
+    {
+        // Hanya ada tahun aktif, belum ada tahun tujuan
+        TahunAjaran::create(['kode' => '2026/2027', 'aktif' => true, 'mulai' => '2026-07-01', 'selesai' => '2027-06-30']);
+        $admin = $this->admin();
+
+        $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
+
+        $response->assertOk();
+        $response->assertSee('Langkah Awal: Daftarkan Tahun Ajaran Baru Terlebih Dahulu');
+        $response->assertSee('Belum ada tahun ajaran tujuan (tambahkan di menu Tahun Ajaran)');
+        $response->assertSee('disabled');
     }
 
     public function test_pengguna_non_admin_dilarang_mengakses_halaman_transisi(): void
