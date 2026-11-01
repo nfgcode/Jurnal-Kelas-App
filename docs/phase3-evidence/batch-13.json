@@ -1,0 +1,38 @@
+{
+  "batch": 13,
+  "files": [
+    "tests/Feature/TransitionValidationActivationTest.php",
+    "tests/Unit/ExampleTest.php",
+    "tests/Unit/SafetyFoundationTest.php",
+    "tests/Unit/XlsxReaderSafetyTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/TransitionValidationActivationTest.php",
+    "tests/Unit/ExampleTest.php",
+    "tests/Unit/SafetyFoundationTest.php",
+    "tests/Unit/XlsxReaderSafetyTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 18.819,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":42,\"passed\":42,\"assertions\":74,\"duration_ms\":13765}\n",
+  "stderr": "",
+  "tests": 42,
+  "assertions": 74,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/TransitionValidationActivationTest.php": "6722f41b12feb4ca701e1fb02e5e7b2493e084d6a76c710cf6b0c78ff99d26d3",
+    "tests/Unit/ExampleTest.php": "ffacae5c1a2a44c809420af5b3b404910da1b12167d58764dac6d10b8ba8cfaf",
+    "tests/Unit/SafetyFoundationTest.php": "e2b67266de4704a75ea909b7c0bccf6a63ca637f95b48a4f235f7fc5503c7bbb",
+    "tests/Unit/XlsxReaderSafetyTest.php": "6a0e1e49467d1f331d141524845f8962a92797717c3fec6f9e03a36eaaaf40f3"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 42,
+    "passed": 42,
+    "assertions": 74,
+    "duration_ms": 13765
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "batch": 7,
+  "files": [
+    "tests/Feature/KeamananTest.php",
+    "tests/Feature/LoginTest.php",
+    "tests/Feature/PaginationTest.php",
+    "tests/Feature/PeriodeFilterTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/KeamananTest.php",
+    "tests/Feature/LoginTest.php",
+    "tests/Feature/PaginationTest.php",
+    "tests/Feature/PeriodeFilterTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 81.971,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":38,\"passed\":38,\"assertions\":186,\"duration_ms\":79705}\n",
+  "stderr": "",
+  "tests": 38,
+  "assertions": 186,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/KeamananTest.php": "c65fa6634d51aa609bfe4840fa719df6f66f41222a40b7e997a2f8ae0aff88d6",
+    "tests/Feature/LoginTest.php": "c26e32f918af401765ac4771a6e596b99935452e720ca981922910be5a5718f9",
+    "tests/Feature/PaginationTest.php": "21a7d6a731b073e978a26b04633b8cce9c40af66b7894c53cc47df9c2613ecbc",
+    "tests/Feature/PeriodeFilterTest.php": "8976dfbf5150b8f6616eff9f51a6a571c946b6e77ce991228fad133b81d91bdc"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 38,
+    "passed": 38,
+    "assertions": 186,
+    "duration_ms": 79705
+  }
+}

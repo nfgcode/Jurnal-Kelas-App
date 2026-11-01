@@ -206,13 +206,85 @@ Route::middleware(['auth', 'akses-web', 'pantau'])->group(function () {
         // Tahun Ajaran
         Route::get('/tahun-ajaran', [TahunAjaranController::class, 'index'])->name('tahun-ajaran.index');
         Route::post('/tahun-ajaran', [TahunAjaranController::class, 'store'])->name('tahun-ajaran.store');
-        Route::post('/tahun-ajaran/{tahunAjaran}/aktifkan', [TahunAjaranController::class, 'aktifkan'])->name('tahun-ajaran.aktifkan');
+        Route::post('/tahun-ajaran/siapkan-berikutnya', [TahunAjaranController::class, 'siapkanBerikutnya'])->name('tahun-ajaran.siapkan-berikutnya');
+        Route::patch('/tahun-ajaran/{tahunAjaran}', [TahunAjaranController::class, 'update'])->where('tahunAjaran', '[0-9]{4}/[0-9]{4}')->name('tahun-ajaran.update');
+        Route::post('/tahun-ajaran/{tahunAjaran}/aktifkan', [TahunAjaranController::class, 'aktifkan'])->where('tahunAjaran', '[0-9]{4}/[0-9]{4}')->name('tahun-ajaran.aktifkan');
 
         // Kenaikan & Kelulusan (Transisi)
         Route::get('/transisi', [TransisiController::class, 'index'])->name('transisi.index');
         Route::post('/transisi/siapkan-kelas', [TransisiController::class, 'siapkanKelas'])->name('transisi.siapkan-kelas');
         Route::get('/transisi/pratinjau', [TransisiController::class, 'pratinjau'])->name('transisi.pratinjau');
         Route::post('/transisi/eksekusi', [TransisiController::class, 'eksekusi'])->name('transisi.eksekusi');
+
+        // Workflow Transisi Terpadu (Coordinator)
+        // Manajemen Data Terpadu (Fase 7)
+        Route::prefix('manajemen-data')->name('manajemen-data.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Admin\ManajemenDataController::class, 'index'])->name('index');
+            Route::get('/panduan', [App\Http\Controllers\Admin\ManajemenDataController::class, 'panduan'])->name('panduan');
+
+            // Impor Terpadu Multi-Mode
+            Route::get('/impor', [App\Http\Controllers\Admin\ManajemenDataController::class, 'imporIndex'])->name('impor.index');
+            Route::post('/impor/pratinjau', [App\Http\Controllers\Admin\ManajemenDataController::class, 'imporPratinjau'])->name('impor.pratinjau');
+            Route::post('/impor/commit', [App\Http\Controllers\Admin\ManajemenDataController::class, 'imporCommit'])->name('impor.commit');
+
+            // Cadangan Database & Ekspor
+            Route::get('/cadangan', [App\Http\Controllers\Admin\ManajemenDataController::class, 'cadanganIndex'])->name('cadangan.index');
+            Route::post('/cadangan', [App\Http\Controllers\Admin\ManajemenDataController::class, 'cadanganStore'])->name('cadangan.store');
+            Route::get('/cadangan/{id}/unduh', [App\Http\Controllers\Admin\ManajemenDataController::class, 'cadanganDownload'])->name('cadangan.download');
+            Route::post('/cadangan/{id}/pin', [App\Http\Controllers\Admin\ManajemenDataController::class, 'cadanganTogglePin'])->name('cadangan.pin');
+            Route::delete('/cadangan/{id}', [App\Http\Controllers\Admin\ManajemenDataController::class, 'cadanganHapus'])->name('cadangan.destroy');
+
+            // Ekspor Administratif CSV
+            Route::post('/ekspor/csv', [App\Http\Controllers\Admin\ManajemenDataController::class, 'eksporCsv'])->name('ekspor.csv');
+
+            // Uji Pemulihan Staging Terisolasi (Subfase 8.5)
+            Route::get('/pemulihan', [App\Http\Controllers\Admin\ManajemenDataController::class, 'pemulihanIndex'])->name('pemulihan.index');
+            Route::post('/pemulihan/uji-staging', [App\Http\Controllers\Admin\ManajemenDataController::class, 'pemulihanUjiStaging'])->name('pemulihan.uji-staging');
+            Route::post('/pemulihan/setujui', [App\Http\Controllers\Admin\ManajemenDataController::class, 'pemulihanSetujui'])->name('pemulihan.setujui');
+        });
+
+        Route::prefix('transisi-terpadu')->name('transisi-terpadu.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\TransisiTerpaduController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Admin\TransisiTerpaduController::class, 'store'])->name('store');
+            Route::get('/{id}', [\App\Http\Controllers\Admin\TransisiTerpaduController::class, 'show'])->name('show');
+            Route::post('/{id}/attach', [\App\Http\Controllers\Admin\TransisiTerpaduController::class, 'attach'])->name('attach');
+        });
+
+        // Workflow Kelulusan Kelas XII
+        Route::prefix('kelulusan')->name('kelulusan.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\KelulusanController::class, 'index'])->name('index');
+            Route::get('/template', [\App\Http\Controllers\Admin\KelulusanController::class, 'template'])->name('template');
+            Route::post('/upload', [\App\Http\Controllers\Admin\KelulusanController::class, 'upload'])->name('upload');
+            Route::get('/{id}', [\App\Http\Controllers\Admin\KelulusanController::class, 'review'])->name('review');
+            Route::post('/{id}/validate', [\App\Http\Controllers\Admin\KelulusanController::class, 'validateOp'])->name('validate');
+            Route::post('/{id}/item/{itemId}', [\App\Http\Controllers\Admin\KelulusanController::class, 'updateItem'])->name('update-item');
+            Route::post('/{id}/execute', [\App\Http\Controllers\Admin\KelulusanController::class, 'confirmAndExecute'])->name('execute');
+            Route::get('/{id}/hasil', [\App\Http\Controllers\Admin\KelulusanController::class, 'show'])->name('show');
+        });
+
+        // Workflow Kenaikan Kelas X–XI
+        Route::prefix('kenaikan-kelas')->name('kenaikan.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\KenaikanController::class, 'index'])->name('index');
+            Route::get('/template', [\App\Http\Controllers\Admin\KenaikanController::class, 'template'])->name('template');
+            Route::post('/inisiasi', [\App\Http\Controllers\Admin\KenaikanController::class, 'inisiasi'])->name('inisiasi');
+            Route::get('/{id}', [\App\Http\Controllers\Admin\KenaikanController::class, 'review'])->name('review');
+            Route::post('/{id}/validate', [\App\Http\Controllers\Admin\KenaikanController::class, 'validateOp'])->name('validate');
+            Route::post('/{id}/item/{itemId}', [\App\Http\Controllers\Admin\KenaikanController::class, 'updateItem'])->name('update-item');
+            Route::post('/{id}/execute', [\App\Http\Controllers\Admin\KenaikanController::class, 'confirmAndExecute'])->name('execute');
+            Route::get('/{id}/hasil', [\App\Http\Controllers\Admin\KenaikanController::class, 'show'])->name('show');
+        });
+
+        // Workflow Penerimaan Siswa Baru Tingkat X (Intake)
+        Route::prefix('penerimaan-siswa')->name('intake.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\IntakeController::class, 'index'])->name('index');
+            Route::get('/template', [\App\Http\Controllers\Admin\IntakeController::class, 'template'])->name('template');
+            Route::post('/upload', [\App\Http\Controllers\Admin\IntakeController::class, 'upload'])->name('upload');
+            Route::get('/{id}', [\App\Http\Controllers\Admin\IntakeController::class, 'review'])->name('review');
+            Route::post('/{id}/validate', [\App\Http\Controllers\Admin\IntakeController::class, 'validateOp'])->name('validate');
+            Route::post('/{id}/item/{itemId}', [\App\Http\Controllers\Admin\IntakeController::class, 'updateItem'])->name('update-item');
+            Route::post('/{id}/execute', [\App\Http\Controllers\Admin\IntakeController::class, 'confirmAndExecute'])->name('execute');
+            Route::get('/{id}/hasil', [\App\Http\Controllers\Admin\IntakeController::class, 'show'])->name('show');
+        });
 
         // Data Alumni & Manajemen Siklus Hidup
         Route::get('/alumni', [AlumniController::class, 'index'])->name('alumni.index');

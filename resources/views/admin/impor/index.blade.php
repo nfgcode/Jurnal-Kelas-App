@@ -292,8 +292,8 @@
             <div class="grid-row grid-row--2">
                 <x-field label="Password Bawaan" name="password_bawaan"
                          hint="Dipakai untuk baris yang kolom Password-nya kosong. Minimal 8 karakter. Mintalah pengguna menggantinya setelah login pertama.">
-                    <input class="input-hifi" type="text" name="password_bawaan" id="password_bawaan"
-                           value="{{ old('password_bawaan') }}" minlength="8" autocomplete="off">
+                    <input class="input-hifi" type="password" name="password_bawaan" id="password_bawaan"
+                           minlength="8" autocomplete="new-password">
                 </x-field>
 
                 <x-field label="Data yang Sudah Ada" name="perbarui">

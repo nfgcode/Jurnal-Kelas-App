@@ -10,6 +10,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class MataPelajaran extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\MelindungiRiwayat;
+
+    protected function relasiDilindungi(): array
+    {
+        return ['jadwals'];
+    }
 
     /**
      * The table associated with the model.

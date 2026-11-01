@@ -1,0 +1,15 @@
+{
+  "batch": "20",
+  "files": [
+    "tests/Unit/XlsxReaderSafetyTest.php"
+  ],
+  "duration_s": 1.91,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 10,
+    "passed": 10,
+    "assertions": 10,
+    "duration_ms": 145
+  }
+}

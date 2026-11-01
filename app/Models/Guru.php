@@ -20,6 +20,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Guru extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\MelindungiRiwayat;
+
+    protected function relasiDilindungi(): array
+    {
+        return ['jadwals'];
+    }
 
     protected $table = 'guru';
 

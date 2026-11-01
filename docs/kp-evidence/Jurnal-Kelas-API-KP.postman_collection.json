@@ -1,0 +1,1232 @@
+{
+  "info": {
+    "name": "Jurnal Kelas API — Bukti KP",
+    "description": "Collection hasil audit terhadap source code final (branch main, commit 4d1a6b5).\n\nSetiap request di sini ditelusuri dari routes/api.php -> controller -> Form Request -> Policy.\nTidak ada endpoint, field, atau status code yang dikarang.\n\nCARA PAKAI\n1. Set variabel kredensial pada tab Variables (nilai bawaan mengikuti DemoSeeder).\n2. Jalankan Authentication > Login (admin). Skrip test menyimpan token ke variabel koleksi.\n3. Isi kelas_id, jadwal_id, mata_pelajaran_id, jurnal_public_id, siswa_nis sesuai data Anda.\n4. Folder 'Evidence - Negative Cases' sengaja memakai No Auth atau token peran lain.\n\nCATATAN IDENTIFIER\n- URL jurnal memakai public_id (ULID), BUKAN id numerik. Id numerik menghasilkan 404.\n- URL presensi harian memakai kelas_id (numerik) + query tanggal.\n- Penulisan presensi dialamatkan lewat jurnal: POST /jurnal/{public_id}/presensi.\n\nTIDAK ADA auto-login pre-request script, supaya pengujian 401 benar-benar 401.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8888/api", "type": "string", "description": "Lingkungan pengembangan Docker (nginx port 8888). Untuk deploy sekolah, ganti dengan alamat LAN." },
+    { "key": "token", "value": "", "type": "string", "description": "Diisi otomatis oleh skrip test pada request Login." },
+    { "key": "admin_user", "value": "admin", "type": "string" },
+    { "key": "admin_password", "value": "password", "type": "string" },
+    { "key": "guru_user", "value": "198504120001", "type": "string", "description": "NIP guru contoh (DemoSeeder membuat NIP mulai 198504120001)." },
+    { "key": "guru_password", "value": "password", "type": "string" },
+    { "key": "siswa_user", "value": "20261001", "type": "string", "description": "NIS siswa contoh (DemoSeeder membuat NIS mulai 20261001)." },
+    { "key": "siswa_password", "value": "password", "type": "string" },
+    { "key": "kelas_id", "value": "1", "type": "string" },
+    { "key": "mata_pelajaran_id", "value": "1", "type": "string" },
+    { "key": "jadwal_id", "value": "1", "type": "string" },
+    { "key": "jurnal_public_id", "value": "", "type": "string", "description": "ULID. Diisi otomatis oleh Jurnal > List jurnal atau Create jurnal." },
+    { "key": "jurnal_numeric_id", "value": "1", "type": "string", "description": "Hanya dipakai untuk membuktikan bahwa id numerik menghasilkan 404." },
+    { "key": "user_id", "value": "1", "type": "string" },
+    { "key": "guru_nip", "value": "198504120001", "type": "string" },
+    { "key": "siswa_nis", "value": "20261001", "type": "string" },
+    { "key": "siswa_nis_2", "value": "20261002", "type": "string" },
+    { "key": "siswa_nis_kelas_lain", "value": "20261999", "type": "string", "description": "NIS dari kelas lain, untuk bukti penolakan 422." },
+    { "key": "tanggal", "value": "2026-09-05", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Api\\AuthController. Validasi aktual: user (required), password (required), role (nullable, in:admin,guru,siswa), device_name (nullable, max:255).\nIdentifier 'user' diterima sebagai username, e-mail, NIP, atau NIS (App\\Support\\LoginResolver).",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{admin_user}}\",\n  \"password\": \"{{admin_password}}\",\n  \"role\": \"admin\",\n  \"device_name\": \"postman-kp\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "POST /api/login — publik (tanpa middleware auth)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('respons membawa token dan token_type Bearer', function () {",
+                  "    pm.expect(body).to.have.property('token');",
+                  "    pm.expect(body.token_type).to.eql('Bearer');",
+                  "});",
+                  "pm.test('user.role adalah admin', function () { pm.expect(body.user.role).to.eql('admin'); });",
+                  "pm.collectionVariables.set('token', body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (guru)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{guru_user}}\",\n  \"password\": \"{{guru_password}}\",\n  \"role\": \"guru\",\n  \"device_name\": \"postman-kp\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "Login memakai NIP. Field 'role' mempersempit pencarian sehingga NIS tidak dapat dipakai masuk sebagai guru."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('user.role adalah guru', function () { pm.expect(body.user.role).to.eql('guru'); });",
+                  "pm.collectionVariables.set('token', body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (siswa)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{siswa_user}}\",\n  \"password\": \"{{siswa_password}}\",\n  \"role\": \"siswa\",\n  \"device_name\": \"postman-kp\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "Login memakai NIS."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var body = pm.response.json();",
+                  "pm.test('user.role adalah siswa', function () { pm.expect(body.user.role).to.eql('siswa'); });",
+                  "pm.test('respons menyebut is_ketua_kelas', function () { pm.expect(body.user).to.have.property('is_ketua_kelas'); });",
+                  "pm.collectionVariables.set('token', body.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] },
+            "description": "GET /api/me — profil akun yang tokennya dipakai. UserResource: id, username, nama, email, role, status, nip, nis, kelas_id, is_ketua_kelas, last_active_at."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('membawa data.role', function () { pm.expect(pm.response.json().data).to.have.property('role'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] },
+            "description": "Mencabut token yang sedang dipakai (currentAccessToken()->delete())."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('pesan logout', function () { pm.expect(pm.response.json().message).to.eql('Logout berhasil.'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard & Statistik",
+      "item": [
+        {
+          "name": "Dashboard (role-aware)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/dashboard", "host": ["{{base_url}}"], "path": ["dashboard"] },
+            "description": "Bentuk respons berbeda per peran:\n- admin: role, totals{guru,siswa,kelas,mata_pelajaran,jadwal,jurnal}, presensi, kehadiran_guru, kelengkapan_rata\n- guru: role, kpi{jadwal_hari_ini,jurnal_terisi,belum_diisi,total_jurnal,rata_kehadiran}, presensi, kehadiran_guru\n- siswa: role, kelas_id, kpi{jadwal_hari_ini,kehadiran_saya,hadir,alpa}, presensi"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('membawa field role', function () { pm.expect(pm.response.json()).to.have.property('role'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Statistik kehadiran",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/statistik/kehadiran?siswa_nis={{siswa_nis}}&kelas_id={{kelas_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["statistik", "kehadiran"],
+              "query": [
+                { "key": "siswa_nis", "value": "{{siswa_nis}}", "description": "exists:siswa,nis. Diabaikan bila pemanggil berperan siswa." },
+                { "key": "kelas_id", "value": "{{kelas_id}}", "description": "exists:kelas,id" }
+              ]
+            },
+            "description": "Pada MySQL nilai dihitung stored function fn_persentase_kehadiran_siswa / fn_persentase_kehadiran_kelas (App\\Support\\Ringkasan). Jalankan sebagai admin atau guru; peran siswa dipaksa membaca datanya sendiri."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var b = pm.response.json();",
+                  "pm.test('membawa keempat field', function () {",
+                  "    pm.expect(b).to.have.property('siswa_nis');",
+                  "    pm.expect(b).to.have.property('persentase_kehadiran_siswa');",
+                  "    pm.expect(b).to.have.property('kelas_id');",
+                  "    pm.expect(b).to.have.property('persentase_kehadiran_kelas');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kelas",
+      "description": "Baca terbuka untuk semua peran terautentikasi. Tulis dibatasi middleware role:admin.",
+      "item": [
+        {
+          "name": "List kelas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/kelas?tingkat=&jurusan=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["kelas"],
+              "query": [
+                { "key": "tingkat", "value": "", "description": "in:X,XI,XII" },
+                { "key": "jurusan", "value": "", "description": "dicocokkan ke kolom jurusan_kode" },
+                { "key": "q", "value": "", "description": "pencarian nama kelas" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('terpaginasi', function () { pm.expect(pm.response.json()).to.have.property('meta'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Show kelas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/kelas/{{kelas_id}}", "host": ["{{base_url}}"], "path": ["kelas", "{{kelas_id}}"] },
+            "description": "Route key kelas adalah id numerik."
+          }
+        },
+        {
+          "name": "Create kelas (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_kelas\": \"XII TKJ 9\",\n  \"tingkat\": \"XII\",\n  \"jurusan_kode\": \"TKJ\",\n  \"paralel\": 9,\n  \"ruangan_kode\": null,\n  \"kapasitas\": 36,\n  \"tahun_ajaran_kode\": \"2026/2027\",\n  \"wali_kelas_nip\": null,\n  \"ketua_nis\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/kelas", "host": ["{{base_url}}"], "path": ["kelas"] },
+            "description": "Field mengikuti App\\Http\\Requests\\KelasRequest.\nDitulis melalui stored procedure sp_tambah_kelas (MySQL): cek tahun ajaran, jurusan, wali aktif, dan rombel kembar dilakukan di dalam satu transaksi dengan FOR UPDATE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('kelas_id', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update kelas (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_kelas\": \"XII TKJ 9\",\n  \"tingkat\": \"XII\",\n  \"jurusan_kode\": \"TKJ\",\n  \"paralel\": 9,\n  \"kapasitas\": 34,\n  \"tahun_ajaran_kode\": \"2026/2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/kelas/{{kelas_id}}", "host": ["{{base_url}}"], "path": ["kelas", "{{kelas_id}}"] }
+          }
+        },
+        {
+          "name": "Delete kelas (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/kelas/{{kelas_id}}", "host": ["{{base_url}}"], "path": ["kelas", "{{kelas_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mata Pelajaran",
+      "item": [
+        {
+          "name": "List mata pelajaran",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/mata-pelajaran?kelompok=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["mata-pelajaran"],
+              "query": [
+                { "key": "kelompok", "value": "", "description": "in:wajib,peminatan,muatan_lokal,kejuruan" },
+                { "key": "q", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show mata pelajaran",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/mata-pelajaran/{{mata_pelajaran_id}}", "host": ["{{base_url}}"], "path": ["mata-pelajaran", "{{mata_pelajaran_id}}"] }
+          }
+        },
+        {
+          "name": "Create mata pelajaran + guru pengampu (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Basis Data\",\n  \"kode\": \"BASDAT\",\n  \"kelompok\": \"kejuruan\",\n  \"jp_per_minggu\": 4,\n  \"deskripsi\": \"Perancangan dan pengelolaan basis data\",\n  \"guru_nip\": [\"{{guru_nip}}\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/mata-pelajaran", "host": ["{{base_url}}"], "path": ["mata-pelajaran"] },
+            "description": "Menulis dua tabel dalam satu transaksi lewat sp_tambah_mata_pelajaran: mata_pelajaran + guru_mata_pelajaran.\nSatu NIP yang tidak terdaftar membatalkan seluruh penyimpanan (kode SIGNAL GURU_TIDAK_DIKENAL -> 422 pada field guru_nip)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('mata_pelajaran_id', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update mata pelajaran (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Basis Data\",\n  \"kode\": \"BASDAT\",\n  \"kelompok\": \"kejuruan\",\n  \"jp_per_minggu\": 6\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/mata-pelajaran/{{mata_pelajaran_id}}", "host": ["{{base_url}}"], "path": ["mata-pelajaran", "{{mata_pelajaran_id}}"] }
+          }
+        },
+        {
+          "name": "Delete mata pelajaran (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/mata-pelajaran/{{mata_pelajaran_id}}", "host": ["{{base_url}}"], "path": ["mata-pelajaran", "{{mata_pelajaran_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jadwal",
+      "description": "Tabel jadwal TIDAK memiliki kolom jam_mulai/jam_selesai. Jam dinding diturunkan backend dari nomor JP (App\\Support\\JamPelajaran, 1 JP = 45 menit).",
+      "item": [
+        {
+          "name": "List jadwal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/jadwal?kelas_id=&guru_nip=&hari=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["jadwal"],
+              "query": [
+                { "key": "kelas_id", "value": "", "description": "exists:kelas,id" },
+                { "key": "guru_nip", "value": "", "description": "exists:guru,nip" },
+                { "key": "hari", "value": "", "description": "in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu" },
+                { "key": "q", "value": "", "description": "pencarian nama mata pelajaran" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show jadwal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jadwal/{{jadwal_id}}", "host": ["{{base_url}}"], "path": ["jadwal", "{{jadwal_id}}"] }
+          }
+        },
+        {
+          "name": "Create jadwal (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kelas_id\": {{kelas_id}},\n  \"mata_pelajaran_id\": {{mata_pelajaran_id}},\n  \"guru_nip\": \"{{guru_nip}}\",\n  \"hari\": \"Senin\",\n  \"jam_ke_mulai\": 1,\n  \"jam_ke_selesai\": 2,\n  \"ruangan_kode\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jadwal", "host": ["{{base_url}}"], "path": ["jadwal"] },
+            "description": "Field mengikuti App\\Http\\Requests\\JadwalRequest. guru_nip juga divalidasi rule GuruMengampuMapel (pasangan guru-mapel harus tercatat di guru_mata_pelajaran).\nDitulis lewat sp_tambah_jadwal: JP_TERBALIK, GURU_TIDAK_MENGAMPU, KELAS_BENTROK, GURU_BENTROK, RUANGAN_BENTROK."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201 atau 422 bila slot bentrok', function () {",
+                  "    pm.expect([201, 422]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('jadwal_id', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update jadwal (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kelas_id\": {{kelas_id}},\n  \"mata_pelajaran_id\": {{mata_pelajaran_id}},\n  \"guru_nip\": \"{{guru_nip}}\",\n  \"hari\": \"Selasa\",\n  \"jam_ke_mulai\": 3,\n  \"jam_ke_selesai\": 4\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jadwal/{{jadwal_id}}", "host": ["{{base_url}}"], "path": ["jadwal", "{{jadwal_id}}"] }
+          }
+        },
+        {
+          "name": "Delete jadwal (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jadwal/{{jadwal_id}}", "host": ["{{base_url}}"], "path": ["jadwal", "{{jadwal_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jurnal",
+      "description": "Penulis jurnal menurut JurnalPolicy: admin ATAU ketua kelas. Guru tidak memiliki izin create/update/delete jurnal — bagian guru atas satu pertemuan adalah roster presensinya.\nURL memakai jurnal.public_id (ULID).",
+      "item": [
+        {
+          "name": "List jurnal (search + sort)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/jurnal?q=&sort=tanggal&dir=desc",
+              "host": ["{{base_url}}"],
+              "path": ["jurnal"],
+              "query": [
+                { "key": "q", "value": "", "description": "FULLTEXT ft_jurnal (materi, kegiatan) pada MySQL; LIKE pada SQLite" },
+                { "key": "sort", "value": "tanggal", "description": "in:tanggal,id,materi" },
+                { "key": "dir", "value": "desc", "description": "in:asc,desc" }
+              ]
+            },
+            "description": "Di-scope controller: guru melihat jurnal pertemuan yang diampunya, siswa melihat kelasnya, admin melihat semua."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var d = pm.response.json().data;",
+                  "if (d && d.length) {",
+                  "    pm.test('setiap jurnal membawa public_id', function () { pm.expect(d[0]).to.have.property('public_id'); });",
+                  "    pm.collectionVariables.set('jurnal_public_id', d[0].public_id);",
+                  "    pm.collectionVariables.set('jurnal_numeric_id', d[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Show jurnal (public_id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}"] },
+            "description": "Otorisasi JurnalPolicy::view — admin semua, guru pertemuan yang diampu atau kelas perwaliannya, siswa kelasnya sendiri."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var d = pm.response.json().data;",
+                  "pm.test('respons membawa public_id dan id numerik', function () {",
+                  "    pm.expect(d).to.have.property('public_id');",
+                  "    pm.expect(d).to.have.property('id');",
+                  "});",
+                  "pm.test('public_id pada respons sama dengan yang di URL', function () {",
+                  "    pm.expect(d.public_id).to.eql(pm.collectionVariables.get('jurnal_public_id'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit jurnal (admin / ketua kelas)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}/audit", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}", "audit"] },
+            "description": "Gate::authorize('update', $jurnal) — jadi hanya admin atau ketua kelas. Baris audit ditulis trigger MySQL trg_jurnal_after_update / trg_jurnal_after_delete."
+          }
+        },
+        {
+          "name": "Create jurnal (admin / ketua kelas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jadwal_id\": {{jadwal_id}},\n  \"tanggal\": \"{{tanggal}}\",\n  \"materi\": \"Normalisasi basis data\",\n  \"tugas\": \"Kerjakan latihan bab 3\",\n  \"kegiatan\": \"Diskusi kelompok\",\n  \"catatan\": null,\n  \"kehadiran_guru_status\": \"hadir\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal", "host": ["{{base_url}}"], "path": ["jurnal"] },
+            "description": "Field mengikuti App\\Http\\Requests\\Api\\JurnalRequest.\nJalankan dengan token admin atau ketua kelas. Token guru menghasilkan 403 (lihat folder Evidence)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201 (baru) atau 422 (sudah ada jurnal untuk pertemuan ini)', function () {",
+                  "    pm.expect([201, 422]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    var d = pm.response.json().data;",
+                  "    pm.test('respons membawa public_id', function () { pm.expect(d).to.have.property('public_id'); });",
+                  "    pm.collectionVariables.set('jurnal_public_id', d.public_id);",
+                  "    pm.collectionVariables.set('jurnal_numeric_id', d.id);",
+                  "}",
+                  "if (pm.response.code === 422) {",
+                  "    pm.test('penolakan duplikat menyebut field jadwal_id', function () {",
+                  "        pm.expect(pm.response.json().errors).to.have.property('jadwal_id');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update jurnal (admin / ketua kelas)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jadwal_id\": {{jadwal_id}},\n  \"tanggal\": \"{{tanggal}}\",\n  \"materi\": \"Normalisasi basis data (revisi)\",\n  \"kehadiran_guru_status\": \"hadir\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}"] },
+            "description": "Bila jurnal yang diubah dibuat otomatis (diisi_oleh_peran = 'sistem'), body WAJIB memuat \"pernyataan\": true. Tanpa itu ditolak 422."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update jurnal otomatis (butuh pernyataan)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jadwal_id\": {{jadwal_id}},\n  \"tanggal\": \"{{tanggal}}\",\n  \"materi\": \"Dilengkapi setelah pertemuan\",\n  \"kehadiran_guru_status\": \"hadir\",\n  \"pernyataan\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}"] },
+            "description": "Mengubah jurnal hasil backfill otomatis. Setelah berhasil, jurnal itu 'diadopsi': diisi_oleh_peran berpindah ke peran pengedit."
+          }
+        },
+        {
+          "name": "Delete jurnal (admin / ketua kelas)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}"] },
+            "description": "Menghapus jurnal ikut menghapus roster presensinya (FK cascade) dan memicu perhitungan ulang presensi harian kelas itu."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Presensi",
+      "description": "ARSITEKTUR FINAL\n- Sumber utama: tabel `presensi`, satu baris per siswa per PERTEMUAN, ditandai guru pengampu.\n- Turunan: tabel `presensi_harian`, satu baris per siswa per HARI, dihitung ulang dari seluruh pertemuan hari itu (App\\Support\\SimpanPresensiJurnal). Tidak pernah ditulis langsung.\n- Menulis: POST /jurnal/{public_id}/presensi (JurnalPolicy::isiPresensi).\n- Membaca harian: GET /presensi dan GET /presensi/{kelas} (KelasPolicy::lihatPresensiHarian).",
+      "item": [
+        {
+          "name": "List presensi harian (sesuai scope peran)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/presensi?kelas_id=&tanggal=&mulai=&selesai=",
+              "host": ["{{base_url}}"],
+              "path": ["presensi"],
+              "query": [
+                { "key": "kelas_id", "value": "", "description": "exists:kelas,id" },
+                { "key": "tanggal", "value": "", "description": "date" },
+                { "key": "mulai", "value": "", "description": "date" },
+                { "key": "selesai", "value": "", "description": "date, after_or_equal:mulai" }
+              ]
+            },
+            "description": "Siswa biasa melihat barisnya sendiri; ketua kelas melihat kelasnya; guru melihat kelas yang diampunya; admin melihat semua."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var d = pm.response.json().data;",
+                  "if (d && d.length) {",
+                  "    pm.test('baris presensi harian memakai siswa_nis', function () { pm.expect(d[0]).to.have.property('siswa_nis'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Presensi satu kelas pada satu tanggal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/presensi/{{kelas_id}}?tanggal={{tanggal}}",
+              "host": ["{{base_url}}"],
+              "path": ["presensi", "{{kelas_id}}"],
+              "query": [{ "key": "tanggal", "value": "{{tanggal}}", "description": "opsional; default hari ini" }]
+            },
+            "description": "Segmen URL adalah KELAS (id numerik), bukan jurnal. Otorisasi KelasPolicy::lihatPresensiHarian."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('respons berbentuk koleksi', function () { pm.expect(pm.response.json()).to.have.property('data'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simpan roster satu pertemuan (guru pengampu / admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presensi\": [\n    { \"siswa_nis\": \"{{siswa_nis}}\", \"status\": \"hadir\" },\n    { \"siswa_nis\": \"{{siswa_nis_2}}\", \"status\": \"sakit\", \"keterangan\": \"surat dokter\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}/presensi", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}", "presensi"] },
+            "description": "Idempoten: menyimpan ulang MENGGANTI roster pertemuan itu, bukan menambah (unique index presensi_jurnal_siswa_unique).\nSetiap penyimpanan juga menghitung ulang presensi_harian kelas untuk tanggal itu.\nJalankan dengan token guru yang dijadwalkan mengajar pertemuan tersebut, atau token admin."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var d = pm.response.json().data;",
+                  "pm.test('respons mengembalikan roster pertemuan', function () { pm.expect(d).to.be.an('array'); });",
+                  "if (d && d.length) {",
+                  "    pm.test('baris memakai siswa_nis dan status', function () {",
+                  "        pm.expect(d[0]).to.have.property('siswa_nis');",
+                  "        pm.expect(['hadir','sakit','izin','alpa']).to.include(d[0].status);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "Seluruh folder ini dilindungi middleware role:admin. Endpoint store hanya membuat akun ADMIN — akun guru dan siswa dibuat bersama data orangnya lewat halaman web admin (sp_tambah_guru / sp_tambah_siswa). Karena itu tidak ada folder Guru atau Siswa di collection ini: memang tidak ada route API-nya.",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/users?role=&kelas_id=&status=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "role", "value": "", "description": "in:admin,guru,siswa" },
+                { "key": "kelas_id", "value": "", "description": "difilter lewat relasi siswa" },
+                { "key": "status", "value": "", "description": "in:aktif,nonaktif,pending" },
+                { "key": "q", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Show user",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+          }
+        },
+        {
+          "name": "Create admin account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin.kedua\",\n  \"nama\": \"Administrator Kedua\",\n  \"email\": \"admin.kedua@contoh.test\",\n  \"password\": \"katasandi123\",\n  \"role\": \"admin\",\n  \"status\": \"aktif\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] },
+            "description": "Field mengikuti App\\Http\\Requests\\AkunRequest. username hanya boleh A-Z a-z 0-9 . _ - dan minimal 3 karakter; password minimal 8 karakter."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('user_id', pm.response.json().data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin.kedua\",\n  \"nama\": \"Administrator Kedua\",\n  \"email\": \"admin.kedua@contoh.test\",\n  \"role\": \"admin\",\n  \"status\": \"nonaktif\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] },
+            "description": "password boleh dikosongkan saat update. Admin tidak dapat menurunkan peran akunnya sendiri (422)."
+          }
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] },
+            "description": "Menghapus akun tidak menghapus data orangnya. Menghapus akun sendiri ditolak 422."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Laporan",
+      "description": "Seluruh folder dilindungi middleware role:admin.",
+      "item": [
+        {
+          "name": "Laporan jurnal",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/laporan/jurnal?kelas_id=&guru_nip=&status=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["laporan", "jurnal"],
+              "query": [
+                { "key": "kelas_id", "value": "", "description": "exists:kelas,id" },
+                { "key": "guru_nip", "value": "", "description": "exists:guru,nip" },
+                { "key": "status", "value": "", "description": "in:terisi,telat" },
+                { "key": "q", "value": "" }
+              ]
+            },
+            "description": "Respons memuat blok tambahan meta_laporan.statistik: terisi, belum, telat, kelengkapan. Filter periode mengikuti App\\Support\\Periode (mis. ?preset=bulan_ini)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('membawa meta_laporan', function () { pm.expect(pm.response.json()).to.have.property('meta_laporan'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Laporan presensi",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/laporan/presensi?kelas_id=&guru_nip=&q=",
+              "host": ["{{base_url}}"],
+              "path": ["laporan", "presensi"],
+              "query": [
+                { "key": "kelas_id", "value": "" },
+                { "key": "guru_nip", "value": "" },
+                { "key": "q", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rekap presensi per kelas (view)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/laporan/rekap-kelas", "host": ["{{base_url}}"], "path": ["laporan", "rekap-kelas"] },
+            "description": "Pada MySQL membaca view v_rekap_presensi_kelas (didefinisikan ulang di atas presensi_harian oleh migrasi 2026_08_19_000004). Pada SQLite memakai agregat query builder."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Evidence - Negative Cases",
+      "description": "Hanya berisi perilaku yang terverifikasi dari source code dan/atau automated test.\nRequest 'tanpa token' memakai auth No Auth agar tidak mewarisi bearer token koleksi.",
+      "item": [
+        {
+          "name": "401 — request tanpa token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/me", "host": ["{{base_url}}"], "path": ["me"] },
+            "description": "Middleware auth:sanctum. bootstrap/app.php memaksa respons JSON untuk seluruh api/*."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('pesan Unauthenticated', function () {",
+                  "    pm.expect(pm.response.json().message).to.eql('Unauthenticated.');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 — peran salah pada endpoint admin (login sebagai guru dulu)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] },
+            "description": "Jalankan Authentication > Login (guru) atau (siswa) lebih dulu.\nMiddleware role:admin (App\\Http\\Middleware\\CheckRole) memanggil abort(403, 'Anda tidak memiliki akses ke halaman ini.')."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 — guru mencoba membuat jurnal (login sebagai guru dulu)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jadwal_id\": {{jadwal_id}},\n  \"tanggal\": \"{{tanggal}}\",\n  \"materi\": \"Percobaan oleh guru\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal", "host": ["{{base_url}}"], "path": ["jurnal"] },
+            "description": "JurnalPolicy::create() = isAdmin() || isKetuaKelas(). Diuji JurnalGandaTest::test_a_guru_cannot_file_a_journal_at_all."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 — ketua kelas mencoba menyimpan presensi (login sebagai siswa ketua dulu)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presensi\": [\n    { \"siswa_nis\": \"{{siswa_nis}}\", \"status\": \"hadir\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}/presensi", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}", "presensi"] },
+            "description": "JurnalPolicy::isiPresensi() hanya mengizinkan admin dan guru pengampu pertemuan. Diuji AuthorizationTest::test_a_ketua_kelas_cannot_mark_attendance."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 — id numerik pada route jurnal ULID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_numeric_id}}", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_numeric_id}}"] },
+            "description": "Jurnal::getRouteKeyName() mengembalikan 'public_id'. Diuji ApiJurnalKontrakTest::test_the_numeric_id_is_not_a_url_key."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — payload jadwal tidak lengkap",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kelas_id\": {{kelas_id}},\n  \"hari\": \"Senin\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jadwal", "host": ["{{base_url}}"], "path": ["jadwal"] },
+            "description": "mata_pelajaran_id, guru_nip, jam_ke_mulai, jam_ke_selesai wajib (JadwalRequest). Jalankan sebagai admin."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', function () { pm.response.to.have.status(422); });",
+                  "pm.test('menyebut field yang kurang', function () {",
+                  "    var e = pm.response.json().errors;",
+                  "    pm.expect(e).to.have.property('mata_pelajaran_id');",
+                  "    pm.expect(e).to.have.property('guru_nip');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — siswa dari kelas lain pada roster presensi",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presensi\": [\n    { \"siswa_nis\": \"{{siswa_nis_kelas_lain}}\", \"status\": \"hadir\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal/{{jurnal_public_id}}/presensi", "host": ["{{base_url}}"], "path": ["jurnal", "{{jurnal_public_id}}", "presensi"] },
+            "description": "presensi.*.siswa_nis divalidasi Rule::in(daftar NIS kelas pertemuan itu). Diuji PresensiRosterTest::test_a_student_from_another_class_is_rejected. Jalankan sebagai guru pengampu atau admin."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', function () { pm.response.to.have.status(422); });",
+                  "pm.test('menolak pada field presensi.0.siswa_nis', function () {",
+                  "    pm.expect(Object.keys(pm.response.json().errors).join(',')).to.include('siswa_nis');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — jurnal ganda untuk satu pertemuan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jadwal_id\": {{jadwal_id}},\n  \"tanggal\": \"{{tanggal}}\",\n  \"materi\": \"Jurnal kedua untuk pertemuan yang sama\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/jurnal", "host": ["{{base_url}}"], "path": ["jurnal"] },
+            "description": "Kirim dua kali dengan jadwal_id dan tanggal yang sama, sebagai peran yang sama. Unique index jurnal_pertemuan_peran_unique (jadwal_id, tanggal, diisi_oleh_peran) dan pemeriksaan Jurnal::sudahAda() menolaknya. Diuji JurnalGandaTest::test_the_api_rejects_a_duplicate_with_422."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422 pada pengiriman kedua', function () { pm.response.to.have.status(422); });",
+                  "pm.test('respons menunjuk jurnal yang sudah ada', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('jurnal_id');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — membuat akun guru lewat endpoint users",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"guru.contoh\",\n  \"nama\": \"Guru Contoh\",\n  \"email\": \"guru.contoh@contoh.test\",\n  \"password\": \"katasandi123\",\n  \"role\": \"guru\",\n  \"status\": \"aktif\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/users", "host": ["{{base_url}}"], "path": ["users"] },
+            "description": "Api\\Admin\\UserController@store menolak role selain admin dengan 422: akun guru/siswa dibuat bersama data orangnya. Jalankan sebagai admin."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', function () { pm.response.to.have.status(422); });",
+                  "pm.test('menolak pada field role', function () {",
+                  "    pm.expect(pm.response.json().errors).to.have.property('role');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "422 — kredensial login salah",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{admin_user}}\",\n  \"password\": \"salah-sekali\",\n  \"role\": \"admin\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] },
+            "description": "Pesan sengaja generik agar endpoint tidak mengonfirmasi identifier mana yang ada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', function () { pm.response.to.have.status(422); });",
+                  "pm.test('pesan generik pada field user', function () {",
+                  "    pm.expect(pm.response.json().errors.user[0]).to.eql('NIP/NIS atau password salah.');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

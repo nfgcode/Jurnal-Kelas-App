@@ -137,7 +137,7 @@ class Phase3LifecycleAndRetentionTest extends TestCase
 
     public function test_records_older_than_two_years_blocked_by_historical_dependencies(): void
     {
-        $tahun = $this->tahunAjaran('2024/2025');
+        $tahun = $this->tahunAjaran('2024/2025', aktif: false);
         $kelas = $this->kelas();
 
         // Alumni lulus 3 tahun lalu (> 2 tahun), memiliki riwayat presensi harian

@@ -11,47 +11,66 @@ use App\Support\AuditAdmin;
 use App\Support\KesiapanTransisi;
 use App\Support\TransisiAkademik;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class TransisiController extends Controller
 {
+    private function validasiPeriode(?string $asal, string $tujuan): void
+    {
+        if (! $asal || strcmp($tujuan, $asal) <= 0 || TahunAjaran::where('kode', $tujuan)->where('aktif', true)->exists()) {
+            throw ValidationException::withMessages(['tahun_tujuan' => 'Pilih tahun tujuan nonaktif setelah tahun asal.']);
+        }
+    }
+
     /**
      * Tampilan utama manajemen kenaikan kelas & kelulusan siswa (transisi akademik).
      */
     public function index(Request $request)
     {
         $tahunList = TahunAjaran::orderByDesc('kode')->get();
-        $tahunAktif = TahunAjaran::berjalan();
-
-        $tahunAsalPilihan = $request->query('tahun_asal', $tahunAktif?->kode);
-        $tahunTujuanPilihan = $request->query('tahun_tujuan');
+        $tahunAktif = TahunAjaran::where('aktif', true)->first();
+        $request->validate([
+            'tahun_asal' => ['nullable', 'string', 'exists:tahun_ajaran,kode'],
+            'tahun_tujuan' => ['nullable', 'string', 'exists:tahun_ajaran,kode'],
+        ]);
+        $tahunAsalPilihan = $request->query('tahun_asal') ?: $tahunAktif?->kode;
+        $tahunTujuanList = $tahunList->filter(fn ($t) => ! $t->aktif && $tahunAsalPilihan && strcmp($t->kode, $tahunAsalPilihan) > 0)->sortBy('kode')->values();
+        $tahunTujuanPilihan = $request->query('tahun_tujuan') ?: $tahunTujuanList->first()?->kode;
+        $transisiSelesai = $tahunAsalPilihan && $tahunTujuanPilihan && TransisiTahunAjaran::where('tahun_asal', $tahunAsalPilihan)->where('tahun_tujuan', $tahunTujuanPilihan)->where('status', 'selesai')->exists();
+        if ($transisiSelesai && strcmp($tahunTujuanPilihan, $tahunAsalPilihan) > 0) {
+            $tahunTujuanList = $tahunTujuanList->merge($tahunList->where('kode', $tahunTujuanPilihan))->unique('kode')->sortBy('kode')->values();
+        }
+        if ($tahunTujuanPilihan && ! $tahunTujuanList->contains('kode', $tahunTujuanPilihan)) {
+            throw ValidationException::withMessages(['tahun_tujuan' => 'Pilih tahun tujuan nonaktif setelah tahun asal.']);
+        }
 
         $transisiList = TransisiTahunAjaran::with(['diprosesOleh', 'tahunAsal', 'tahunTujuan'])
             ->latest('id')
-            ->get();
+            ->paginate(10, ['*'], 'riwayat_page')->withQueryString();
 
         // Evaluasi kesiapan transisi akademik (read-only checklist)
         $checklist = KesiapanTransisi::evaluasi($tahunAsalPilihan, $tahunTujuanPilihan);
 
-        $adaTahunTujuan = $tahunList->contains(fn ($t) => ! $t->aktif);
-
-        // Hitung statistik siswa per tingkat di tahun ajaran aktif berjalan
+        $adaTahunTujuan = $tahunTujuanList->isNotEmpty();
+        $siswaAsal = Siswa::where('status', 'aktif')->whereIn('kelas_id', Kelas::where('tahun_ajaran_kode', $tahunAsalPilihan)->select('id'));
         $statistik = [
-            'tahun_kode' => $tahunAktif?->kode ?? 'Belum Ditentukan',
-            'total_siswa' => Siswa::where('status', 'aktif')->count(),
+            'tahun_kode' => $tahunAsalPilihan ?? 'Belum Ditentukan',
+            'total_siswa' => (clone $siswaAsal)->count(),
             'tingkat_x' => Siswa::where('status', 'aktif')
-                ->whereIn('kelas_id', Kelas::where('tingkat', 'X')->select('id'))
+                ->whereIn('kelas_id', Kelas::where('tahun_ajaran_kode', $tahunAsalPilihan)->where('tingkat', 'X')->select('id'))
                 ->count(),
             'tingkat_xi' => Siswa::where('status', 'aktif')
-                ->whereIn('kelas_id', Kelas::where('tingkat', 'XI')->select('id'))
+                ->whereIn('kelas_id', Kelas::where('tahun_ajaran_kode', $tahunAsalPilihan)->where('tingkat', 'XI')->select('id'))
                 ->count(),
             'tingkat_xii' => Siswa::where('status', 'aktif')
-                ->whereIn('kelas_id', Kelas::where('tingkat', 'XII')->select('id'))
+                ->whereIn('kelas_id', Kelas::where('tahun_ajaran_kode', $tahunAsalPilihan)->where('tingkat', 'XII')->select('id'))
                 ->count(),
         ];
 
         return view('admin.transisi.index', [
             'tahunList' => $tahunList,
+            'tahunTujuanList' => $tahunTujuanList,
             'tahunAktif' => $tahunAktif,
             'transisiList' => $transisiList,
             'statistik' => $statistik,
@@ -59,6 +78,7 @@ class TransisiController extends Controller
             'tahunAsalPilihan' => $tahunAsalPilihan,
             'tahunTujuanPilihan' => $tahunTujuanPilihan,
             'adaTahunTujuan' => $adaTahunTujuan,
+            'transisiSelesai' => $transisiSelesai,
         ]);
     }
 
@@ -71,6 +91,8 @@ class TransisiController extends Controller
             'tahun_tujuan' => ['required', 'string', 'exists:tahun_ajaran,kode'],
             'tahun_asal' => ['nullable', 'string', 'exists:tahun_ajaran,kode'],
         ]);
+
+        $this->validasiPeriode($data['tahun_asal'] ?? TahunAjaran::where('aktif', true)->value('kode'), $data['tahun_tujuan']);
 
         try {
             $hasil = TransisiAkademik::siapkanKelasTujuan(
@@ -87,10 +109,10 @@ class TransisiController extends Controller
                 jumlah: $hasil['total'],
             );
 
-            return redirect()->route('admin.transisi.index')
+            return redirect()->route('admin.transisi.index', $request->only('tahun_asal', 'tahun_tujuan'))
                 ->with('success', "Penyiapan kelas selesai: {$hasil['dibuat']} rombel dibuat baru, {$hasil['sudah_ada']} sudah ada.");
         } catch (Throwable $e) {
-            return redirect()->route('admin.transisi.index')
+            return redirect()->route('admin.transisi.index', $request->only('tahun_asal', 'tahun_tujuan'))
                 ->with('error', 'Gagal menyiapkan kelas: '.$e->getMessage());
         }
     }
@@ -105,6 +127,8 @@ class TransisiController extends Controller
             'tahun_tujuan' => ['required', 'string', 'exists:tahun_ajaran,kode'],
         ]);
 
+        $this->validasiPeriode($data['tahun_asal'] ?? TahunAjaran::where('aktif', true)->value('kode'), $data['tahun_tujuan']);
+
         try {
             $pratinjau = TransisiAkademik::pratinjau($data['tahun_asal'], $data['tahun_tujuan']);
 
@@ -113,7 +137,7 @@ class TransisiController extends Controller
                 'kelasListTujuan' => Kelas::where('tahun_ajaran_kode', $data['tahun_tujuan'])->orderBy('nama_kelas')->get(),
             ]);
         } catch (Throwable $e) {
-            return redirect()->route('admin.transisi.index')
+            return redirect()->route('admin.transisi.index', $request->only('tahun_asal', 'tahun_tujuan'))
                 ->with('error', 'Gagal memuat pratinjau: '.$e->getMessage());
         }
     }
@@ -130,16 +154,25 @@ class TransisiController extends Controller
             'tanggal_lulus' => ['nullable', 'date'],
             'nonaktifkan_akun' => ['nullable', 'boolean'],
             'aktifkan_tahun_tujuan' => ['nullable', 'boolean'],
-            'pengecualian' => ['nullable', 'array'],
+            'snapshot' => ['required', 'string'],
+            'pengecualian' => ['required', 'array'],
+            'pengecualian.*' => ['required', 'array:aksi,kelas_id,catatan'],
+            'pengecualian.*.aksi' => ['required', 'in:promosi,lulus,tinggal_kelas,tunda_lulus,keluar,pindah'],
+            'pengecualian.*.kelas_id' => ['sometimes', 'integer', 'min:1'],
+            'pengecualian.*.catatan' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ], [
             'konfirmasi.accepted' => 'Centang kotak konfirmasi sebelum mengeksekusi transisi.',
         ]);
+
+        $this->validasiPeriode($data['tahun_asal'] ?? TahunAjaran::where('aktif', true)->value('kode'), $data['tahun_tujuan']);
 
         try {
             $hasil = TransisiAkademik::eksekusi(
                 $data['tahun_asal'],
                 $data['tahun_tujuan'],
                 [
+                    'snapshot' => $data['snapshot'],
+                    'wajib_keputusan_lengkap' => true,
                     'pengecualian' => $data['pengecualian'] ?? [],
                     'nonaktifkan_akun' => (bool) ($data['nonaktifkan_akun'] ?? false),
                     'tanggal_lulus' => $data['tanggal_lulus'] ?? now()->toDateString(),
@@ -148,7 +181,7 @@ class TransisiController extends Controller
                 $request->user()
             );
 
-            return redirect()->route('admin.transisi.index')
+            return redirect()->route('admin.transisi.index', $request->only('tahun_asal', 'tahun_tujuan'))
                 ->with('success', sprintf(
                     'Transisi tahun ajaran berhasil! %d siswa dipromosikan, %d siswa lulus, %d tinggal kelas, %d keluar/pindah.',
                     $hasil['siswa_dipromosikan'],
@@ -157,8 +190,10 @@ class TransisiController extends Controller
                     $hasil['siswa_pindah']
                 ));
         } catch (Throwable $e) {
-            return redirect()->route('admin.transisi.index')
-                ->with('error', 'Eksekusi transisi gagal: '.$e->getMessage());
+            return redirect()->route('admin.transisi.index', $request->only('tahun_asal', 'tahun_tujuan'))
+                ->with('error', $e instanceof \DomainException || $e instanceof ValidationException
+                    ? 'Eksekusi transisi gagal: '.$e->getMessage()
+                    : 'Eksekusi transisi gagal. Tidak ada perubahan disimpan; hubungi administrator.');
         }
     }
 }

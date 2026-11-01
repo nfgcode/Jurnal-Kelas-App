@@ -98,7 +98,6 @@
                 @csrf
                 <input type="hidden" name="jenis" value="{{ $jenis }}">
                 <input type="hidden" name="berkas" value="{{ $berkas }}">
-                <input type="hidden" name="password_bawaan" value="{{ $passwordBawaan }}">
                 <input type="hidden" name="perbarui" value="{{ $perbarui ? 1 : 0 }}">
 
                 <button class="btn-hifi" type="submit" @disabled(! $adaYangBisa)>

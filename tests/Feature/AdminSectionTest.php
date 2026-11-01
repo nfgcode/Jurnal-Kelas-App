@@ -273,6 +273,8 @@ class AdminSectionTest extends TestCase
     public function test_creating_a_siswa_creates_the_person_and_the_account_together(): void
     {
         $kelas = $this->kelas();
+        // Active registration requires a verified effective period.
+        $kelas->tahunAjaran->update(['mulai' => today()->subMonth(), 'selesai' => today()->addMonth()]);
 
         $this->actingAs($this->admin())
             ->post('/admin/siswa', [

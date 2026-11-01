@@ -28,6 +28,19 @@ class JurnalOtomatisTest extends TestCase
 
     private static int $seq = 0;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Today is Sunday; freeze to Wednesday so tests relying on school days work predictably
+        Carbon::setTestNow('2026-10-28 10:00:00');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     /**
      * These helpers hand back the *account*, because that is what the tests act
      * as. The person row behind it is one hop away as `$akun->guru` / `->siswa`,

@@ -125,8 +125,7 @@ class KelasController extends Controller
         // A class with no students cannot have a chair yet.
         unset($data['ketua_nis']);
 
-        // Through sp_tambah_kelas, so the duplicate-rombel check and the insert
-        // are one step — two admins filing "XII TKJ 2" at once cannot both pass.
+        // Shared singleton covers dependency checks, duplicate-rombel check, and insert.
         $pencatatan->kelas($data);
 
         return redirect()->route('kelas.index')
@@ -160,16 +159,20 @@ class KelasController extends Controller
     {
         $data = $request->validated();
 
-        // The chair must be a student of this class. Checked here rather than in
-        // the request because the rule needs the class being edited.
-        if (! empty($data['ketua_nis'])
-            && ! Siswa::where('kelas_id', $kela->id)->whereKey($data['ketua_nis'])->exists()) {
-            return back()->withInput()->withErrors([
-                'ketua_nis' => 'Ketua kelas harus siswa dari kelas ini.',
-            ]);
-        }
+        \App\Support\AcademicOperation::run(function () use ($data, $kela) {
+            $kela = Kelas::whereKey($kela->id)->lockForUpdate()->firstOrFail();
+            // The chair must be a student of this class. Checked here rather than in
+            // the request because the rule needs the class being edited.
+            if (! empty($data['ketua_nis'])
+                && ! Siswa::where('kelas_id', $kela->id)->whereKey($data['ketua_nis'])->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'ketua_nis' => 'Ketua kelas harus siswa dari kelas ini.',
+                ]);
+            }
 
-        $kela->update($data);
+            $kela->update($data);
+
+        });
 
         return redirect()->route('kelas.index')
             ->with('success', 'Kelas berhasil diperbarui.');

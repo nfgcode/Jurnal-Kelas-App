@@ -8,10 +8,25 @@ use App\Models\Kelas;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    public function createApplication()
+    {
+        // Revalidate before even loading bootstrap/app.php, including custom PHPUnit invocations.
+        require __DIR__.'/bootstrap.php';
+        $app = require __DIR__.'/../bootstrap/app.php';
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $app->addAbsoluteCachePathPrefix(substr(getenv('APP_CONFIG_CACHE'), 0, 3));
+        }
+        $this->traitsUsedByTest = class_uses_recursive(static::class);
+        $app->make(Kernel::class)->bootstrap();
+
+        return $app;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

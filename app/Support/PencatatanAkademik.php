@@ -53,30 +53,9 @@ class PencatatanAkademik extends ProsedurTersimpan
      */
     public function kelas(array $data): Kelas
     {
-        $id = null;
-
-        $this->jalankan(
-            mysql: function () use ($data, &$id) {
-                DB::statement('CALL sp_tambah_kelas(?,?,?,?,?,?,?,?, @kelas_id)', [
-                    $data['nama_kelas'],
-                    $data['tingkat'],
-                    $data['jurusan_kode'] ?? null,
-                    $data['paralel'] ?? 1,
-                    $data['ruangan_kode'] ?? null,
-                    $data['kapasitas'] ?? 36,
-                    $data['tahun_ajaran_kode'],
-                    $data['wali_kelas_nip'] ?? null,
-                ]);
-                $id = DB::selectOne('SELECT @kelas_id AS id')->id;
-            },
-            // A closure, not an arrow function: `fn ()` captures by value, so
-            // the id assigned inside would never reach $id out here.
-            portabel: function () use ($data, &$id) {
-                $id = $this->kelasPortabel($data)->id;
-            },
-        );
-
-        return Kelas::findOrFail($id);
+        // Legacy MySQL procedures START/COMMIT their own transaction, releasing
+        // caller locks. Use the shared PHP implementation on both drivers.
+        return AcademicOperation::run(fn () => $this->kelasPortabel($data));
     }
 
     public function jurusan(array $data): Jurusan
@@ -86,27 +65,19 @@ class PencatatanAkademik extends ProsedurTersimpan
         $bidang = filled($data['bidang'] ?? null) ? trim($data['bidang']) : null;
         $aktif = $data['aktif'] ?? true;
 
-        $this->jalankan(
-            mysql: fn () => DB::statement('CALL sp_tambah_jurusan(?,?,?,?,?)', [
-                $kode, $nama, $bidang, $data['deskripsi'] ?? null, $aktif,
-            ]),
-            portabel: function () use ($data, $kode, $nama, $bidang, $aktif) {
-                DB::transaction(function () use ($data, $kode, $nama, $bidang, $aktif) {
-                    $this->tolakBila($kode === '' || mb_strlen($kode) > 20 || preg_match('/\s/u', $kode), 'KODE_JURUSAN_TIDAK_VALID');
-                    $this->tolakBila($nama === '' || mb_strlen($nama) > 255, 'NAMA_JURUSAN_TIDAK_VALID');
-                    $this->tolakBila(mb_strlen($bidang ?? '') > 255, 'BIDANG_JURUSAN_TIDAK_VALID');
-                    $this->tolakBila(! in_array($aktif, [true, false, 0, 1, '0', '1'], true), 'AKTIF_JURUSAN_TIDAK_VALID');
-                    $this->tolakBila(Jurusan::whereKey($kode)->exists(), 'KODE_JURUSAN_SUDAH_ADA');
+        // Do not call the self-committing legacy procedure while holding the singleton.
+        return AcademicOperation::run(function () use ($data, $kode, $nama, $bidang, $aktif) {
+            $this->tolakBila($kode === '' || mb_strlen($kode) > 20 || preg_match('/\s/u', $kode), 'KODE_JURUSAN_TIDAK_VALID');
+            $this->tolakBila($nama === '' || mb_strlen($nama) > 255, 'NAMA_JURUSAN_TIDAK_VALID');
+            $this->tolakBila(mb_strlen($bidang ?? '') > 255, 'BIDANG_JURUSAN_TIDAK_VALID');
+            $this->tolakBila(! in_array($aktif, [true, false, 0, 1, '0', '1'], true), 'AKTIF_JURUSAN_TIDAK_VALID');
+            $this->tolakBila(Jurusan::whereKey($kode)->exists(), 'KODE_JURUSAN_SUDAH_ADA');
 
-                    Jurusan::create([
-                        'kode' => $kode, 'nama' => $nama, 'bidang' => $bidang,
-                        'deskripsi' => $data['deskripsi'] ?? null, 'aktif' => $aktif,
-                    ]);
-                });
-            },
-        );
-
-        return Jurusan::findOrFail($kode);
+            return Jurusan::create([
+                'kode' => $kode, 'nama' => $nama, 'bidang' => $bidang,
+                'deskripsi' => $data['deskripsi'] ?? null, 'aktif' => $aktif,
+            ]);
+        });
     }
 
     /**

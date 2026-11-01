@@ -1,0 +1,38 @@
+{
+  "batch": 3,
+  "files": [
+    "tests/Feature/AuthorizationTest.php",
+    "tests/Feature/BarchartTest.php",
+    "tests/Feature/CadanganTest.php",
+    "tests/Feature/CrudPagesTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/AuthorizationTest.php",
+    "tests/Feature/BarchartTest.php",
+    "tests/Feature/CadanganTest.php",
+    "tests/Feature/CrudPagesTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 245.368,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":65,\"passed\":65,\"assertions\":229,\"duration_ms\":242850}\n",
+  "stderr": "",
+  "tests": 65,
+  "assertions": 229,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/AuthorizationTest.php": "f191da719adce2f96fc904eff78f3c1af4d898d00013f6254f07770356d02795",
+    "tests/Feature/BarchartTest.php": "f9777178e9724f2b24b5d7b13e5bb43b33e826db6d824e72b7173f4e12f2f9ba",
+    "tests/Feature/CadanganTest.php": "1fb1cf567773782e52638fcdb6b41899cce89ac269c4365ec256226796f213ac",
+    "tests/Feature/CrudPagesTest.php": "07d656e778b1cdde34ef938a42cb045b2a78ad48e702ffb4ab41f2bc56b84b08"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 65,
+    "passed": 65,
+    "assertions": 229,
+    "duration_ms": 242850
+  }
+}

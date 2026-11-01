@@ -1,0 +1,16 @@
+{
+  "batch": "batch-21",
+  "files": [
+    "tests/Unit/SafetyFoundationTest.php",
+    "tests/Unit/XlsxReaderSafetyTest.php"
+  ],
+  "duration_s": 1.33,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 14,
+    "passed": 14,
+    "assertions": 23,
+    "duration_ms": 1326
+  }
+}

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AktivasiTahunAjaran;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TahunAjaran extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SerializesAcademicMaster;
 
     protected $table = 'tahun_ajaran';
 
@@ -49,15 +51,8 @@ class TahunAjaran extends Model
      */
     protected static function booted(): void
     {
-        // Exactly one year is current. Activating one stands the others down,
-        // so "this school year" is never ambiguous.
-        static::saved(function (TahunAjaran $tahun) {
-            if ($tahun->aktif) {
-                static::where('kode', '!=', $tahun->kode)
-                    ->where('aktif', true)
-                    ->update(['aktif' => false]);
-            }
-        });
+        // The database unique active_slot enforces the invariant, including raw SQL.
+        // Activation readiness belongs to the explicit activation service, never saved().
     }
 
     /**
@@ -90,7 +85,8 @@ class TahunAjaran extends Model
      */
     public function aktifkan(): void
     {
-        $this->update(['aktif' => true]);
+        app(AktivasiTahunAjaran::class)->aktifkan($this->kode);
+        $this->refresh();
     }
 
     /**

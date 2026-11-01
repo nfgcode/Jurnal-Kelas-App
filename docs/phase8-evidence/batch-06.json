@@ -1,0 +1,18 @@
+{
+  "batch": "06",
+  "files": [
+    "tests/Feature/HariLiburTest.php",
+    "tests/Feature/IkonTest.php",
+    "tests/Feature/ImporPenggunaTest.php",
+    "tests/Feature/ImportRestoreSafetyTest.php"
+  ],
+  "duration_s": 59.79,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 187,
+    "duration_ms": 56853
+  }
+}

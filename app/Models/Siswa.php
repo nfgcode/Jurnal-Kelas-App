@@ -19,6 +19,21 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Siswa extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\MelindungiRiwayat;
+
+    protected function relasiDilindungi(): array
+    {
+        return ['riwayatKelas', 'tinjauanRetensi'];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Siswa $siswa) {
+            if ($siswa->presensiHarian()->exists() || $siswa->presensis()->exists() || $siswa->jurnals()->exists() || $siswa->alumni()->exists()) {
+                throw new \RuntimeException('Siswa tidak dapat dihapus karena memiliki riwayat presensi, jurnal, atau data alumni.');
+            }
+        });
+    }
 
     protected $table = 'siswa';
 
@@ -58,14 +73,6 @@ class Siswa extends Model
         return Attribute::make(get: fn () => $this->kelas?->ketua_nis === $this->nis);
     }
 
-    protected static function booted(): void
-    {
-        static::deleting(function (Siswa $siswa) {
-            if ($siswa->presensiHarian()->exists() || $siswa->presensis()->exists() || $siswa->jurnals()->exists() || $siswa->alumni()->exists()) {
-                throw new \RuntimeException("Siswa {$siswa->nis} ({$siswa->nama}) tidak dapat dihapus karena memiliki riwayat presensi, jurnal, atau data alumni.");
-            }
-        });
-    }
 
     /**
      * Students who do (or do not) chair a class.

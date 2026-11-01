@@ -76,6 +76,18 @@ class Phase4AcademicTransitionChecklistTest extends TestCase
         $s2 = Siswa::create(['nis' => '10002', 'nama' => 'Siswa XI', 'kelas_id' => $kelasXI->id, 'status' => 'aktif']);
         $s3 = Siswa::create(['nis' => '10003', 'nama' => 'Siswa XII', 'kelas_id' => $kelasXII->id, 'status' => 'aktif']);
 
+        foreach ([$s1, $s2, $s3] as $student) {
+            \App\Models\RiwayatKelasSiswa::create([
+                'siswa_nis' => $student->nis,
+                'kelas_id' => $student->kelas_id,
+                'tahun_ajaran_kode' => $taAsal->kode,
+                'tingkat' => $student->kelas->tingkat,
+                'status' => 'aktif',
+                'aktif' => true,
+                'tanggal_mulai' => '2026-07-01',
+            ]);
+        }
+
         return compact('taAsal', 'taTujuan', 'jurusan', 'kelasX', 'kelasXI', 'kelasXII', 's1', 's2', 's3');
     }
 
@@ -87,10 +99,10 @@ class Phase4AcademicTransitionChecklistTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('Kesiapan Transisi Akademik');
-        $response->assertSee('Promosi X &rarr; XI', false);
-        $response->assertSee('Promosi XI &rarr; XII', false);
-        $response->assertSee('Kelulusan XII');
+        $response->assertSee('Rincian Pemeriksaan');
+        $response->assertSee('Periode Transisi');
+        $response->assertSee('Buka Simulasi');
+        $response->assertSee('calon lulusan');
         $response->assertSee('Konfigurasi Tahun Ajaran');
     }
 
@@ -104,7 +116,7 @@ class Phase4AcademicTransitionChecklistTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Tahun ajaran tujuan belum tersedia.');
-        $response->assertSee('Tambah Tahun Ajaran');
+        $response->assertSee('Siapkan Tahun Berikutnya');
         $response->assertSee('disabled');
     }
 

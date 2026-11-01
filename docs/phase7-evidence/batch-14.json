@@ -1,0 +1,17 @@
+{
+  "batch": "batch-14",
+  "files": [
+    "tests/Feature/Phase7ImporEngineTest.php",
+    "tests/Feature/Phase7SchedulerAndRetentionTest.php",
+    "tests/Feature/PresensiRosterTest.php",
+    "tests/Feature/PromotionReviewAndGatingTest.php"
+  ],
+  "result": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 24,
+    "passed": 24,
+    "assertions": 106,
+    "duration_ms": 35791
+  }
+}

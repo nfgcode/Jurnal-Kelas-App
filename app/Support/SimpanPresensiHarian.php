@@ -26,7 +26,7 @@ class SimpanPresensiHarian
      * flagged `koreksi` when the day already had a roster, which is the
      * distinction the admin audit screen is actually there to show.
      *
-     * @param  array<int, array{siswa_nis: int|string, status: string, keterangan?: ?string}>  $rows
+     * @param  array<int, array{siswa_nis: string, status: string, keterangan?: ?string}>  $rows
      */
     public static function simpan(Kelas $kelas, string $tanggal, array $rows, ?User $pengisi = null): void
     {
@@ -35,7 +35,7 @@ class SimpanPresensiHarian
         $koreksi = PresensiHarian::sudahDiisi($kelas->id, $tanggal);
 
         $bersih = array_map(fn ($data) => [
-            'siswa_nis' => (int) $data['siswa_nis'],
+            'siswa_nis' => (string) $data['siswa_nis'],
             'status' => $data['status'],
             'keterangan' => $data['keterangan'] ?? null,
         ], $rows);

@@ -6,7 +6,7 @@
     <x-page-head
         title="Pratinjau Transisi: {{ $pratinjau['tahun_asal'] }} &rarr; {{ $pratinjau['tahun_tujuan'] }}"
         sub="Tinjau pemetaan kenaikan kelas, kelulusan tingkat XII, dan atur pengecualian sebelum eksekusi permanen">
-        <a href="{{ route('admin.transisi.index') }}" class="btn-hifi btn-hifi--ghost">&larr; Kembali</a>
+        <a href="{{ route('admin.transisi.index', ['tahun_asal' => $pratinjau['tahun_asal'], 'tahun_tujuan' => $pratinjau['tahun_tujuan']]) }}" class="btn-hifi btn-hifi--ghost">&larr; Kembali</a>
     </x-page-head>
 
     {{-- Masalah Validasi / Peringatan --}}
@@ -42,6 +42,8 @@
 
     <form method="POST" action="{{ route('admin.transisi.eksekusi') }}" id="formTransisi">
         @csrf
+        <input type="hidden" name="snapshot" value="{{ $pratinjau['snapshot'] }}">
+        <p class="field__hint">Snapshot mengikat roster, kelas, periode dan pilihan yang diizinkan selama satu jam. Keputusan dan opsi di bawah tetap dapat diedit; seluruh pilihan divalidasi ulang saat konfirmasi. Data berubah: buka ulang simulasi.</p>
         <input type="hidden" name="tahun_asal" value="{{ $pratinjau['tahun_asal'] }}">
         <input type="hidden" name="tahun_tujuan" value="{{ $pratinjau['tahun_tujuan'] }}">
 
@@ -169,11 +171,7 @@
                 </div>
 
                 <div class="pt-3">
-                    <label class="checkbox-row">
-                        <input type="checkbox" name="aktifkan_tahun_tujuan" value="1">
-                        Jadikan tahun ajaran {{ $pratinjau['tahun_tujuan'] }} aktif
-                    </label>
-                    <span class="field__hint d-block mt-1">Otomatis menonaktifkan tahun ajaran berjalan lama.</span>
+                    <span class="field__hint">Aktivasi terpisah melalui <a href="{{ route('admin.tahun-ajaran.index') }}">Tahun Ajaran</a> setelah seluruh penempatan siap.</span>
                 </div>
             </div>
 
@@ -185,7 +183,7 @@
             </div>
 
             <div class="d-flex justify-content-between align-items-center">
-                <a href="{{ route('admin.transisi.index') }}" class="btn-hifi btn-hifi--ghost">&larr; Batal</a>
+                <a href="{{ route('admin.transisi.index', ['tahun_asal' => $pratinjau['tahun_asal'], 'tahun_tujuan' => $pratinjau['tahun_tujuan']]) }}" class="btn-hifi btn-hifi--ghost">&larr; Batal</a>
                 <button class="btn-hifi" type="submit" @disabled(! $pratinjau['siap_eksekusi'])>
                     <x-ikon nama="check-circle-fill" /> Eksekusi Transisi Tahun Ajaran Sekarang
                 </button>

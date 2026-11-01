@@ -7,7 +7,6 @@ use App\Support\AuditAdmin;
 use App\Support\CadanganData;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Throwable;
 
 /**
  * Backup & restore of the whole dataset — for moving the app to another server or
@@ -52,9 +51,13 @@ class CadanganController extends Controller
             jumlah: $only ? count($only) : count(CadanganData::semuaTabel()),
         );
 
-        return response()
-            ->download($tmp, $nama, ['Content-Type' => 'application/gzip'])
+        $response = response()
+            ->download($tmp, $nama, ['Content-Type' => 'application/gzip', 'X-Content-Type-Options' => 'nosniff'])
             ->deleteFileAfterSend(true);
+        // BinaryFileResponse defaults to public; set privacy after construction.
+        $response->headers->set('Cache-Control', 'private, no-store, max-age=0');
+
+        return $response;
     }
 
     /** The readable workbook (chosen master tables, one per sheet). */
@@ -77,110 +80,21 @@ class CadanganController extends Controller
 
     /**
      * The tables the admin ticked, kept only if they are real backup-able tables.
-     * An empty pick means "everything" — a blank sheet is never the intent.
+     * Empty/invalid selections are rejected; only explicit semua=1 means all.
      */
     private function tabelDipilih(Request $request): ?array
     {
-        $pilih = array_values(array_intersect(
-            (array) $request->input('tabel', []),
-            CadanganData::semuaTabel(),
-        ));
+        $data = $request->validate([
+            'semua' => ['nullable', 'in:1', 'prohibits:tabel'],
+            'tabel' => ['required_without:semua', 'array', 'min:1', 'max:64'],
+            'tabel.*' => ['required', 'string', 'distinct', \Illuminate\Validation\Rule::in(CadanganData::semuaTabel())],
+        ]);
 
-        return $pilih === [] ? null : $pilih;
+        return ($data['semua'] ?? null) === '1' ? null : array_values($data['tabel']);
     }
 
     public function pulihkan(Request $request, CadanganData $cadangan)
     {
-        $request->validate([
-            // 100 MB; the server's PHP upload_max_filesize / nginx client_max_body_size
-            // must allow at least this for a large school's backup.
-            'berkas' => ['required', 'file', 'max:102400'],
-            'mode' => ['required', 'in:gabung,ganti'],
-            'konfirmasi' => ['accepted'],
-        ], [
-            'konfirmasi.accepted' => 'Centang konfirmasi dulu — pemulihan menimpa data yang ada.',
-        ]);
-
-        // A rare admin action over a potentially large file; give it room.
-        @ini_set('memory_limit', '512M');
-
-        $isi = file_get_contents($request->file('berkas')->getRealPath());
-
-        // Accept both the gzipped download (.json.gz) and a plain .json — detect
-        // gzip by its magic bytes rather than trusting the extension.
-        if (str_starts_with($isi, "\x1f\x8b")) {
-            $isi = @gzdecode($isi);
-
-            if ($isi === false) {
-                return back()->with('error', 'Berkas .gz gagal dibuka. Pastikan file cadangan tidak rusak.');
-            }
-        }
-
-        $data = json_decode($isi, true);
-
-        if (! is_array($data) || ! isset($data['tabel']) || ! is_array($data['tabel'])) {
-            return back()->with('error', 'Berkas tidak dikenali sebagai cadangan JSON Jurnal Kelas.');
-        }
-
-        $modeTeks = $request->input('mode') === 'ganti' ? 'Ganti total' : 'Gabung';
-        $namaBerkas = $request->file('berkas')->getClientOriginalName();
-
-        AuditAdmin::catatKritis(
-            aksi: 'cadangan.pulihkan_mulai',
-            tipeEntitas: 'cadangan',
-            entitasId: $namaBerkas,
-            deskripsi: "Memulai pemulihan data mode {$modeTeks} dari berkas: {$namaBerkas}",
-            metadata: [
-                'mode' => $request->input('mode'),
-                'tabel_dalam_berkas' => array_keys($data['tabel']),
-            ],
-            status: 'berhasil',
-        );
-
-        try {
-            $hasil = $cadangan->pulihkan($data, $request->input('mode'));
-            $baris = array_sum($hasil);
-
-            AuditAdmin::catatKritis(
-                aksi: 'cadangan.pulihkan',
-                tipeEntitas: 'cadangan',
-                entitasId: $namaBerkas,
-                deskripsi: "Pemulihan data mode {$modeTeks} berhasil. {$baris} baris dipulihkan ke ".count($hasil).' tabel.',
-                metadata: [
-                    'mode' => $request->input('mode'),
-                    'tabel_dipulihkan' => array_keys($hasil),
-                    'rincian_baris' => $hasil,
-                    'total_baris' => $baris,
-                ],
-                status: 'berhasil',
-                jumlah: $baris,
-            );
-        } catch (Throwable $e) {
-            report($e);
-
-            AuditAdmin::catatKritis(
-                aksi: 'cadangan.pulihkan',
-                tipeEntitas: 'cadangan',
-                entitasId: $namaBerkas,
-                deskripsi: 'Pemulihan data gagal: '.$e->getMessage(),
-                metadata: [
-                    'mode' => $request->input('mode'),
-                    'error' => $e->getMessage(),
-                ],
-                status: 'gagal',
-            );
-
-            return back()->with('error', 'Pemulihan gagal dan tidak ada perubahan yang disimpan: '.$e->getMessage());
-        }
-
-        $mode = $request->input('mode') === 'ganti' ? 'Ganti total' : 'Gabung';
-        $baris = array_sum($hasil);
-
-        return back()->with('success', sprintf(
-            '%s selesai — %s baris dipulihkan ke %d tabel.',
-            $mode,
-            number_format($baris, 0, ',', '.'),
-            count($hasil),
-        ));
+        abort(503, 'Pemulihan dinonaktifkan sampai pipeline staging Fase 7–8 tersedia.');
     }
 }

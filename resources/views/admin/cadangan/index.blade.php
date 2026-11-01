@@ -193,56 +193,12 @@
                 <strong>JSON</strong> = berkas untuk memulihkan (restore) — memuat tabel terpilih
                 beserta relasi & ID, diunduh <strong>terkompresi</strong> (<code>.json.gz</code>,
                 ±20× lebih kecil). <strong>XLSX</strong> hanya untuk dibaca/diedit dan mencakup
-                tabel master saja (presensi &amp; token tidak ikut). Tanpa mencentang apa pun = semua data.
+                tabel master saja (presensi &amp; token tidak ikut). Pilih setidaknya satu tabel; pilihan kosong ditolak.
             </p>
         </x-card>
 
         <x-card title="Impor / Pulihkan (dari JSON)">
-            <form method="POST" action="{{ route('admin.cadangan.pulihkan') }}" enctype="multipart/form-data">
-                @csrf
-
-                <label class="field__label d-block mb-1">Berkas cadangan (.json atau .json.gz)</label>
-                <input class="file-input mb-1" type="file" name="berkas" accept=".json,.gz,application/json,application/gzip" required>
-                @error('berkas')<span class="field__error d-block mb-2">{{ $message }}</span>@enderror
-
-                <label class="field__label d-block mt-3 mb-1">Cara memulihkan</label>
-                <div class="mode-list">
-                    <label class="mode-card">
-                        <input type="radio" name="mode" value="gabung" checked>
-                        <span class="mode-card__dot"></span>
-                        <span>
-                            <span class="mode-card__title">Gabung (aman)</span>
-                            <span class="mode-card__desc">Tambah data baru & perbarui baris yang ID-nya cocok. Tidak menghapus apa pun.</span>
-                        </span>
-                    </label>
-                    <label class="mode-card mode-card--danger">
-                        <input type="radio" name="mode" value="ganti">
-                        <span class="mode-card__dot"></span>
-                        <span>
-                            <span class="mode-card__title">Ganti total</span>
-                            <span class="mode-card__desc">Kosongkan tabel lalu isi ulang dari berkas — hasil persis isi backup. Menghapus data saat ini.</span>
-                        </span>
-                    </label>
-                </div>
-
-                <label class="checkbox-row">
-                    <input type="checkbox" name="konfirmasi" value="1">
-                    Saya paham pemulihan dapat menimpa atau menghapus data yang ada.
-                </label>
-                @error('konfirmasi')<span class="field__error d-block mt-1">{{ $message }}</span>@enderror
-
-                <div class="d-flex justify-content-end mt-3">
-                    <button class="btn-hifi" type="submit">Pulihkan Data</button>
-                </div>
-            </form>
-
-            <p class="field__hint mt-3">
-                <strong>Penting:</strong> lakukan saat aplikasi tidak sedang dipakai. Seluruh proses
-                berjalan dalam satu transaksi — bila gagal di tengah jalan, tidak ada perubahan yang
-                tersimpan. Untuk berkas besar, server harus mengizinkan unggahan besar (PHP
-                <code>upload_max_filesize</code>/<code>post_max_size</code> dan nginx
-                <code>client_max_body_size</code>).
-            </p>
+            <p class="banner banner--bahaya">Pemulihan dinonaktifkan sampai pipeline staging Fase 7–8 tersedia. Backup JSON mengandung data sensitif; simpan privat. Jangan unggah ke layanan publik.</p>
         </x-card>
     </div>
 

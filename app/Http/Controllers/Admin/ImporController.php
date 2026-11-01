@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use RuntimeException;
+use Illuminate\Support\Facades\Crypt;
+use Throwable;
 
 /**
  * Bulk import of siswa and guru accounts from a spreadsheet, admin-only.
@@ -69,14 +71,17 @@ class ImporController extends Controller
      */
     public function pratinjau(Request $request)
     {
-        $data = $request->validate([
+        // Remove before validation: framework error redirects must never flash this field.
+        $password = $request->input('password_bawaan');
+        $request->request->remove('password_bawaan');
+        $data = validator($request->all() + ['password_bawaan' => $password], [
             'jenis' => ['required', Rule::in(ImporPengguna::JENIS)],
             // 10 MB is far above any realistic roster and well inside the
             // default PHP upload limits, so a legitimate file never bounces.
             'berkas' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
             'password_bawaan' => ['nullable', 'string', 'min:8', 'max:255'],
             'perbarui' => ['nullable', 'boolean'],
-        ]);
+        ])->validate();
 
         $this->bersihkanBerkasLama();
 
@@ -91,17 +96,33 @@ class ImporController extends Controller
                 $data['password_bawaan'] ?? null,
                 (bool) ($data['perbarui'] ?? false),
             );
-        } catch (RuntimeException $e) {
+        } catch (Throwable $e) {
             Storage::disk(self::DISK)->delete(self::FOLDER.'/'.$nama);
 
-            return back()->with('error', $e->getMessage())->withInput();
+            return back()->with('error', 'Berkas impor tidak dapat diproses.')->withInput($request->except('password_bawaan', 'berkas'));
         }
 
         if ($hasil['fatal']) {
             Storage::disk(self::DISK)->delete(self::FOLDER.'/'.$nama);
 
-            return back()->with('error', $hasil['fatal'])->withInput();
+            return back()->with('error', 'Berkas impor tidak sesuai template.')->withInput($request->except('password_bawaan', 'berkas'));
         }
+
+        if (! $request->session()->has('impor_owner')) {
+            $request->session()->put('impor_owner', bin2hex(random_bytes(32)));
+        }
+        $request->session()->put('impor.'.$nama, Crypt::encryptString(json_encode([
+            'owner' => (string) $request->user()->getAuthIdentifier(),
+            'session' => hash('sha256', (string) $request->session()->get('impor_owner')),
+            'expires' => now()->addHours(self::UMUR_MAKS_JAM)->timestamp,
+            'hash' => hash_file('sha256', Storage::disk(self::DISK)->path(self::FOLDER.'/'.$nama)),
+            'jenis' => $jenis, 'perbarui' => (bool) ($data['perbarui'] ?? false),
+            'password' => $data['password_bawaan'] ?? null,
+        ], JSON_THROW_ON_ERROR)));
+        foreach ($hasil['baris'] as &$baris) {
+            unset($baris['data']['password'], $baris['data']['_password']);
+        }
+        unset($baris);
 
         return view('admin.impor.pratinjau', [
             'jenis' => $jenis,
@@ -109,7 +130,6 @@ class ImporController extends Controller
             'hasil' => $hasil,
             'berkas' => $nama,
             'namaAsli' => $data['berkas']->getClientOriginalName(),
-            'passwordBawaan' => $data['password_bawaan'] ?? null,
             'perbarui' => (bool) ($data['perbarui'] ?? false),
         ]);
     }
@@ -121,16 +141,37 @@ class ImporController extends Controller
      */
     public function simpan(Request $request)
     {
+        $request->request->remove('password_bawaan');
         $data = $request->validate([
             'jenis' => ['required', Rule::in(ImporPengguna::JENIS)],
             // A ULID plus extension — anything else is not a name this app wrote,
             // and letting it through would be a path traversal into storage.
             'berkas' => ['required', 'string', 'regex:/^[0-9A-Za-z]{26}\.(xlsx|csv)$/'],
-            'password_bawaan' => ['nullable', 'string', 'min:8', 'max:255'],
-            'perbarui' => ['nullable', 'boolean'],
         ]);
 
         $path = self::FOLDER.'/'.$data['berkas'];
+
+        try {
+            $encrypted = $request->session()->pull('impor.'.$data['berkas']);
+            $preview = $encrypted ? json_decode(Crypt::decryptString($encrypted), true, 16, JSON_THROW_ON_ERROR) : null;
+            if (! $preview || $preview['owner'] !== (string) $request->user()->getAuthIdentifier()
+                || $preview['session'] !== hash('sha256', (string) $request->session()->get('impor_owner'))
+                || $preview['expires'] <= now()->timestamp || $preview['jenis'] !== $data['jenis']
+                || ! Storage::disk(self::DISK)->exists($path)
+                || ! hash_equals($preview['hash'], hash_file('sha256', Storage::disk(self::DISK)->path($path)))) {
+                throw new RuntimeException('Preview unavailable.');
+            }
+            // Atomic claim: concurrent stale-session confirmations cannot reuse the file.
+            $claimed = self::FOLDER.'/'.bin2hex(random_bytes(12)).'.'.pathinfo($path, PATHINFO_EXTENSION);
+            if (! @rename(Storage::disk(self::DISK)->path($path), Storage::disk(self::DISK)->path($claimed))) {
+                throw new RuntimeException('Preview unavailable.');
+            }
+            $path = $claimed;
+            $data['password_bawaan'] = $preview['password'];
+            $data['perbarui'] = $preview['perbarui'];
+        } catch (Throwable $e) {
+            return redirect()->route('admin.impor.index')->with('error', 'Pratinjau tidak tersedia atau telah berubah. Silakan unggah ulang.');
+        }
 
         if (! Storage::disk(self::DISK)->exists($path)) {
             return redirect()->route('admin.impor.index')
@@ -144,22 +185,21 @@ class ImporController extends Controller
                 $data['password_bawaan'] ?? null,
                 (bool) ($data['perbarui'] ?? false),
             );
-        } catch (RuntimeException $e) {
+            $ringkas = ImporPengguna::simpan($hasil['baris'], $data['jenis']);
+        } catch (Throwable $e) {
             Storage::disk(self::DISK)->delete($path);
 
             AuditAdmin::catat(
                 aksi: "impor.{$data['jenis']}",
                 tipeEntitas: 'impor',
                 entitasId: $data['berkas'],
-                deskripsi: "Impor {$data['jenis']} gagal: ".$e->getMessage(),
+                deskripsi: "Impor {$data['jenis']} gagal diproses.",
                 metadata: ['jenis' => $data['jenis'], 'berkas' => $data['berkas']],
                 status: 'gagal',
             );
 
-            return redirect()->route('admin.impor.index')->with('error', $e->getMessage());
+            return redirect()->route('admin.impor.index')->with('error', 'Impor tidak dapat diproses. Silakan periksa berkas dan unggah ulang.');
         }
-
-        $ringkas = ImporPengguna::simpan($hasil['baris'], $data['jenis']);
 
         AuditAdmin::imporSelesai(
             $data['jenis'],

@@ -1,0 +1,480 @@
+{
+  "token": "2af6693ad77adc1ecf69c7bc6c593aaa",
+  "root": "C:\\Users\\Tenma\\AppData\\Local\\hermes\\cache\\scratch\\phase2b-2af6693ad77adc1ecf69c7bc6c593aaa",
+  "baseline": "C:\\Users\\Tenma\\AppData\\Local\\hermes\\cache\\scratch\\phase2b-baseline.json",
+  "steps": [],
+  "resources": {
+    "network": "phase2b-2af6693ad77adc1ecf69c7bc6c593aaa-net",
+    "mysql": "phase2b-2af6693ad77adc1ecf69c7bc6c593aaa-db",
+    "php": "phase2b-2af6693ad77adc1ecf69c7bc6c593aaa-php"
+  },
+  "commands_redacted": [
+    "docker run --network=none --read-only <pinned-php-image> tests/run.php <foundation-tests>",
+    "docker network create --internal --label org.jurnal.phase2b=<run-token> <owned-network>",
+    "docker run --network <owned-network> --tmpfs /var/lib/mysql --env-file <ephemeral-random-credentials> <pinned-mysql8-image>",
+    "docker run --read-only --network <owned-network> --tmpfs /scratch --mount <repo>:readonly <pinned-php-image>",
+    "docker exec <owned-runner> php /repo/tests/Integration/Phase2B_{migrations,constraints,concurrency}.php"
+  ],
+  "images": {
+    "mysql": "sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b",
+    "php": "sha256:46a78eee8b859a93fb3a5fc4809a6a4f199e91b3089e75329277f0237063c8cf"
+  },
+  "foundation_counts": {
+    "tests": 6,
+    "assertions": 25
+  },
+  "isolation": {
+    "internal_network": true,
+    "mysql_tmpfs": true,
+    "published_ports": false,
+    "persistent_volumes": false
+  },
+  "identity": {
+    "server_uuid": "40c3bf19-d4df-11f1-b721-665afb2a03e0",
+    "version": "8.0.46",
+    "database": "phase2b_2af6693ad77adc1ecf69c7bc6c593aaa",
+    "hostname": "8be484b4aa46"
+  },
+  "migrations": {
+    "assertions": 13,
+    "applied": [
+      "0001_01_01_000000_create_users_table",
+      "0001_01_01_000001_create_cache_table",
+      "0001_01_01_000002_create_jobs_table",
+      "2024_01_01_000000_create_master_akademik_tables",
+      "2024_01_01_000001_create_kelas_table",
+      "2024_01_01_000002_create_guru_siswa_tables",
+      "2024_01_01_000003_create_mata_pelajaran_table",
+      "2024_01_01_000004_create_jadwal_table",
+      "2024_01_01_000005_create_jurnal_table",
+      "2024_01_01_000006_create_presensi_table",
+      "2026_07_22_000001_add_hifi_design_fields",
+      "2026_07_23_071137_create_personal_access_tokens_table",
+      "2026_07_23_080001_add_performance_indexes",
+      "2026_07_23_080002_add_unique_presensi",
+      "2026_07_23_080003_add_fulltext_to_jurnal",
+      "2026_07_23_080004_create_jurnal_audit_table",
+      "2026_07_23_080005_create_database_views",
+      "2026_07_23_080006_create_stored_functions",
+      "2026_07_23_080007_create_sp_simpan_presensi",
+      "2026_07_23_080008_create_jurnal_audit_trigger",
+      "2026_07_24_090001_add_users_role_status_indexes",
+      "2026_07_24_100001_add_jurnal_jadwal_tanggal_index",
+      "2026_07_25_000001_create_presensi_log_table",
+      "2026_07_30_000001_add_qr_token_to_kelas",
+      "2026_07_30_000002_create_laporan_error_table",
+      "2026_07_30_000003_create_pengumuman_table",
+      "2026_07_30_000004_add_unique_jurnal_per_pertemuan",
+      "2026_07_30_000005_drop_redundant_jurnal_jadwal_tanggal_index",
+      "2026_07_30_000006_add_public_id_to_jurnal",
+      "2026_07_30_000007_make_jurnal_public_id_required",
+      "2026_07_31_000001_drop_redundant_users_role_index",
+      "2026_08_06_000001_add_diedit_setelah_hari_to_jurnal",
+      "2026_08_19_000001_create_presensi_harian_table",
+      "2026_08_19_000002_backfill_presensi_harian",
+      "2026_08_19_000003_create_presensi_harian_log_table",
+      "2026_08_19_000004_repoint_mysql_objects_to_presensi_harian",
+      "2026_08_25_000001_create_ruangan_table",
+      "2026_08_25_000002_create_guru_mata_pelajaran_table",
+      "2026_08_25_000003_create_pengguna_procedures",
+      "2026_08_25_000004_add_jadwal_unique_keys",
+      "2026_08_26_000001_create_akademik_procedures",
+      "2026_08_30_000001_add_diisi_oleh_to_presensi",
+      "2026_10_01_000001_backfill_kelas_qr_token",
+      "2026_10_07_000001_add_last_logout_at_to_users",
+      "2026_10_07_000002_kosongkan_materi_jurnal_otomatis",
+      "2026_10_07_000003_add_jurusan_siswa_and_siswa_jurnal",
+      "2026_10_07_000004_create_jurusan_sync_triggers",
+      "2026_10_07_000005_create_sp_tambah_jurusan",
+      "2026_10_13_000001_create_hari_libur_table",
+      "2026_10_13_000002_add_hanya_baca_to_users",
+      "2026_10_28_000001_restrict_presensi_siswa_foreign_keys",
+      "2026_10_28_000002_create_alumni_table",
+      "2026_10_28_000003_create_riwayat_kelas_siswa_table",
+      "2026_10_28_000004_create_transisi_tahun_ajaran_table",
+      "2026_10_28_000005_create_admin_audit_log_table",
+      "2026_10_28_000006_create_tinjauan_retensi_table",
+      "2026_10_30_000001_restrict_historical_master_deletion",
+      "2026_10_31_000001_guard_academic_activation",
+      "2026_11_01_000001_create_academic_workflows"
+    ],
+    "migration_count": 59,
+    "legacy_hashes": {
+      "academic_operation_lock": "2382d8ae2c7ad46b1e01f82007505427d4485cb5b825bcd9a73bb9c85996a807",
+      "admin_audit_log": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "alumni": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "cache": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "cache_locks": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "failed_jobs": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "guru": "04de984c5fbe2ddad9422e3351e52deb5a234dbd7ba8934eae29c9a429c8b7ea",
+      "guru_mata_pelajaran": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hari_libur": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "jadwal": "261df11f98b3c215362de1a7958f8ccbd8706f689c2eb75a069804c7c3a5b572",
+      "job_batches": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "jobs": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "jurnal": "69a7a19db37108030fe30ce123d97c75ba77a3c79c42fdcd03416f5f80529919",
+      "jurnal_audit": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "jurusan": "ab2e2e9c29dae05764c3ecd18b65d78c0f0a772d148dd8b5fe9a176527cf0eaa",
+      "kelas": "7169cacd56a42127d06412cc06a9fd805c888412eb1a91007ae669bb3d78e982",
+      "laporan_error": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "mata_pelajaran": "55b0f0957a8eb1c465f301726bb851fe4ce1b91f9297a84b2fb5f095fbb5b356",
+      "password_reset_tokens": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "pengumuman": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "personal_access_tokens": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "presensi": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "presensi_harian": "5dfcac5a891c54854025e83dc9cdb432135872beb57f823f657ebdb099988570",
+      "presensi_harian_log": "49ac6f76ff91e3ad829ca6dba4aca6a61245bf0fe361324da25c7008aef20b23",
+      "presensi_log": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "riwayat_kelas_siswa": "552bc328fc0227405e05bd345fcc8f5db7cf11c905063427557c05940c5de3c5",
+      "ruangan": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "sessions": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "siswa": "e663906e6b2d36f5c6f6c3f3258c1f44c7b8b29fba56ae9d979ac156f041aa2e",
+      "tahun_ajaran": "7cea1655b6d42694122b6accf1ffdad36ee511777fe33b19092acffd20ff8832",
+      "tinjauan_retensi": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "transisi_tahun_ajaran": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "users": "2c7bd0bafb459868c35c82881fdb652b1f9f55c3084685adf6a72668d828fcb5",
+      "v_jurnal_lengkap": "544d3338f94e056b36cd1cf3ad09d366c477a0c019ce23059351b0a5b33f926f",
+      "v_rekap_presensi_kelas": "6791cc90de798331860944635deb6ec54e6a2f803835280197cdb6b6500e11c4"
+    },
+    "cycle": "down/up with populated legacy fixtures preserved",
+    "routines": [
+      {
+        "ROUTINE_NAME": "fn_nama_duplikat_guru",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "fn_nama_duplikat_siswa",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "fn_persentase_kehadiran_kelas",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "fn_persentase_kehadiran_siswa",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "sp_simpan_presensi",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_simpan_presensi_harian",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_guru",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_jadwal",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_jurusan",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_kelas",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_mata_pelajaran",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_siswa",
+        "ROUTINE_TYPE": "PROCEDURE"
+      }
+    ]
+  },
+  "constraints": {
+    "assertions": 38,
+    "foreign_keys": [
+      {
+        "TABLE_NAME": "academic_workflow_audits",
+        "COLUMN_NAME": "actor_id",
+        "REFERENCED_TABLE_NAME": "users",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_audits",
+        "COLUMN_NAME": "operation_id",
+        "REFERENCED_TABLE_NAME": "academic_workflow_operations",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_coordinators",
+        "COLUMN_NAME": "actor_id",
+        "REFERENCED_TABLE_NAME": "users",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_items",
+        "COLUMN_NAME": "operation_id",
+        "REFERENCED_TABLE_NAME": "academic_workflow_operations",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_items",
+        "COLUMN_NAME": "target_class_id",
+        "REFERENCED_TABLE_NAME": "kelas",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_operations",
+        "COLUMN_NAME": "actor_id",
+        "REFERENCED_TABLE_NAME": "users",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_operations",
+        "COLUMN_NAME": "confirmed_by",
+        "REFERENCED_TABLE_NAME": "users",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_operations",
+        "COLUMN_NAME": "source_year",
+        "REFERENCED_TABLE_NAME": "tahun_ajaran",
+        "REFERENCED_COLUMN_NAME": "kode",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_operations",
+        "COLUMN_NAME": "target_year",
+        "REFERENCED_TABLE_NAME": "tahun_ajaran",
+        "REFERENCED_COLUMN_NAME": "kode",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_stages",
+        "COLUMN_NAME": "coordinator_id",
+        "REFERENCED_TABLE_NAME": "academic_workflow_coordinators",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      },
+      {
+        "TABLE_NAME": "academic_workflow_stages",
+        "COLUMN_NAME": "operation_id",
+        "REFERENCED_TABLE_NAME": "academic_workflow_operations",
+        "REFERENCED_COLUMN_NAME": "id",
+        "DELETE_RULE": "RESTRICT"
+      }
+    ],
+    "unique_rejections": 4
+  },
+  "concurrency": {
+    "assertions": 53,
+    "cases": {
+      "same-confirmed-operation": {
+        "wait_proof": [
+          {
+            "connection_id": 17,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          },
+          {
+            "connection_id": 18,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_connection": 17,
+            "blocking_connection": 14,
+            "object_name": "academic_operation_lock"
+          },
+          {
+            "requesting_connection": 18,
+            "blocking_connection": 14,
+            "object_name": "academic_operation_lock"
+          },
+          {
+            "requesting_connection": 18,
+            "blocking_connection": 17,
+            "object_name": "academic_operation_lock"
+          }
+        ],
+        "results": [
+          {
+            "ok": true,
+            "connection_id": 18,
+            "value": {
+              "failed": 0,
+              "skipped": 0,
+              "processed": 1
+            }
+          },
+          {
+            "ok": true,
+            "connection_id": 17,
+            "value": {
+              "processed": 1,
+              "skipped": 0,
+              "failed": 0
+            }
+          }
+        ]
+      },
+      "competing-identity-snapshots": {
+        "wait_proof": [
+          {
+            "connection_id": 21,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          },
+          {
+            "connection_id": 22,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_connection": 21,
+            "blocking_connection": 14,
+            "object_name": "academic_operation_lock"
+          },
+          {
+            "requesting_connection": 22,
+            "blocking_connection": 14,
+            "object_name": "academic_operation_lock"
+          },
+          {
+            "requesting_connection": 22,
+            "blocking_connection": 21,
+            "object_name": "academic_operation_lock"
+          }
+        ],
+        "results": [
+          {
+            "ok": false,
+            "connection_id": 22,
+            "class": "DomainException",
+            "error": "workflow_confirmation_stale"
+          },
+          {
+            "ok": true,
+            "connection_id": 21,
+            "value": {
+              "processed": 1,
+              "skipped": 0,
+              "failed": 0
+            }
+          }
+        ]
+      },
+      "master-before-execute": {
+        "master_wait_proof": [
+          {
+            "connection_id": 24,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "workflow_wait_proof": [
+          {
+            "connection_id": 26,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_connection": 26,
+            "blocking_connection": 24,
+            "object_name": "academic_operation_lock"
+          }
+        ],
+        "results": [
+          {
+            "ok": true,
+            "connection_id": 24,
+            "value": null
+          },
+          {
+            "ok": false,
+            "connection_id": 26,
+            "class": "DomainException",
+            "error": "workflow_confirmation_stale"
+          }
+        ]
+      },
+      "coordinator-resume": {
+        "partial_status": [
+          {
+            "kind": "graduation",
+            "position": 0,
+            "operation_id": 6,
+            "state": "completed",
+            "error_code": null
+          },
+          {
+            "kind": "intake",
+            "position": 2,
+            "operation_id": 7,
+            "state": "failed",
+            "error_code": "workflow_execution_failed"
+          }
+        ],
+        "final_status": [
+          {
+            "kind": "graduation",
+            "position": 0,
+            "operation_id": 6,
+            "state": "completed",
+            "error_code": null
+          },
+          {
+            "kind": "intake",
+            "position": 2,
+            "operation_id": 7,
+            "state": "completed",
+            "error_code": null
+          }
+        ],
+        "first_operation_unchanged": true
+      },
+      "real-graduation-mysql": {
+        "result": {
+          "processed": 1,
+          "skipped": 0,
+          "failed": 0
+        },
+        "alumni_count": 1,
+        "riwayat_status": "lulus"
+      }
+    }
+  },
+  "cleanup": [
+    {
+      "name": "phase2b-2af6693ad77adc1ecf69c7bc6c593aaa-php",
+      "removed": true
+    },
+    {
+      "name": "phase2b-2af6693ad77adc1ecf69c7bc6c593aaa-db",
+      "removed": true
+    },
+    {
+      "name": "phase2b-2af6693ad77adc1ecf69c7bc6c593aaa-net",
+      "removed": true
+    }
+  ],
+  "assertions_total": 129,
+  "source_hashes_unchanged": true
+}

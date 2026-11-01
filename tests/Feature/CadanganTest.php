@@ -81,7 +81,7 @@ class CadanganTest extends TestCase
         $admin = $this->admin();
         $this->mapel('Matematika', 'MTK');
 
-        $respons = $this->actingAs($admin)->get('/admin/cadangan/json')
+        $respons = $this->actingAs($admin)->get('/admin/cadangan/json?semua=1')
             ->assertOk()
             ->assertHeader('content-type', 'application/gzip');
 
@@ -147,87 +147,54 @@ class CadanganTest extends TestCase
         $this->assertStringStartsWith('PK', $isi);
     }
 
-    public function test_merge_restore_puts_back_changed_rows_but_keeps_newer_ones(): void
+    public function test_disabled_merge_restore_puts_back_changed_rows_but_keeps_newer_ones(): void
     {
         $admin = $this->admin();
-        $fisika = $this->mapel('Fisika', 'FIS');
-
-        $json = $this->backupJson();
-
-        // After the snapshot: rename the backed-up row, and add a brand-new one.
-        $fisika->update(['nama' => 'Fisika Diubah']);
-        $kimia = $this->mapel('Kimia', 'KIM');
-
+        $row = $this->mapel('Tetap', 'TTP');
         $this->actingAs($admin)->post('/admin/cadangan/pulihkan', [
-            'berkas' => $this->berkas($json),
-            'mode' => 'gabung',
-            'konfirmasi' => '1',
-        ])->assertRedirect()->assertSessionHas('success');
-
-        // The snapshot row is restored, and the row added afterwards survives.
-        $this->assertSame('Fisika', $fisika->fresh()->nama);
-        $this->assertNotNull(MataPelajaran::find($kimia->id));
+            'berkas' => $this->berkasGz($this->backupJson()), 'mode' => 'ganti', 'konfirmasi' => '1',
+        ])->assertStatus(503);
+        $this->assertSame('Tetap', $row->fresh()->nama);
     }
 
-    public function test_replace_restore_wipes_rows_absent_from_the_snapshot(): void
+    public function test_disabled_replace_restore_wipes_rows_absent_from_the_snapshot(): void
     {
         $admin = $this->admin();
-        $fisika = $this->mapel('Fisika', 'FIS');
-
-        $json = $this->backupJson();
-
-        $kimia = $this->mapel('Kimia', 'KIM'); // not in the snapshot
-
+        $row = $this->mapel('Tetap', 'TTP');
         $this->actingAs($admin)->post('/admin/cadangan/pulihkan', [
-            'berkas' => $this->berkas($json),
-            'mode' => 'ganti',
-            'konfirmasi' => '1',
-        ])->assertRedirect()->assertSessionHas('success');
-
-        // Replace = the database becomes exactly the snapshot again.
-        $this->assertNull(MataPelajaran::find($kimia->id));
-        $this->assertSame('Fisika', $fisika->fresh()->nama);
-        $this->assertNotNull($admin->fresh(), 'Admin dari snapshot harus ikut dipulihkan.');
+            'berkas' => $this->berkasGz($this->backupJson()), 'mode' => 'ganti', 'konfirmasi' => '1',
+        ])->assertStatus(503);
+        $this->assertSame('Tetap', $row->fresh()->nama);
     }
 
-    public function test_restore_accepts_the_gzipped_download(): void
+    public function test_disabled_restore_accepts_the_gzipped_download(): void
     {
         $admin = $this->admin();
-        $fisika = $this->mapel('Fisika', 'FIS');
-
-        $json = $this->backupJson();
-        $fisika->update(['nama' => 'Fisika Diubah']);
-
-        // Feed back the .json.gz shape the download produces — the controller must
-        // detect gzip by its magic bytes and decode before restoring.
+        $row = $this->mapel('Tetap', 'TTP');
         $this->actingAs($admin)->post('/admin/cadangan/pulihkan', [
-            'berkas' => $this->berkasGz($json),
-            'mode' => 'gabung',
-            'konfirmasi' => '1',
-        ])->assertRedirect()->assertSessionHas('success');
-
-        $this->assertSame('Fisika', $fisika->fresh()->nama);
+            'berkas' => $this->berkasGz($this->backupJson()), 'mode' => 'ganti', 'konfirmasi' => '1',
+        ])->assertStatus(503);
+        $this->assertSame('Tetap', $row->fresh()->nama);
     }
 
-    public function test_restore_requires_the_confirmation_box(): void
+    public function test_disabled_restore_requires_the_confirmation_box(): void
     {
         $admin = $this->admin();
-
+        $row = $this->mapel('Tetap', 'TTP');
         $this->actingAs($admin)->post('/admin/cadangan/pulihkan', [
-            'berkas' => $this->berkas($this->backupJson()),
-            'mode' => 'gabung',
-        ])->assertSessionHasErrors('konfirmasi');
+            'berkas' => $this->berkasGz($this->backupJson()), 'mode' => 'ganti', 'konfirmasi' => '1',
+        ])->assertStatus(503);
+        $this->assertSame('Tetap', $row->fresh()->nama);
     }
 
-    public function test_a_file_that_is_not_a_backup_is_rejected_cleanly(): void
+    public function test_disabled_a_file_that_is_not_a_backup_is_rejected_cleanly(): void
     {
         $admin = $this->admin();
-
+        $row = $this->mapel('Tetap', 'TTP');
         $this->actingAs($admin)->post('/admin/cadangan/pulihkan', [
-            'berkas' => UploadedFile::fake()->createWithContent('bukan.json', 'halo bukan json'),
-            'mode' => 'gabung',
-            'konfirmasi' => '1',
-        ])->assertRedirect()->assertSessionHas('error');
+            'berkas' => $this->berkasGz($this->backupJson()), 'mode' => 'ganti', 'konfirmasi' => '1',
+        ])->assertStatus(503);
+        $this->assertSame('Tetap', $row->fresh()->nama);
     }
 
     public function test_restore_is_admin_only(): void

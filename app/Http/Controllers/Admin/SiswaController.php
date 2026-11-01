@@ -119,15 +119,7 @@ class SiswaController extends Controller
         $kelasLama = $siswa->kelas_id;
 
         DB::transaction(function () use ($siswa, $data) {
-            $siswa->update([
-                'nisn' => $data['nisn'] ?? null,
-                'nama' => $data['nama'],
-                'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
-                'kelas_id' => $data['kelas_id'] ?? null,
-                'no_hp' => $data['no_hp'] ?? null,
-                'alamat' => $data['alamat'] ?? null,
-                'status' => $data['status'],
-            ]);
+            app(\App\Support\SiklusHidupSiswa::class)->perbarui($siswa, $data);
 
             $this->simpanAkun($siswa, $data);
             $this->syncKetua($siswa, (bool) ($data['is_ketua_kelas'] ?? false));
@@ -233,7 +225,7 @@ class SiswaController extends Controller
 
         $akun->username = $data['username'];
         $akun->email = $data['email'];
-        $akun->status = $data['status'] === 'aktif' ? 'aktif' : 'nonaktif';
+        // Lifecycle status is synchronized by the shared service, not profile edits.
 
         if (filled($data['password'] ?? null)) {
             $akun->password = Hash::make($data['password']);

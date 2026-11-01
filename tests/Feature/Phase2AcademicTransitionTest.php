@@ -37,6 +37,7 @@ class Phase2AcademicTransitionTest extends TestCase
 
     private function tahunAjaran(string $kode = '2026/2027', bool $aktif = true): TahunAjaran
     {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2027-06-15'));
         return TahunAjaran::firstOrCreate(
             ['kode' => $kode],
             ['aktif' => $aktif, 'mulai' => '2026-07-01', 'selesai' => '2027-06-30']
@@ -109,7 +110,11 @@ class Phase2AcademicTransitionTest extends TestCase
         $this->assertTrue($th1->aktif, 'Tahun lama tetap aktif saat tahun baru dibuat');
         $this->assertFalse($th2->aktif);
 
-        // Aktifkan tahun baru -> tahun lama otomatis nonaktif
+        // 2A.6: activation requires real destination placement; empty-school activation is forbidden.
+        $dest = $this->kelas('XI TKJ 1', 'XI', $th2->kode);
+        $this->travelTo(now()->setDate(2027, 7, 2));
+        $placed = $this->siswa('activation-student', 'Placed Student', $dest);
+        $placed->riwayatKelas()->update(['tanggal_mulai' => '2027-07-01']);
         $th2->aktifkan();
         $th1->refresh();
         $th2->refresh();
@@ -122,7 +127,7 @@ class Phase2AcademicTransitionTest extends TestCase
     public function test_destination_class_preparation_preserves_department_and_parallel(): void
     {
         $thAsal = $this->tahunAjaran('2026/2027', aktif: true);
-        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false]);
+        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false, 'mulai' => '2027-07-01', 'selesai' => '2028-06-30']);
 
         $this->kelas('X TKJ 1', 'X', $thAsal->kode, paralel: 1);
         $this->kelas('X TKJ 2', 'X', $thAsal->kode, paralel: 2);
@@ -170,7 +175,7 @@ class Phase2AcademicTransitionTest extends TestCase
     public function test_normal_grade_promotion_and_historical_membership(): void
     {
         $thAsal = $this->tahunAjaran('2026/2027', aktif: true);
-        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false]);
+        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false, 'mulai' => '2027-07-01', 'selesai' => '2028-06-30']);
 
         $kX = $this->kelas('X TKJ 1', 'X', $thAsal->kode, paralel: 1);
         $kXI = $this->kelas('XI TKJ 1', 'XI', $thAsal->kode, paralel: 1);
@@ -215,7 +220,7 @@ class Phase2AcademicTransitionTest extends TestCase
     public function test_grade_retention_and_student_transfer_exceptions(): void
     {
         $thAsal = $this->tahunAjaran('2026/2027', aktif: true);
-        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false]);
+        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false, 'mulai' => '2027-07-01', 'selesai' => '2028-06-30']);
 
         $kX = $this->kelas('X TKJ 1', 'X', $thAsal->kode, paralel: 1);
 
@@ -255,7 +260,7 @@ class Phase2AcademicTransitionTest extends TestCase
     public function test_grade_xii_graduation_and_alumni_creation(): void
     {
         $thAsal = $this->tahunAjaran('2026/2027', aktif: true);
-        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false]);
+        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false, 'mulai' => '2027-07-01', 'selesai' => '2028-06-30']);
 
         $kXII = $this->kelas('XII TKJ 1', 'XII', $thAsal->kode, paralel: 1);
         $siswaXII = $this->siswa('3001', 'Siswa Dua Belas', $kXII);
@@ -305,7 +310,7 @@ class Phase2AcademicTransitionTest extends TestCase
     public function test_double_execution_prevention_and_idempotency(): void
     {
         $thAsal = $this->tahunAjaran('2026/2027', aktif: true);
-        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false]);
+        $thTujuan = TahunAjaran::create(['kode' => '2027/2028', 'aktif' => false, 'mulai' => '2027-07-01', 'selesai' => '2028-06-30']);
 
         $kX = $this->kelas('X TKJ 1', 'X', $thAsal->kode, paralel: 1);
         $this->siswa('1005', 'Siswa Idempotent', $kX);
@@ -328,8 +333,8 @@ class Phase2AcademicTransitionTest extends TestCase
         // 1. Akses halaman Tahun Ajaran
         $resp = $this->actingAs($admin)->get('/admin/tahun-ajaran');
         $resp->assertOk();
-        $resp->assertSee('Tahun Ajaran');
-        $resp->assertSee('Daftar Tahun Ajaran');
+        $resp->assertSee('Pusat Periode Akademik');
+        $resp->assertSee('Riwayat Periode Tahun Ajaran');
 
         // 2. Tambah tahun ajaran baru via POST /admin/tahun-ajaran
         $resp = $this->actingAs($admin)->post('/admin/tahun-ajaran', [
@@ -344,7 +349,7 @@ class Phase2AcademicTransitionTest extends TestCase
         $resp = $this->actingAs($admin)->get('/admin/transisi');
         $resp->assertOk();
         $resp->assertSee('Kenaikan & Kelulusan');
-        $resp->assertSee('1. Siapkan Rombel Kelas Tujuan');
+        $resp->assertSee('1. Persiapan Kelas');
 
         // 4. Siapkan rombel kelas dan siswa
         $kX = $this->kelas('X TKJ 1', 'X', '2026/2027');
@@ -354,7 +359,7 @@ class Phase2AcademicTransitionTest extends TestCase
             'tahun_asal' => '2026/2027',
             'tahun_tujuan' => '2027/2028',
         ]);
-        $resp->assertRedirect('/admin/transisi');
+        $resp->assertRedirect(route('admin.transisi.index', ['tahun_asal' => '2026/2027', 'tahun_tujuan' => '2027/2028']));
         $this->assertDatabaseHas('kelas', ['nama_kelas' => 'XI TKJ 1', 'tahun_ajaran_kode' => '2027/2028']);
 
         // 5. Buka pratinjau
@@ -369,10 +374,13 @@ class Phase2AcademicTransitionTest extends TestCase
             'tahun_asal' => '2026/2027',
             'tahun_tujuan' => '2027/2028',
             'konfirmasi' => '1',
-            'aktifkan_tahun_tujuan' => '1',
+            // 2A.6: signed editable simulation, dedicated activation endpoint only.
+            'snapshot' => $resp->viewData('pratinjau')['snapshot'],
+            'pengecualian' => ['1009' => ['aksi' => 'promosi']],
         ]);
-        $resp->assertRedirect('/admin/transisi');
+        $resp->assertRedirect(route('admin.transisi.index', ['tahun_asal' => '2026/2027', 'tahun_tujuan' => '2027/2028']));
         $resp->assertSessionHas('success');
+        $this->get($resp->headers->get('Location'))->assertOk()->assertSee('Transisi periode ini sudah selesai.');
 
         $this->assertDatabaseHas('transisi_tahun_ajaran', [
             'tahun_asal' => '2026/2027',

@@ -1,0 +1,106 @@
+[
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 210,
+    "duration_ms": 11287
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 28,
+    "passed": 28,
+    "assertions": 117,
+    "duration_ms": 50399
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 65,
+    "passed": 65,
+    "assertions": 229,
+    "duration_ms": 217238
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 187,
+    "duration_ms": 67089
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 143,
+    "duration_ms": 173433
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 69,
+    "passed": 69,
+    "assertions": 309,
+    "duration_ms": 97228
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 38,
+    "passed": 38,
+    "assertions": 186,
+    "duration_ms": 92953
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 57,
+    "passed": 57,
+    "assertions": 266,
+    "duration_ms": 12470
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 36,
+    "passed": 36,
+    "assertions": 161,
+    "duration_ms": 8432
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 37,
+    "passed": 37,
+    "assertions": 121,
+    "duration_ms": 48732
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 31,
+    "passed": 31,
+    "assertions": 168,
+    "duration_ms": 105265
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 83,
+    "passed": 83,
+    "assertions": 543,
+    "duration_ms": 13805
+  },
+  {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 15,
+    "passed": 15,
+    "assertions": 24,
+    "duration_ms": 2010
+  }
+]

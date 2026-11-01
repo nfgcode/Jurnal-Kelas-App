@@ -1,0 +1,174 @@
+{
+  "timestamp": "2026-11-01 00:10:27",
+  "total_files": 70,
+  "total_batches": 18,
+  "batches": [
+    {
+      "batch": "batch-01",
+      "files_count": 4,
+      "tests": 40,
+      "passed": 40,
+      "failed": 0,
+      "assertions": 262,
+      "duration_ms": 53115
+    },
+    {
+      "batch": "batch-02",
+      "files_count": 4,
+      "tests": 47,
+      "passed": 47,
+      "failed": 0,
+      "assertions": 227,
+      "duration_ms": 22690
+    },
+    {
+      "batch": "batch-03",
+      "files_count": 4,
+      "tests": 42,
+      "passed": 42,
+      "failed": 0,
+      "assertions": 166,
+      "duration_ms": 236795
+    },
+    {
+      "batch": "batch-04",
+      "files_count": 4,
+      "tests": 49,
+      "passed": 49,
+      "failed": 0,
+      "assertions": 156,
+      "duration_ms": 190369
+    },
+    {
+      "batch": "batch-05",
+      "files_count": 4,
+      "tests": 45,
+      "passed": 45,
+      "failed": 0,
+      "assertions": 176,
+      "duration_ms": 159942
+    },
+    {
+      "batch": "batch-06",
+      "files_count": 4,
+      "tests": 43,
+      "passed": 43,
+      "failed": 0,
+      "assertions": 187,
+      "duration_ms": 71280
+    },
+    {
+      "batch": "batch-07",
+      "files_count": 4,
+      "tests": 33,
+      "passed": 33,
+      "failed": 0,
+      "assertions": 145,
+      "duration_ms": 101534
+    },
+    {
+      "batch": "batch-08",
+      "files_count": 4,
+      "tests": 65,
+      "passed": 65,
+      "failed": 0,
+      "assertions": 304,
+      "duration_ms": 40326
+    },
+    {
+      "batch": "batch-09",
+      "files_count": 4,
+      "tests": 34,
+      "passed": 34,
+      "failed": 0,
+      "assertions": 167,
+      "duration_ms": 41518
+    },
+    {
+      "batch": "batch-10",
+      "files_count": 4,
+      "tests": 57,
+      "passed": 57,
+      "failed": 0,
+      "assertions": 266,
+      "duration_ms": 8483
+    },
+    {
+      "batch": "batch-11",
+      "files_count": 4,
+      "tests": 36,
+      "passed": 36,
+      "failed": 0,
+      "assertions": 161,
+      "duration_ms": 6654
+    },
+    {
+      "batch": "batch-12",
+      "files_count": 4,
+      "tests": 22,
+      "passed": 22,
+      "failed": 0,
+      "assertions": 116,
+      "duration_ms": 7016
+    },
+    {
+      "batch": "batch-13",
+      "files_count": 4,
+      "tests": 22,
+      "passed": 22,
+      "failed": 0,
+      "assertions": 84,
+      "duration_ms": 33982
+    },
+    {
+      "batch": "batch-14",
+      "files_count": 4,
+      "tests": 35,
+      "passed": 35,
+      "failed": 0,
+      "assertions": 168,
+      "duration_ms": 71969
+    },
+    {
+      "batch": "batch-15",
+      "files_count": 4,
+      "tests": 32,
+      "passed": 32,
+      "failed": 0,
+      "assertions": 139,
+      "duration_ms": 20696
+    },
+    {
+      "batch": "batch-16",
+      "files_count": 4,
+      "tests": 64,
+      "passed": 64,
+      "failed": 0,
+      "assertions": 469,
+      "duration_ms": 9364
+    },
+    {
+      "batch": "batch-17",
+      "files_count": 4,
+      "tests": 21,
+      "passed": 21,
+      "failed": 0,
+      "assertions": 97,
+      "duration_ms": 12945
+    },
+    {
+      "batch": "batch-18",
+      "files_count": 2,
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "assertions": 23,
+      "duration_ms": 1410
+    }
+  ],
+  "total_tests": 701,
+  "total_passed": 701,
+  "total_failed": 0,
+  "total_assertions": 3313,
+  "status": "PASS"
+}

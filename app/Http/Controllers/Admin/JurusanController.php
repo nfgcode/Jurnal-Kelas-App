@@ -11,7 +11,6 @@ use App\Support\Urutan;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class JurusanController extends Controller
@@ -67,7 +66,7 @@ class JurusanController extends Controller
     public function update(JurusanRequest $request, Jurusan $jurusan)
     {
         try {
-            DB::transaction(fn () => $jurusan->update($request->validated()));
+            \App\Support\AcademicOperation::run(fn () => Jurusan::whereKey($jurusan->kode)->lockForUpdate()->firstOrFail()->update($request->validated()));
         } catch (QueryException $e) {
             if ($e instanceof UniqueConstraintViolationException) {
                 throw ValidationException::withMessages(['kode' => 'Kode jurusan ini sudah dipakai.']);
@@ -83,20 +82,23 @@ class JurusanController extends Controller
     {
         $ditolak = 'Jurusan masih dipakai kelas atau siswa. Nonaktifkan jurusan jika tidak dipakai untuk pendaftaran baru.';
 
-        if ($jurusan->kelas()->exists() || $jurusan->siswa()->exists()) {
-            return redirect()->route('admin.jurusan.index')->with('error', $ditolak);
-        }
-
-        try {
-            $jurusan->delete();
-        } catch (QueryException $e) {
-            if (($e->errorInfo[1] ?? null) === 1451 || str_contains($e->getMessage(), 'FOREIGN KEY constraint failed')) {
+        return \App\Support\AcademicOperation::run(function () use ($jurusan, $ditolak) {
+            $jurusan = Jurusan::whereKey($jurusan->kode)->lockForUpdate()->firstOrFail();
+            if ($jurusan->kelas()->exists() || $jurusan->siswa()->exists()) {
                 return redirect()->route('admin.jurusan.index')->with('error', $ditolak);
             }
 
-            throw $e;
-        }
+            try {
+                $jurusan->delete();
+            } catch (QueryException $e) {
+                if (($e->errorInfo[1] ?? null) === 1451 || str_contains($e->getMessage(), 'FOREIGN KEY constraint failed')) {
+                    return redirect()->route('admin.jurusan.index')->with('error', $ditolak);
+                }
 
-        return redirect()->route('admin.jurusan.index')->with('success', 'Jurusan berhasil dihapus.');
+                throw $e;
+            }
+
+            return redirect()->route('admin.jurusan.index')->with('success', 'Jurusan berhasil dihapus.');
+        });
     }
 }

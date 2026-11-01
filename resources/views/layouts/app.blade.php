@@ -176,6 +176,22 @@
                    class="sidebar__link {{ request()->routeIs('admin.transisi.*') ? 'is-active' : '' }}">
                     <x-ikon nama="mortarboard" /><span>Kenaikan &amp; Kelulusan</span>
                 </a>
+                <a href="{{ route('admin.transisi-terpadu.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.transisi-terpadu.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="diagram-3" /><span>Transisi Terpadu</span>
+                </a>
+                <a href="{{ route('admin.kelulusan.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.kelulusan.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="mortarboard-fill" /><span>Kelulusan XII</span>
+                </a>
+                <a href="{{ route('admin.kenaikan.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.kenaikan.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="arrow-up-circle" /><span>Kenaikan X–XI</span>
+                </a>
+                <a href="{{ route('admin.intake.index') }}"
+                   class="sidebar__link {{ request()->routeIs('admin.intake.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="person-plus" /><span>Penerimaan Siswa</span>
+                </a>
                 <a href="{{ route('admin.alumni.index') }}"
                    class="sidebar__link {{ request()->routeIs('admin.alumni.*') ? 'is-active' : '' }}">
                     <x-ikon nama="people" /><span>Data Alumni</span>
@@ -211,6 +227,9 @@
                     <x-ikon nama="qr-code" /><span>Cetak QR Kelas</span>
                 </a>
                 @unless ($pantau)
+                <a href="{{ route('admin.manajemen-data.index') }}" class="sidebar__link {{ request()->routeIs('admin.manajemen-data.*') ? 'is-active' : '' }}">
+                    <x-ikon nama="folder" /><span>Manajemen Data</span>
+                </a>
                 <a href="{{ route('admin.cadangan.index') }}" class="sidebar__link {{ request()->routeIs('admin.cadangan.*') ? 'is-active' : '' }}">
                     <x-ikon nama="shield-lock" /><span>Cadangan Data</span>
                 </a>

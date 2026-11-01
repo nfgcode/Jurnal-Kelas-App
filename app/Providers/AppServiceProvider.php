@@ -13,7 +13,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\AcademicWorkflows\WorkflowService::class, function () {
+            $registry = new \App\AcademicWorkflows\ExecutorRegistry();
+            $registry->register('graduation', new \App\AcademicWorkflows\GraduationExecutor());
+            $registry->register('promotion', new \App\AcademicWorkflows\PromotionExecutor());
+            $registry->register('intake', new \App\AcademicWorkflows\IntakeExecutor());
+            return new \App\AcademicWorkflows\WorkflowService($registry);
+        });
     }
 
     /**

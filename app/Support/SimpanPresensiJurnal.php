@@ -46,18 +46,27 @@ class SimpanPresensiJurnal
      * adding a second roster beside it, which the unique index
      * (jurnal_id, siswa_nis) also enforces underneath.
      *
-     * @param  array<int, array{siswa_nis: int|string, status: string, keterangan?: ?string}>  $rows
+     * @param  array<int, array{siswa_nis: string, status: string, keterangan?: ?string}>  $rows
      */
     public static function simpan(Jurnal $jurnal, array $rows, ?User $pengisi = null): void
     {
+        $roster = RosterPresensi::untukJurnal($jurnal)->pluck('nis')->all();
+        foreach ($rows as $index => $row) {
+            if (! is_string($row['siswa_nis'] ?? null) || strlen($row['siswa_nis']) > 20
+                || ! in_array($row['siswa_nis'], $roster, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'presensi.'.$index.'.siswa_nis' => 'NIS tidak termasuk daftar presensi terverifikasi untuk tanggal ini.',
+                ]);
+            }
+        }
         $bersih = array_map(fn ($data) => [
-            'siswa_nis' => (int) $data['siswa_nis'],
+            'siswa_nis' => (string) $data['siswa_nis'],
             'status' => $data['status'],
             'keterangan' => $data['keterangan'] ?? null,
         ], $rows);
 
         DB::transaction(function () use ($jurnal, $bersih, $pengisi) {
-            Presensi::where('jurnal_id', $jurnal->id)->delete();
+            Presensi::where('jurnal_id', $jurnal->id)->whereIn('siswa_nis', array_column($bersih, 'siswa_nis'))->delete();
 
             $now = now();
             Presensi::insert(array_map(fn ($data) => $data + [
@@ -106,7 +115,7 @@ class SimpanPresensiJurnal
     /**
      * Every mark recorded for a class on a date, folded to one row per student.
      *
-     * @return array<int, array{siswa_nis: int, status: string, keterangan: ?string}>
+     * @return array<int, array{siswa_nis: string, status: string, keterangan: ?string}>
      */
     private static function gabungkanHari(int $kelasId, string $tanggal): array
     {
@@ -121,7 +130,7 @@ class SimpanPresensiJurnal
         $hasil = [];
 
         foreach ($baris as $row) {
-            $nis = (int) $row->siswa_nis;
+            $nis = (string) $row->siswa_nis;
             $bobot = self::BOBOT[$row->status] ?? 0;
 
             // The heaviest mark of the day wins, and carries its own note with

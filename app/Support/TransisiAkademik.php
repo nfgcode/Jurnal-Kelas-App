@@ -3,13 +3,16 @@
 namespace App\Support;
 
 use App\Models\Alumni;
+use App\Models\Jurusan;
 use App\Models\Kelas;
 use App\Models\RiwayatKelasSiswa;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\TransisiTahunAjaran;
 use App\Models\User;
+use App\Services\AktivasiTahunAjaran;
 use DomainException;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
@@ -36,116 +39,120 @@ class TransisiAkademik
      */
     public static function siapkanKelasTujuan(string $tahunTujuanKode, ?string $tahunAsalKode = null): array
     {
-        $tahunTujuan = TahunAjaran::where('kode', $tahunTujuanKode)->firstOrFail();
-        $tahunAsal = $tahunAsalKode
-            ? TahunAjaran::where('kode', $tahunAsalKode)->firstOrFail()
-            : TahunAjaran::berjalan();
+        return DB::transaction(function () use ($tahunTujuanKode, $tahunAsalKode) {
+            AktivasiTahunAjaran::kunci();
+            $tahunTujuan = TahunAjaran::where('kode', $tahunTujuanKode)->firstOrFail();
+            $tahunAsal = $tahunAsalKode
+                ? TahunAjaran::where('kode', $tahunAsalKode)->firstOrFail()
+                : TahunAjaran::berjalan();
 
-        if (! $tahunAsal) {
-            throw new InvalidArgumentException('Tahun ajaran asal tidak ditemukan.');
-        }
+            if (! $tahunAsal) {
+                throw new InvalidArgumentException('Tahun ajaran asal tidak ditemukan.');
+            }
 
-        if ($tahunAsal->kode === $tahunTujuan->kode) {
-            throw new DomainException('Tahun ajaran tujuan tidak boleh sama dengan tahun ajaran asal.');
-        }
+            self::validasiPeriode($tahunAsal, $tahunTujuan);
+            if ($tahunAsal->kode === $tahunTujuan->kode) {
+                throw new DomainException('Tahun ajaran tujuan tidak boleh sama dengan tahun ajaran asal.');
+            }
 
-        $kelasAsal = Kelas::where('tahun_ajaran_kode', $tahunAsal->kode)->get();
+            $kelasAsal = Kelas::where('tahun_ajaran_kode', $tahunAsal->kode)->get();
 
-        $dibuat = 0;
-        $sudahAda = 0;
-        $hasilKelas = [];
+            $dibuat = 0;
+            $sudahAda = 0;
+            $hasilKelas = [];
 
-        DB::transaction(function () use ($kelasAsal, $tahunTujuan, &$dibuat, &$sudahAda, &$hasilKelas) {
-            // 1. Petakan rombel naik tingkat (X -> XI, XI -> XII)
-            foreach ($kelasAsal as $k) {
-                $tingkatTujuan = match ($k->tingkat) {
-                    'X' => 'XI',
-                    'XI' => 'XII',
-                    default => null, // XII lulus, tidak naik ke tingkat XIII
-                };
+            DB::transaction(function () use ($kelasAsal, $tahunTujuan, &$dibuat, &$sudahAda, &$hasilKelas) {
+                // 1. Petakan rombel naik tingkat (X -> XI, XI -> XII)
+                foreach ($kelasAsal as $k) {
+                    $tingkatTujuan = match ($k->tingkat) {
+                        'X' => 'XI',
+                        'XI' => 'XII',
+                        default => null, // XII lulus, tidak naik ke tingkat XIII
+                    };
 
-                if ($tingkatTujuan) {
-                    $namaTujuan = self::formatNamaKelas($tingkatTujuan, $k->jurusan_kode, $k->paralel);
+                    if ($tingkatTujuan) {
+                        $namaTujuan = self::formatNamaKelas($tingkatTujuan, $k->jurusan_kode, $k->paralel);
 
-                    $kelasBaru = Kelas::firstOrCreate(
+                        $kelasBaru = Kelas::firstOrCreate(
+                            [
+                                'tahun_ajaran_kode' => $tahunTujuan->kode,
+                                'tingkat' => $tingkatTujuan,
+                                'jurusan_kode' => $k->jurusan_kode,
+                                'paralel' => $k->paralel,
+                            ],
+                            [
+                                'nama_kelas' => $namaTujuan,
+                                'kapasitas' => $k->kapasitas ?: 36,
+                                'ruangan_kode' => null, // Ruangan diatur ulang
+                                'wali_kelas_nip' => null, // Wali kelas diatur ulang
+                                'ketua_nis' => null, // Ketua kelas baru
+                            ]
+                        );
+
+                        if ($kelasBaru->wasRecentlyCreated) {
+                            $dibuat++;
+                        } else {
+                            $sudahAda++;
+                        }
+
+                        $hasilKelas[] = [
+                            'id' => $kelasBaru->id,
+                            'nama_kelas' => $kelasBaru->nama_kelas,
+                            'tingkat' => $kelasBaru->tingkat,
+                            'baru' => $kelasBaru->wasRecentlyCreated,
+                        ];
+                    }
+                }
+
+                // 2. Siapkan template rombel tingkat X untuk siswa baru di tahun ajaran tujuan
+                // Mengambil seluruh kombinasi jurusan & paralel tingkat X dari tahun asal
+                $rombelKelasX = $kelasAsal->where('tingkat', 'X');
+                foreach ($rombelKelasX as $kX) {
+                    $namaTujuanX = self::formatNamaKelas('X', $kX->jurusan_kode, $kX->paralel);
+
+                    $kelasBaruX = Kelas::firstOrCreate(
                         [
                             'tahun_ajaran_kode' => $tahunTujuan->kode,
-                            'tingkat' => $tingkatTujuan,
-                            'jurusan_kode' => $k->jurusan_kode,
-                            'paralel' => $k->paralel,
+                            'tingkat' => 'X',
+                            'jurusan_kode' => $kX->jurusan_kode,
+                            'paralel' => $kX->paralel,
                         ],
                         [
-                            'nama_kelas' => $namaTujuan,
-                            'kapasitas' => $k->kapasitas ?: 36,
-                            'ruangan_kode' => null, // Ruangan diatur ulang
-                            'wali_kelas_nip' => null, // Wali kelas diatur ulang
-                            'ketua_nis' => null, // Ketua kelas baru
+                            'nama_kelas' => $namaTujuanX,
+                            'kapasitas' => $kX->kapasitas ?: 36,
+                            'ruangan_kode' => null,
+                            'wali_kelas_nip' => null,
+                            'ketua_nis' => null,
                         ]
                     );
 
-                    if ($kelasBaru->wasRecentlyCreated) {
+                    if ($kelasBaruX->wasRecentlyCreated) {
                         $dibuat++;
                     } else {
                         $sudahAda++;
                     }
 
                     $hasilKelas[] = [
-                        'id' => $kelasBaru->id,
-                        'nama_kelas' => $kelasBaru->nama_kelas,
-                        'tingkat' => $kelasBaru->tingkat,
-                        'baru' => $kelasBaru->wasRecentlyCreated,
+                        'id' => $kelasBaruX->id,
+                        'nama_kelas' => $kelasBaruX->nama_kelas,
+                        'tingkat' => $kelasBaruX->tingkat,
+                        'baru' => $kelasBaruX->wasRecentlyCreated,
                     ];
                 }
-            }
+            });
 
-            // 2. Siapkan template rombel tingkat X untuk siswa baru di tahun ajaran tujuan
-            // Mengambil seluruh kombinasi jurusan & paralel tingkat X dari tahun asal
-            $rombelKelasX = $kelasAsal->where('tingkat', 'X');
-            foreach ($rombelKelasX as $kX) {
-                $namaTujuanX = self::formatNamaKelas('X', $kX->jurusan_kode, $kX->paralel);
+            // Deduplikasi hasil kelas untuk pelaporan
+            $unikKelas = collect($hasilKelas)->unique('id')->values()->all();
 
-                $kelasBaruX = Kelas::firstOrCreate(
-                    [
-                        'tahun_ajaran_kode' => $tahunTujuan->kode,
-                        'tingkat' => 'X',
-                        'jurusan_kode' => $kX->jurusan_kode,
-                        'paralel' => $kX->paralel,
-                    ],
-                    [
-                        'nama_kelas' => $namaTujuanX,
-                        'kapasitas' => $kX->kapasitas ?: 36,
-                        'ruangan_kode' => null,
-                        'wali_kelas_nip' => null,
-                        'ketua_nis' => null,
-                    ]
-                );
-
-                if ($kelasBaruX->wasRecentlyCreated) {
-                    $dibuat++;
-                } else {
-                    $sudahAda++;
-                }
-
-                $hasilKelas[] = [
-                    'id' => $kelasBaruX->id,
-                    'nama_kelas' => $kelasBaruX->nama_kelas,
-                    'tingkat' => $kelasBaruX->tingkat,
-                    'baru' => $kelasBaruX->wasRecentlyCreated,
-                ];
-            }
+            return [
+                'tahun_asal' => $tahunAsal->kode,
+                'tahun_tujuan' => $tahunTujuan->kode,
+                'dibuat' => $dibuat,
+                'sudah_ada' => $sudahAda,
+                'total' => count($unikKelas),
+                'kelas' => $unikKelas,
+            ];
         });
-
-        // Deduplikasi hasil kelas untuk pelaporan
-        $unikKelas = collect($hasilKelas)->unique('id')->values()->all();
-
-        return [
-            'tahun_asal' => $tahunAsal->kode,
-            'tahun_tujuan' => $tahunTujuan->kode,
-            'dibuat' => $dibuat,
-            'sudah_ada' => $sudahAda,
-            'total' => count($unikKelas),
-            'kelas' => $unikKelas,
-        ];
     }
 
     /**
@@ -170,7 +177,7 @@ class TransisiAkademik
      *     calon_promosi: list<array<string, mixed>>,
      * }
      */
-    public static function pratinjau(string $tahunAsalKode, string $tahunTujuanKode): array
+    public static function pratinjau(string $tahunAsalKode, string $tahunTujuanKode, ?array $keputusan = null): array
     {
         $tahunAsal = TahunAjaran::where('kode', $tahunAsalKode)->firstOrFail();
         $tahunTujuan = TahunAjaran::where('kode', $tahunTujuanKode)->firstOrFail();
@@ -183,6 +190,16 @@ class TransisiAkademik
 
         $masalahValidasi = [];
         $peringatan = [];
+        $keputusanTervalidasi = [];
+        try {
+            self::validasiPeriode($tahunAsal, $tahunTujuan);
+            $keputusanTervalidasi = self::validasiKeputusan($tahunAsalKode, $tahunTujuanKode, $keputusan ?? []);
+        } catch (DomainException $e) {
+            if ($keputusan !== null) {
+                throw $e;
+            }
+            $masalahValidasi[] = $e->getMessage();
+        }
 
         if ($sudahSelesai) {
             $masalahValidasi[] = "Transisi tahun ajaran dari {$tahunAsalKode} ke {$tahunTujuanKode} sudah berstatus SELESAI.";
@@ -204,6 +221,15 @@ class TransisiAkademik
             ->where('status', 'aktif')
             ->orderBy('nama')
             ->get();
+
+        $siswaAsal->load(['kelas', 'riwayatKelas']);
+        if ($masalahValidasi === []) {
+            try {
+                self::tanggalKeanggotaan($tahunAsal, $tahunTujuan, $siswaAsal, $keputusanTervalidasi, today()->toDateString(), today()->toDateString());
+            } catch (DomainException $e) {
+                $masalahValidasi[] = $e->getMessage();
+            }
+        }
 
         $calonLulus = [];
         $calonPromosi = [];
@@ -267,6 +293,13 @@ class TransisiAkademik
         $siapEksekusi = empty($masalahValidasi) && (count($calonLulus) > 0 || count($calonPromosi) > 0);
 
         return [
+            'keputusan' => $keputusanTervalidasi,
+            'snapshot' => Crypt::encryptString(json_encode([
+                'version' => 1, 'asal' => $tahunAsalKode, 'tujuan' => $tahunTujuanKode,
+                'expires' => now()->addHour()->timestamp,
+                'fingerprint' => self::fingerprint($tahunAsalKode, $tahunTujuanKode),
+                'policy' => 'editable-decisions-v1',
+            ], JSON_THROW_ON_ERROR)),
             'tahun_asal' => $tahunAsalKode,
             'tahun_tujuan' => $tahunTujuanKode,
             'status_transisi' => $transisi?->status,
@@ -313,6 +346,21 @@ class TransisiAkademik
         $tahunAsal = TahunAjaran::where('kode', $tahunAsalKode)->firstOrFail();
         $tahunTujuan = TahunAjaran::where('kode', $tahunTujuanKode)->firstOrFail();
 
+        if (array_diff(array_keys($opsi), ['tanggal_lulus', 'nonaktifkan_akun', 'aktifkan_tahun_tujuan', 'pengecualian', 'snapshot', 'wajib_keputusan_lengkap'])
+            || (isset($opsi['pengecualian']) && ! is_array($opsi['pengecualian']))) {
+            throw new DomainException('Struktur opsi transisi tidak valid.');
+        }
+        foreach (['nonaktifkan_akun', 'aktifkan_tahun_tujuan', 'wajib_keputusan_lengkap'] as $flag) {
+            if (isset($opsi[$flag]) && ! is_bool($opsi[$flag])) {
+                throw new DomainException('Opsi boolean transisi tidak valid.');
+            }
+        }
+        if (isset($opsi['tanggal_lulus'])) {
+            $date = is_string($opsi['tanggal_lulus']) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $opsi['tanggal_lulus']) : false;
+            if (! $date || $date->format('Y-m-d') !== $opsi['tanggal_lulus']) {
+                throw new DomainException('Tanggal kelulusan tidak valid.');
+            }
+        }
         $tanggalLulus = $opsi['tanggal_lulus'] ?? now()->toDateString();
         $nonaktifkanAkun = (bool) ($opsi['nonaktifkan_akun'] ?? false);
         $aktifkanTujuan = (bool) ($opsi['aktifkan_tahun_tujuan'] ?? false);
@@ -325,8 +373,34 @@ class TransisiAkademik
             $nonaktifkanAkun,
             $aktifkanTujuan,
             $pengecualian,
-            $admin
+            $admin,
+            $opsi
         ) {
+            AktivasiTahunAjaran::kunci();
+            $tahunAsal = TahunAjaran::whereKey($tahunAsal->kode)->lockForUpdate()->firstOrFail();
+            $tahunTujuan = TahunAjaran::whereKey($tahunTujuan->kode)->lockForUpdate()->firstOrFail();
+            self::validasiPeriode($tahunAsal, $tahunTujuan);
+            $lockedClasses = Kelas::whereIn('tahun_ajaran_kode', [$tahunAsal->kode, $tahunTujuan->kode])->orderBy('id')->lockForUpdate()->get();
+            Siswa::whereIn('kelas_id', $lockedClasses->pluck('id'))->orderBy('nis')->lockForUpdate()->get();
+            if ($aktifkanTujuan) {
+                throw new DomainException('Aktivasi hanya melalui menu Tahun Ajaran setelah penempatan diverifikasi.');
+            }
+            if (isset($opsi['snapshot'])) {
+                try {
+                    $snapshot = json_decode(Crypt::decryptString($opsi['snapshot']), true, flags: JSON_THROW_ON_ERROR);
+                } catch (Throwable $e) {
+                    throw new DomainException('Snapshot tidak valid.', previous: $e);
+                }
+                if (($snapshot['version'] ?? null) !== 1 || ($snapshot['policy'] ?? null) !== 'editable-decisions-v1'
+                    || ($snapshot['asal'] ?? null) !== $tahunAsal->kode || ($snapshot['tujuan'] ?? null) !== $tahunTujuan->kode
+                    || ($snapshot['expires'] ?? 0) < now()->timestamp
+                    || ! hash_equals($snapshot['fingerprint'] ?? '', self::fingerprint($tahunAsal->kode, $tahunTujuan->kode))) {
+                    throw new DomainException('Snapshot kedaluwarsa atau data berubah. Buka ulang simulasi.');
+                }
+            }
+            if (TransisiTahunAjaran::where('tahun_asal', $tahunAsal->kode)->whereIn('status', ['selesai', 'diproses'])->exists()) {
+                throw new DomainException('Tahun asal sudah diproses; replay atau tujuan berbeda ditolak.');
+            }
             // 1. Kunci baris transisi untuk mencegah eksekusi ganda / race conditions
             $transisi = TransisiTahunAjaran::lockForUpdate()->firstOrCreate(
                 ['tahun_asal' => $tahunAsal->kode, 'tahun_tujuan' => $tahunTujuan->kode],
@@ -355,6 +429,16 @@ class TransisiAkademik
                 ->lockForUpdate()
                 ->get();
 
+            if ($siswaAsal->isEmpty() || (($opsi['wajib_keputusan_lengkap'] ?? false) && count($pengecualian) !== $siswaAsal->count())) {
+                throw new DomainException('Keputusan harus mencakup seluruh roster aktif yang tidak kosong.');
+            }
+            $pengecualian = self::validasiKeputusan($tahunAsal->kode, $tahunTujuan->kode, $pengecualian);
+            app(SiklusHidupSiswa::class)->validasiBatch($siswaAsal, min($tanggalLulus, today()->toDateString()));
+            $siswaAsal->load(['kelas', 'riwayatKelas' => fn ($query) => $query->lockForUpdate()]);
+            [$tanggalMulaiTujuan, $tanggalSelesaiAsal] = self::tanggalKeanggotaan(
+                $tahunAsal, $tahunTujuan, $siswaAsal, $pengecualian, $tanggalLulus, today()->toDateString()
+            );
+
             // Kategori pemrosesan
             $lulusRegulerSiswa = [];
             $promosiNormalSiswa = []; // dest_class_id => list of [nis, dest_tingkat]
@@ -375,13 +459,14 @@ class TransisiAkademik
                         'nis' => $s->nis,
                         'catatan' => $kecuali['catatan'] ?? 'Pindah/keluar sekolah saat transisi tahunan',
                     ];
+
                     continue;
                 }
 
                 if ($kelas->tingkat === 'XII') {
                     if ($aksiKhusus === 'tunda_lulus' || $aksiKhusus === 'tinggal_kelas') {
                         $kunciSama = "XII_{$kelas->jurusan_kode}_{$kelas->paralel}";
-                        $destKelas = $petaTujuan[$kunciSama] ?? null;
+                        $destKelas = $kelasTujuan->firstWhere('id', $kecuali['kelas_id']);
                         if (! $destKelas) {
                             throw new RuntimeException("Kelas tujuan XII untuk siswa {$s->nis} belum tersedia.");
                         }
@@ -401,7 +486,7 @@ class TransisiAkademik
                 } else {
                     if ($aksiKhusus === 'tinggal_kelas') {
                         $kunciSama = "{$kelas->tingkat}_{$kelas->jurusan_kode}_{$kelas->paralel}";
-                        $destKelas = $petaTujuan[$kunciSama] ?? null;
+                        $destKelas = $kelasTujuan->firstWhere('id', $kecuali['kelas_id']);
                         if (! $destKelas) {
                             throw new RuntimeException("Kelas tujuan tingkat {$kelas->tingkat} untuk siswa {$s->nis} belum tersedia.");
                         }
@@ -478,7 +563,7 @@ class TransisiAkademik
                 }
 
                 foreach (array_chunk($alumniRows, 500) as $chunkAlumni) {
-                    DB::table('alumni')->insertOrIgnore($chunkAlumni);
+                    DB::table('alumni')->insert($chunkAlumni);
                 }
             }
 
@@ -518,7 +603,7 @@ class TransisiAkademik
                         ->update([
                             'aktif' => false,
                             'status' => 'tinggal_kelas',
-                            'tanggal_selesai' => now()->toDateString(),
+                            'tanggal_selesai' => $tanggalSelesaiAsal,
                             'catatan' => $item['catatan'],
                             'updated_at' => now(),
                         ]);
@@ -530,7 +615,7 @@ class TransisiAkademik
                         'tingkat' => $item['tingkat'],
                         'status' => 'tinggal_kelas',
                         'aktif' => true,
-                        'tanggal_mulai' => now()->toDateString(),
+                        'tanggal_mulai' => $tanggalMulaiTujuan,
                         'catatan' => $item['catatan'],
                     ]);
 
@@ -558,7 +643,7 @@ class TransisiAkademik
                         ->update([
                             'aktif' => false,
                             'status' => 'aktif',
-                            'tanggal_selesai' => now()->toDateString(),
+                            'tanggal_selesai' => $tanggalSelesaiAsal,
                             'updated_at' => now(),
                         ]);
 
@@ -579,7 +664,7 @@ class TransisiAkademik
                         'tingkat' => $sItem['tingkat'],
                         'status' => 'aktif',
                         'aktif' => 1,
-                        'tanggal_mulai' => now()->toDateString(),
+                        'tanggal_mulai' => $tanggalMulaiTujuan,
                         'tanggal_selesai' => null,
                         'catatan' => "Promosi kelas {$sItem['kelas_asal_nama']} ke tingkat {$sItem['tingkat']}",
                         'created_at' => now(),
@@ -614,11 +699,6 @@ class TransisiAkademik
                 'catatan' => $deskripsiCatatan,
             ]);
 
-            // Jika admin meminta tahun ajaran tujuan langsung diaktifkan
-            if ($aktifkanTujuan) {
-                $tahunTujuan->aktifkan();
-            }
-
             // Catat log audit kritis yang wajib berhasil
             AuditAdmin::catatKritis(
                 aksi: 'akademik.transisi',
@@ -647,6 +727,110 @@ class TransisiAkademik
                 'tahun_tujuan_aktif' => $aktifkanTujuan,
             ];
         });
+    }
+
+    /** Pure validation of loaded evidence; callers own reads, clock and execution locks. */
+    private static function tanggalKeanggotaan(TahunAjaran $asal, TahunAjaran $tujuan, iterable $students, array $decisions, string $tanggalLulus, string $today): array
+    {
+        if (! $asal->mulai || ! $asal->selesai || $asal->mulai->gt($asal->selesai)
+            || ! $tujuan->mulai || ! $tujuan->selesai || $tujuan->mulai->gt($tujuan->selesai)) {
+            throw new DomainException('Tanggal periode asal dan tujuan wajib lengkap dan berurutan; histori tidak boleh direka.');
+        }
+        $start = $tujuan->mulai->toDateString();
+        $close = \Illuminate\Support\Carbon::parse($start)->subDay()->toDateString();
+        foreach ($students as $student) {
+            $action = $decisions[$student->nis]['aksi'];
+            $placed = ! in_array($action, ['lulus', 'keluar', 'pindah'], true);
+            $end = $placed ? $close : ($action === 'lulus' ? $tanggalLulus : $today);
+            if (($placed && ($today > $start || $start > $tujuan->selesai->toDateString()
+                    || $close !== $asal->selesai->toDateString()))
+                || $end < $asal->mulai->toDateString() || $end > $asal->selesai->toDateString()) {
+                throw new DomainException('Tanggal efektif tidak konsisten dengan batas periode; transisi terlambat, celah, atau tumpang tindih memerlukan verifikasi domain.');
+            }
+            $members = $student->getRelation('riwayatKelas')->where('aktif', true);
+            $member = $members->first();
+            if ($members->count() !== 1 || ! $member || ! $member->tanggal_mulai
+                || (string) $member->kelas_id !== (string) $student->kelas_id
+                || $member->tahun_ajaran_kode !== $asal->kode || $member->tingkat !== $student->getRelation('kelas')->tingkat
+                || $member->tanggal_selesai !== null
+                || $member->tanggal_mulai->toDateString() < $asal->mulai->toDateString()
+                || $member->tanggal_mulai->toDateString() > min($end, $today)) {
+                throw new DomainException('Riwayat asal bertanggal harus tunggal dan konsisten; perbaikan atau backfill otomatis tidak tersedia.');
+            }
+            foreach ($student->getRelation('riwayatKelas')->where('id', '!=', $member->id) as $history) {
+                if (! $history->tanggal_mulai || ! $history->tanggal_selesai
+                    || $history->tanggal_mulai->gt($history->tanggal_selesai)
+                    || $history->tanggal_selesai->gte($member->tanggal_mulai)) {
+                    throw new DomainException('Riwayat lain tidak lengkap atau bertumpang tindih; verifikasi sebelum transisi.');
+                }
+            }
+        }
+        return [$start, $close];
+    }
+
+    private static function validasiPeriode(TahunAjaran $asal, TahunAjaran $tujuan): void
+    {
+        if (! $asal->aktif || $tujuan->aktif || ! TahunAjaran::formatValid($asal->kode)
+            || ! TahunAjaran::formatValid($tujuan->kode) || strcmp($tujuan->kode, $asal->kode) <= 0) {
+            throw new DomainException('Transisi hanya dari tahun aktif ke tahun nonaktif yang lebih baru.');
+        }
+    }
+
+    private static function fingerprint(string $asal, string $tujuan): string
+    {
+        return hash('sha256', json_encode([
+            TahunAjaran::whereIn('kode', [$asal, $tujuan])->orderBy('kode')->get()->toArray(),
+            Kelas::whereIn('tahun_ajaran_kode', [$asal, $tujuan])->orderBy('id')->get()->toArray(),
+            Siswa::where('status', 'aktif')->whereHas('kelas', fn ($q) => $q->where('tahun_ajaran_kode', $asal))->orderBy('nis')->get()->toArray(),
+            RiwayatKelasSiswa::where('aktif', true)->orderBy('id')->get()->toArray(),
+            Jurusan::orderBy('kode')->get()->toArray(),
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    public static function validasiKeputusan(string $asal, string $tujuan, array $keputusan): array
+    {
+        $roster = Siswa::with('kelas')->where('status', 'aktif')->whereHas('kelas', fn ($q) => $q->where('tahun_ajaran_kode', $asal))->get()->keyBy('nis');
+        foreach ($keputusan as $nis => $item) {
+            $siswa = $roster->get((string) $nis);
+            if (! $siswa || ! is_array($item) || array_diff(array_keys($item), ['aksi', 'kelas_id', 'catatan'])) {
+                throw new DomainException('Pengecualian di luar roster atau struktur tidak valid.');
+            }
+            $allowed = $siswa->kelas->tingkat === 'XII' ? ['lulus', 'tunda_lulus', 'tinggal_kelas', 'keluar', 'pindah'] : ['promosi', 'tinggal_kelas', 'keluar', 'pindah'];
+            if (! in_array($item['aksi'] ?? null, $allowed, true) || (isset($item['catatan']) && (! is_string($item['catatan']) || mb_strlen($item['catatan']) > 1000))) {
+                throw new DomainException('Aksi transisi tidak valid untuk tingkat siswa.');
+            }
+        }
+        foreach ($roster as $nis => $siswa) {
+            $kelas = $siswa->kelas;
+            if (! in_array($kelas->tingkat, ['X', 'XI', 'XII'], true)) {
+                throw new DomainException('Tingkat asal tidak valid.');
+            }
+            $item = $keputusan[$nis] ?? ['aksi' => $kelas->tingkat === 'XII' ? 'lulus' : 'promosi'];
+            if (in_array($item['aksi'], ['lulus', 'keluar', 'pindah'], true)) {
+                if (array_key_exists('kelas_id', $item)) {
+                    throw new DomainException('Aksi tanpa penempatan tidak menerima kelas tujuan.');
+                }
+            } else {
+                $tingkat = $item['aksi'] === 'promosi' ? ($kelas->tingkat === 'X' ? 'XI' : 'XII') : $kelas->tingkat;
+                $query = Kelas::where('tahun_ajaran_kode', $tujuan)->where('tingkat', $tingkat)->where('jurusan_kode', $kelas->jurusan_kode);
+                if (array_key_exists('kelas_id', $item)) {
+                    if (filter_var($item['kelas_id'], FILTER_VALIDATE_INT) === false) {
+                        throw new DomainException('ID kelas tujuan tidak valid.');
+                    }
+                    $query->where('id', $item['kelas_id']);
+                } else {
+                    $query->where('paralel', $kelas->paralel);
+                }
+                $dest = $query->first();
+                if (! $dest || ($dest->jurusan && ! $dest->jurusan->aktif)) {
+                    throw new DomainException('Kelas tujuan tidak sesuai tahun, tingkat, jurusan atau status.');
+                }
+                $item['kelas_id'] = $dest->id;
+            }
+            $keputusan[$nis] = $item;
+        }
+
+        return $keputusan;
     }
 
     /**

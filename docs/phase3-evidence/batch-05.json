@@ -1,0 +1,38 @@
+{
+  "batch": 5,
+  "files": [
+    "tests/Feature/HariLiburTest.php",
+    "tests/Feature/IkonTest.php",
+    "tests/Feature/ImporPenggunaTest.php",
+    "tests/Feature/ImportRestoreSafetyTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/HariLiburTest.php",
+    "tests/Feature/IkonTest.php",
+    "tests/Feature/ImporPenggunaTest.php",
+    "tests/Feature/ImportRestoreSafetyTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 41.192,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":43,\"passed\":43,\"assertions\":187,\"duration_ms\":39197}\n",
+  "stderr": "",
+  "tests": 43,
+  "assertions": 187,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/HariLiburTest.php": "fde77d4bd393790e1314b527af007cafde716f4a2224f8290f51073382911360",
+    "tests/Feature/IkonTest.php": "ad0e714cb087b1a91c05118a4fc263e29663edba260321c99d5004ba9fbbc632",
+    "tests/Feature/ImporPenggunaTest.php": "d0e7d1fe36a8420d7dff92f883b5d88d06601704565ba4f8850567b0b71243f9",
+    "tests/Feature/ImportRestoreSafetyTest.php": "861496851b95a12e679e80d80795faec1b9f9aface15b9442866d2129dab2bec"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 187,
+    "duration_ms": 39197
+  }
+}

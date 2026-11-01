@@ -1,0 +1,17 @@
+{
+  "batch": "batch-13",
+  "files": [
+    "tests/Feature/Phase6CoordinatorSecurityAndConcurrencyTest.php",
+    "tests/Feature/Phase6CoordinatorServiceIntegrationTest.php",
+    "tests/Feature/PresensiRosterTest.php",
+    "tests/Feature/PromotionReviewAndGatingTest.php"
+  ],
+  "result": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 22,
+    "passed": 22,
+    "assertions": 84,
+    "duration_ms": 33982
+  }
+}

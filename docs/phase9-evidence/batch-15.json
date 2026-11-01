@@ -1,0 +1,18 @@
+{
+  "batch": "batch-15",
+  "files": [
+    "tests/Feature/Phase8RestoreStagingEngineTest.php",
+    "tests/Feature/Phase9AccessibilityAndPolishTest.php",
+    "tests/Feature/Phase9CoordinatorContextPersistenceTest.php",
+    "tests/Feature/Phase9FullModuleCohesionAndE2ETest.php"
+  ],
+  "duration_s": 13.65,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 16,
+    "passed": 16,
+    "assertions": 87,
+    "duration_ms": 11731
+  }
+}

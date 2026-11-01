@@ -37,6 +37,7 @@ class SiswaRequest extends FormRequest
             'no_hp' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string', 'max:500'],
             'status' => ['required', Rule::in(['aktif', 'nonaktif', 'lulus'])],
+            'alasan' => ['nullable', 'string', 'max:1000'],
 
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($akunId)],
             'username' => ['required', 'string', 'min:3', 'max:255', 'regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users', 'username')->ignore($akunId)],

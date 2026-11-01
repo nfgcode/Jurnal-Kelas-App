@@ -6,6 +6,7 @@ use App\Models\Jadwal;
 use App\Models\Jurnal;
 use App\Models\Presensi;
 use App\Support\SimpanPresensiJurnal;
+use App\Support\RosterPresensi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -42,7 +43,7 @@ class PresensiJurnalController extends Controller
         return view('presensi.isi-jurnal', [
             'jurnal' => $jurnal,
             'kelas' => $kelas,
-            'siswaList' => $kelas->siswa()->orderBy('nama')->get(),
+            'siswaList' => RosterPresensi::untukJurnal($jurnal),
             'tersimpan' => $tersimpan,
             // Distinguishes "isi presensi" from "perbarui presensi" in the UI.
             'sudahDiisi' => $tersimpan->isNotEmpty(),
@@ -67,11 +68,11 @@ class PresensiJurnalController extends Controller
 
         // Attendance may only be recorded for students actually in this class, so
         // a crafted siswa_nis (another class's student, or a teacher) is rejected.
-        $roster = $kelas->siswa()->pluck('nis')->all();
+        $roster = RosterPresensi::untukJurnal($jurnal)->pluck('nis')->all();
 
         $validated = $request->validate([
             'presensi' => ['required', 'array', 'min:1'],
-            'presensi.*.siswa_nis' => ['required', Rule::in($roster)],
+            'presensi.*.siswa_nis' => ['required', 'string', 'max:20', 'distinct:strict', Rule::in($roster)],
             'presensi.*.status' => ['required', Rule::in(Presensi::STATUS)],
             'presensi.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);

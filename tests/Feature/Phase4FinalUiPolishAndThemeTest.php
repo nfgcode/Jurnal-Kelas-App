@@ -78,7 +78,7 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
         $resApp->assertSee("get('pref-theme', 'light')", false);
     }
 
-    public function test_halaman_transisi_menampilkan_format_ringkasan_pemeriksaan_terpenuhi(): void
+    public function test_halaman_transisi_menampilkan_satu_arahan_persiapan(): void
     {
         $this->siapkanDataDasar();
         $admin = $this->admin();
@@ -86,10 +86,9 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        // Format "X dari Y pemeriksaan terpenuhi"
-        $response->assertSee('pemeriksaan terpenuhi');
-        $response->assertSee('Langkah berikutnya:');
-        $response->assertSee('Tambahkan tahun ajaran tujuan baru pada menu Tahun Ajaran');
+        $response->assertDontSee('pemeriksaan terpenuhi');
+        $response->assertSee('Periode Transisi');
+        $response->assertSee('Siapkan Tahun Berikutnya');
     }
 
     public function test_halaman_transisi_menggunakan_penamaan_langkah_konsisten(): void
@@ -100,10 +99,10 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.transisi.index'));
 
         $response->assertOk();
-        $response->assertSee('1. Siapkan Rombel Kelas Tujuan');
-        $response->assertSee('2. Lihat Simulasi Transisi');
-        $response->assertSee('Sistem akan menyiapkan kelas untuk tahun ajaran baru');
-        $response->assertSee('Simulasikan penempatan kelas siswa dan kelulusan');
+        $response->assertSee('1. Persiapan Kelas');
+        $response->assertSee('2. Simulasi Transisi');
+        $response->assertSee('Siapkan kelas tujuan berdasarkan jurusan');
+        $response->assertSee('Periksa penempatan siswa, calon lulusan');
     }
 
     public function test_empty_state_dropdown_dan_tombol_disabled_saat_belum_ada_tahun_tujuan(): void
@@ -115,7 +114,7 @@ class Phase4FinalUiPolishAndThemeTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Tahun ajaran tujuan belum tersedia.');
-        $response->assertSee('Tambah Tahun Ajaran');
+        $response->assertSee('Siapkan Tahun Berikutnya');
         $response->assertSee('disabled');
     }
 }

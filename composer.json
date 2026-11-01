@@ -49,8 +49,7 @@
         ],
         "test": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "@php tests/run.php"
         ],
         "lint": [
             "./vendor/bin/pint"
@@ -58,8 +57,7 @@
         "quality": [
             "Composer\\Config::disableProcessTimeout",
             "./vendor/bin/pint --test",
-            "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "@php tests/run.php"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

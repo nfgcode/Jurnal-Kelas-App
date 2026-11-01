@@ -52,7 +52,7 @@ class KesiapanTransisi
      */
     public static function evaluasi(?string $tahunAsalKode = null, ?string $tahunTujuanKode = null): array
     {
-        $tahunAktif = TahunAjaran::berjalan();
+        $tahunAktif = TahunAjaran::where('aktif', true)->first();
         $tahunAsalKode ??= $tahunAktif?->kode;
 
         $tahunAsal = $tahunAsalKode ? TahunAjaran::where('kode', $tahunAsalKode)->first() : null;
@@ -62,7 +62,7 @@ class KesiapanTransisi
             $tahunTujuan = TahunAjaran::where('kode', $tahunTujuanKode)->first();
         } else {
             // Pilih kandidat tahun ajaran nonaktif terbaru
-            $tahunTujuan = TahunAjaran::where('aktif', false)->orderByDesc('kode')->first();
+            $tahunTujuan = TahunAjaran::where('aktif', false)->where('kode', '>', $tahunAsalKode ?? '9999/9999')->orderBy('kode')->first();
         }
 
         $items = [];
@@ -102,14 +102,14 @@ class KesiapanTransisi
 
         // 2. Ketersediaan Tahun Ajaran Tujuan
         if ($tahunTujuan) {
-            if ($tahunAsal && $tahunTujuan->kode === $tahunAsal->kode) {
+            if ($tahunAsal && ($tahunTujuan->kode <= $tahunAsal->kode || $tahunTujuan->aktif)) {
                 $items[] = [
                     'kategori' => 'Konfigurasi Tahun Ajaran',
                     'kriteria' => 'Tahun Ajaran Tujuan Berbeda',
                     'status' => self::STATUS_TERHAMBAT,
                     'label' => 'Terhambat',
                     'tone' => 'red',
-                    'pesan' => "Tahun tujuan ({$tahunTujuan->kode}) tidak boleh sama dengan tahun asal.",
+                    'pesan' => "Tahun tujuan ({$tahunTujuan->kode}) harus nonaktif dan setelah tahun asal.",
                     'jumlah_terdampak' => null,
                     'pemblokir' => true,
                     'tautan' => route('admin.tahun-ajaran.index'),

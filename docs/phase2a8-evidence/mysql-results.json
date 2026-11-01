@@ -1,0 +1,502 @@
+{
+  "token": "e0730b93b9d89046f330fa144fc80a5b",
+  "root": "C:\\Users\\Tenma\\AppData\\Local\\hermes\\cache\\scratch\\phase2a8-e0730b93b9d89046f330fa144fc80a5b",
+  "baseline": "C:\\Users\\Tenma\\AppData\\Local\\hermes\\cache\\scratch\\phase2a8-baseline.json",
+  "steps": [],
+  "resources": {
+    "network": "phase2a8-e0730b93b9d89046f330fa144fc80a5b-net",
+    "mysql": "phase2a8-e0730b93b9d89046f330fa144fc80a5b-db",
+    "php": "phase2a8-e0730b93b9d89046f330fa144fc80a5b-php"
+  },
+  "commands_redacted": [
+    "docker run --network=none --read-only <pinned-php-image> tests/run.php <foundation-tests>",
+    "docker network create --internal --label org.jurnal.phase2a8=<run-token> <owned-network>",
+    "docker run --network <owned-network> --tmpfs /var/lib/mysql --env-file <ephemeral-random-credentials> <pinned-mysql8-image>",
+    "docker run --read-only --network <owned-network> --tmpfs /scratch --mount <repo>:readonly <pinned-php-image>",
+    "docker exec <owned-runner> php /repo/tests/Integration/Phase2A8_{migrations,constraints,concurrency}.php"
+  ],
+  "images": {
+    "mysql": "sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b",
+    "php": "sha256:46a78eee8b859a93fb3a5fc4809a6a4f199e91b3089e75329277f0237063c8cf"
+  },
+  "foundation_counts": {
+    "tests": 6,
+    "assertions": 25
+  },
+  "isolation": {
+    "internal_network": true,
+    "mysql_tmpfs": true,
+    "published_ports": false,
+    "persistent_volumes": false
+  },
+  "identity": {
+    "server_uuid": "56930189-d4ab-11f1-aefe-fa1add2fb797",
+    "version": "8.0.46",
+    "database": "phase2a8_e0730b93b9d89046f330fa144fc80a5b",
+    "hostname": "01e2b18a4ad3"
+  },
+  "migrations": {
+    "assertions": 1,
+    "applied": [
+      "0001_01_01_000000_create_users_table",
+      "0001_01_01_000001_create_cache_table",
+      "0001_01_01_000002_create_jobs_table",
+      "2024_01_01_000000_create_master_akademik_tables",
+      "2024_01_01_000001_create_kelas_table",
+      "2024_01_01_000002_create_guru_siswa_tables",
+      "2024_01_01_000003_create_mata_pelajaran_table",
+      "2024_01_01_000004_create_jadwal_table",
+      "2024_01_01_000005_create_jurnal_table",
+      "2024_01_01_000006_create_presensi_table",
+      "2026_07_22_000001_add_hifi_design_fields",
+      "2026_07_23_071137_create_personal_access_tokens_table",
+      "2026_07_23_080001_add_performance_indexes",
+      "2026_07_23_080002_add_unique_presensi",
+      "2026_07_23_080003_add_fulltext_to_jurnal",
+      "2026_07_23_080004_create_jurnal_audit_table",
+      "2026_07_23_080005_create_database_views",
+      "2026_07_23_080006_create_stored_functions",
+      "2026_07_23_080007_create_sp_simpan_presensi",
+      "2026_07_23_080008_create_jurnal_audit_trigger",
+      "2026_07_24_090001_add_users_role_status_indexes",
+      "2026_07_24_100001_add_jurnal_jadwal_tanggal_index",
+      "2026_07_25_000001_create_presensi_log_table",
+      "2026_07_30_000001_add_qr_token_to_kelas",
+      "2026_07_30_000002_create_laporan_error_table",
+      "2026_07_30_000003_create_pengumuman_table",
+      "2026_07_30_000004_add_unique_jurnal_per_pertemuan",
+      "2026_07_30_000005_drop_redundant_jurnal_jadwal_tanggal_index",
+      "2026_07_30_000006_add_public_id_to_jurnal",
+      "2026_07_30_000007_make_jurnal_public_id_required",
+      "2026_07_31_000001_drop_redundant_users_role_index",
+      "2026_08_06_000001_add_diedit_setelah_hari_to_jurnal",
+      "2026_08_19_000001_create_presensi_harian_table",
+      "2026_08_19_000002_backfill_presensi_harian",
+      "2026_08_19_000003_create_presensi_harian_log_table",
+      "2026_08_19_000004_repoint_mysql_objects_to_presensi_harian",
+      "2026_08_25_000001_create_ruangan_table",
+      "2026_08_25_000002_create_guru_mata_pelajaran_table",
+      "2026_08_25_000003_create_pengguna_procedures",
+      "2026_08_25_000004_add_jadwal_unique_keys",
+      "2026_08_26_000001_create_akademik_procedures",
+      "2026_08_30_000001_add_diisi_oleh_to_presensi",
+      "2026_10_01_000001_backfill_kelas_qr_token",
+      "2026_10_07_000001_add_last_logout_at_to_users",
+      "2026_10_07_000002_kosongkan_materi_jurnal_otomatis",
+      "2026_10_07_000003_add_jurusan_siswa_and_siswa_jurnal",
+      "2026_10_07_000004_create_jurusan_sync_triggers",
+      "2026_10_07_000005_create_sp_tambah_jurusan",
+      "2026_10_13_000001_create_hari_libur_table",
+      "2026_10_13_000002_add_hanya_baca_to_users",
+      "2026_10_28_000001_restrict_presensi_siswa_foreign_keys",
+      "2026_10_28_000002_create_alumni_table",
+      "2026_10_28_000003_create_riwayat_kelas_siswa_table",
+      "2026_10_28_000004_create_transisi_tahun_ajaran_table",
+      "2026_10_28_000005_create_admin_audit_log_table",
+      "2026_10_28_000006_create_tinjauan_retensi_table",
+      "2026_10_30_000001_restrict_historical_master_deletion",
+      "2026_10_31_000001_guard_academic_activation"
+    ],
+    "migration_count": 58,
+    "routines": [
+      {
+        "ROUTINE_NAME": "fn_nama_duplikat_guru",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "fn_nama_duplikat_siswa",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "fn_persentase_kehadiran_kelas",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "fn_persentase_kehadiran_siswa",
+        "ROUTINE_TYPE": "FUNCTION"
+      },
+      {
+        "ROUTINE_NAME": "sp_simpan_presensi",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_simpan_presensi_harian",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_guru",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_jadwal",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_jurusan",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_kelas",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_mata_pelajaran",
+        "ROUTINE_TYPE": "PROCEDURE"
+      },
+      {
+        "ROUTINE_NAME": "sp_tambah_siswa",
+        "ROUTINE_TYPE": "PROCEDURE"
+      }
+    ]
+  },
+  "constraints": {
+    "assertions": 37,
+    "generated_columns_after_cycles": [
+      {
+        "TABLE_NAME": "riwayat_kelas_siswa",
+        "COLUMN_NAME": "siswa_nis_aktif",
+        "EXTRA": "VIRTUAL GENERATED",
+        "GENERATION_EXPRESSION": "(case when (`aktif` = 1) then `siswa_nis` else NULL end)"
+      },
+      {
+        "TABLE_NAME": "tahun_ajaran",
+        "COLUMN_NAME": "active_slot",
+        "EXTRA": "VIRTUAL GENERATED",
+        "GENERATION_EXPRESSION": "(case when (`aktif` = 1) then 1 else NULL end)"
+      }
+    ],
+    "cycles": [
+      "2026_10_30_000001_restrict_historical_master_deletion",
+      "2026_10_31_000001_guard_academic_activation"
+    ],
+    "fixture_preserved": true,
+    "fk_restrict_keys": 6,
+    "generated_unique_year": true,
+    "generated_unique_membership": true
+  },
+  "concurrency": {
+    "assertions": 69,
+    "cases": {
+      "same-snapshot-double-execution": {
+        "wait_proof": [
+          {
+            "connection_id": 18,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          },
+          {
+            "connection_id": 17,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_transaction": 6450,
+            "blocking_transaction": 6449
+          },
+          {
+            "requesting_transaction": 6451,
+            "blocking_transaction": 6449
+          },
+          {
+            "requesting_transaction": 6451,
+            "blocking_transaction": 6450
+          }
+        ],
+        "results": [
+          {
+            "ok": false,
+            "connection_id": 17,
+            "action": "transition",
+            "class": "DomainException",
+            "error": "Snapshot kedaluwarsa atau data berubah. Buka ulang simulasi."
+          },
+          {
+            "ok": true,
+            "connection_id": 18,
+            "action": "transition"
+          }
+        ]
+      },
+      "future-planned-placement-not-yet-active": {
+        "wait_proof": [
+          {
+            "connection_id": 22,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          },
+          {
+            "connection_id": 21,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_transaction": 6455,
+            "blocking_transaction": 6454
+          },
+          {
+            "requesting_transaction": 6456,
+            "blocking_transaction": 6454
+          },
+          {
+            "requesting_transaction": 6456,
+            "blocking_transaction": 6455
+          }
+        ],
+        "results": [
+          {
+            "ok": false,
+            "connection_id": 22,
+            "action": "activate",
+            "class": "Illuminate\\Validation\\ValidationException",
+            "error": "Riwayat kelas tidak konsisten atau tanggal penutupan sebelum tanggal mulai."
+          },
+          {
+            "ok": false,
+            "connection_id": 21,
+            "action": "activate",
+            "class": "DomainException",
+            "error": "Seluruh siswa aktif wajib ditempatkan di kelas tahun tujuan yang valid."
+          }
+        ]
+      },
+      "structural-period-wins-before-activation": {
+        "baseline_activation_valid": true,
+        "master_wait_proof": [
+          {
+            "connection_id": 24,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "academic_wait_proof": [
+          {
+            "connection_id": 26,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_connection": 26,
+            "blocking_connection": 24,
+            "object_name": "academic_operation_lock"
+          }
+        ],
+        "master": {
+          "ok": true,
+          "connection_id": 24,
+          "action": "structural-master"
+        },
+        "academic": {
+          "ok": false,
+          "connection_id": 26,
+          "action": "activate",
+          "class": "DomainException",
+          "error": "Aktivasi memerlukan tepat satu riwayat aktif dengan kelas, tingkat, tahun, dan tanggal dalam periode tujuan yang terverifikasi."
+        },
+        "committed_edit": "2027-07-02"
+      },
+      "structural-class-wins-before-activation": {
+        "baseline_activation_valid": true,
+        "master_wait_proof": [
+          {
+            "connection_id": 28,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "academic_wait_proof": [
+          {
+            "connection_id": 30,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_connection": 30,
+            "blocking_connection": 28,
+            "object_name": "academic_operation_lock"
+          }
+        ],
+        "master": {
+          "ok": true,
+          "connection_id": 28,
+          "action": "structural-master"
+        },
+        "academic": {
+          "ok": false,
+          "connection_id": 30,
+          "action": "activate",
+          "class": "DomainException",
+          "error": "Seluruh siswa aktif wajib ditempatkan di kelas tahun tujuan yang valid."
+        },
+        "committed_edit": "2028/2029"
+      },
+      "structural-department-wins-before-activation": {
+        "baseline_activation_valid": true,
+        "master_wait_proof": [
+          {
+            "connection_id": 32,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "academic_wait_proof": [
+          {
+            "connection_id": 34,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_connection": 34,
+            "blocking_connection": 32,
+            "object_name": "academic_operation_lock"
+          }
+        ],
+        "master": {
+          "ok": true,
+          "connection_id": 32,
+          "action": "structural-master"
+        },
+        "academic": {
+          "ok": false,
+          "connection_id": 34,
+          "action": "activate",
+          "class": "DomainException",
+          "error": "Seluruh siswa aktif wajib ditempatkan di kelas tahun tujuan yang valid."
+        },
+        "committed_edit": 0
+      },
+      "activation-different-targets": {
+        "wait_proof": [
+          {
+            "connection_id": 38,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          },
+          {
+            "connection_id": 37,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_transaction": 6510,
+            "blocking_transaction": 6509
+          },
+          {
+            "requesting_transaction": 6511,
+            "blocking_transaction": 6509
+          },
+          {
+            "requesting_transaction": 6511,
+            "blocking_transaction": 6510
+          }
+        ],
+        "results": [
+          {
+            "ok": true,
+            "connection_id": 37,
+            "action": "activate"
+          },
+          {
+            "ok": false,
+            "connection_id": 38,
+            "action": "activate",
+            "class": "DomainException",
+            "error": "Seluruh siswa aktif wajib ditempatkan di kelas tahun tujuan yang valid."
+          }
+        ]
+      },
+      "master-edit-activation-overlap": {
+        "wait_proof": [
+          {
+            "connection_id": 41,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          },
+          {
+            "connection_id": 42,
+            "object_name": "academic_operation_lock",
+            "status": "WAITING",
+            "mode": "X,REC_NOT_GAP"
+          }
+        ],
+        "data_lock_waits": [
+          {
+            "requesting_transaction": 6518,
+            "blocking_transaction": 6517
+          },
+          {
+            "requesting_transaction": 6519,
+            "blocking_transaction": 6517
+          },
+          {
+            "requesting_transaction": 6519,
+            "blocking_transaction": 6518
+          }
+        ],
+        "results": [
+          {
+            "ok": true,
+            "connection_id": 42,
+            "action": "master"
+          },
+          {
+            "ok": false,
+            "connection_id": 41,
+            "action": "activate",
+            "class": "DomainException",
+            "error": "Seluruh siswa aktif wajib ditempatkan di kelas tahun tujuan yang valid."
+          }
+        ]
+      }
+    },
+    "final": {
+      "active_years": [
+        "2027/2028"
+      ],
+      "completed_transitions": 1,
+      "active_memberships": 1,
+      "student_class": 2,
+      "destination_class": 2
+    }
+  },
+  "cleanup": [
+    {
+      "name": "phase2a8-e0730b93b9d89046f330fa144fc80a5b-php",
+      "removed": true
+    },
+    {
+      "name": "phase2a8-e0730b93b9d89046f330fa144fc80a5b-db",
+      "removed": true
+    },
+    {
+      "name": "phase2a8-e0730b93b9d89046f330fa144fc80a5b-net",
+      "removed": true
+    }
+  ],
+  "assertions_total": 132,
+  "source_hashes_unchanged": true
+}

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
+use RuntimeException;
 
 class AuditAdmin
 {

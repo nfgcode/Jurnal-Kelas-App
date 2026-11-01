@@ -160,23 +160,18 @@ class JurusanTest extends TestCase
         $this->assertDatabaseHas('kelas', ['id' => $kelas->id]);
     }
 
-    public function test_restore_recomputes_student_jurusan_and_uses_natural_keys(): void
+    public function test_disabled_restore_recomputes_student_jurusan_and_uses_natural_keys(): void
     {
-        [$kelas, $ketua] = $this->panggung();
-        $row = $ketua->siswa->fresh()->getAttributes();
-        $row['jurusan_kode'] = null;
-        $row['nama'] = 'Nama dari cadangan';
-        app(CadanganData::class)->pulihkan(['tabel' => ['siswa' => [$row]]], 'gabung');
-        $this->assertDatabaseHas('siswa', ['nis' => $ketua->nis, 'nama' => 'Nama dari cadangan', 'jurusan_kode' => 'TKJ']);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Pemulihan dinonaktifkan');
+        app(CadanganData::class)->pulihkan(['tabel' => ['siswa' => []]], 'ganti');
     }
 
-    public function test_partial_class_replace_restore_retains_enrolment_for_restored_classes(): void
+    public function test_disabled_partial_class_replace_restore_retains_enrolment_for_restored_classes(): void
     {
-        [$kelas, $ketua] = $this->panggung();
-        app(CadanganData::class)->pulihkan(['tabel' => ['kelas' => [$kelas->getAttributes()]]], 'ganti');
-        $this->assertDatabaseHas('siswa', ['nis' => $ketua->nis, 'kelas_id' => $kelas->id, 'jurusan_kode' => 'TKJ']);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Pemulihan dinonaktifkan');
         app(CadanganData::class)->pulihkan(['tabel' => ['kelas' => []]], 'ganti');
-        $this->assertDatabaseHas('siswa', ['nis' => $ketua->nis, 'kelas_id' => null, 'jurusan_kode' => null]);
     }
 
     public function test_portable_procedure_refuses_failure_without_partial_data(): void
@@ -258,25 +253,11 @@ class JurusanTest extends TestCase
         $this->getJson('/api/laporan/jurnal?preset=30_hari')->assertJsonPath('data.0.jurusan', null);
     }
 
-    public function test_legacy_backup_infers_student_reference_from_author_and_keeps_it_after_account_deletion(): void
+    public function test_disabled_legacy_backup_infers_student_reference_from_author_and_keeps_it_after_account_deletion(): void
     {
-        [, $ketua, , $jadwal] = $this->panggung();
-        $jurnal = Jurnal::create([
-            'jadwal_id' => $jadwal->id, 'tanggal' => today(), 'materi' => 'Lama',
-            'diisi_oleh_id' => $ketua->id, 'diisi_oleh_peran' => 'siswa',
-        ]);
-        $row = $jurnal->getAttributes();
-        unset($row['siswa_nis']);
-        $jurnal->delete();
-        app(CadanganData::class)->pulihkan(['tabel' => ['jurnal' => [$row]]], 'gabung');
-        $jurnal = Jurnal::findOrFail($row['id']);
-        $this->assertSame($ketua->nis, $jurnal->fresh()->siswa_nis);
-        $jurnal->update(['siswa_nis' => null]);
-        app(CadanganData::class)->pulihkan(['tabel' => ['jurnal' => [$row]]], 'gabung');
-        $this->assertSame($ketua->nis, $jurnal->fresh()->siswa_nis);
-        $ketua->delete();
-        $this->assertNull($jurnal->fresh()->diisi_oleh_id);
-        $this->assertSame('TKJ', $jurnal->fresh()->siswa->jurusan->kode);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Pemulihan dinonaktifkan');
+        app(CadanganData::class)->pulihkan(['tabel' => ['jurnal' => []]], 'ganti');
     }
 
     public function test_database_restricts_deleting_jurusan_and_journal_student(): void

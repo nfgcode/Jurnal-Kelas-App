@@ -316,13 +316,18 @@ class Phase1DatabaseIntegrityAndAuditTest extends TestCase
         ];
 
         $cadangan = app(CadanganData::class);
-        $cadangan->pulihkan($data, 'ganti');
+        try {
+            $cadangan->pulihkan($data, 'ganti');
+            $this->fail('Legacy restore must be disabled.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Pemulihan dinonaktifkan', $e->getMessage());
+        }
 
         // Tabel admin_audit_log TIDAK boleh terhapus oleh restore mode 'ganti'
         $this->assertDatabaseHas('admin_audit_log', [
             'aksi' => 'audit.awal',
         ]);
-        $this->assertDatabaseHas('jurusan', [
+        $this->assertDatabaseMissing('jurusan', [
             'kode' => 'RPL',
         ]);
     }

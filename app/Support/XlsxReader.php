@@ -32,6 +32,10 @@ class XlsxReader
      */
     public static function baca(string $path): array
     {
+        if (! is_file($path) || filesize($path) > 10 * 1024 * 1024) {
+            throw new RuntimeException('Batas ukuran berkas terlampaui.');
+        }
+
         $rows = str_ends_with(strtolower($path), '.csv')
             ? self::bacaCsv($path)
             : self::bacaXlsx($path);
@@ -61,11 +65,21 @@ class XlsxReader
 
         $rows = [];
 
-        while (($data = fgetcsv($handle, 0, $pemisah)) !== false && count($rows) < self::MAX_BARIS) {
-            $rows[] = array_map(fn ($v) => trim((string) $v), $data);
+        try {
+            while (($data = fgetcsv($handle, 0, $pemisah, '"', '')) !== false) {
+                if (count($rows) >= self::MAX_BARIS || count($data) > 64) {
+                    throw new RuntimeException('Batas baris atau kolom berkas terlampaui.');
+                }
+                foreach ($data as $value) {
+                    if (strlen((string) $value) > 32768) {
+                        throw new RuntimeException('Batas isi sel terlampaui.');
+                    }
+                }
+                $rows[] = array_map(fn ($v) => trim((string) $v), $data);
+            }
+        } finally {
+            fclose($handle);
         }
-
-        fclose($handle);
 
         // Strip a UTF-8 BOM off the very first cell, or the first header never
         // matches the column name it plainly shows.
@@ -88,6 +102,18 @@ class XlsxReader
         }
 
         try {
+            if ($zip->numFiles > 128) {
+                throw new RuntimeException('Batas bagian arsip terlampaui.');
+            }
+            $total = 0;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                $total += $stat['size'];
+                if ($stat['size'] > 4 * 1024 * 1024 || $total > 16 * 1024 * 1024
+                    || $stat['size'] > max(1, $stat['comp_size']) * 100) {
+                    throw new RuntimeException('Batas ukuran atau rasio arsip terlampaui.');
+                }
+            }
             $shared = self::sharedStrings($zip);
             $sheetXml = $zip->getFromName(self::sheetPertama($zip));
 
@@ -126,6 +152,9 @@ class XlsxReader
                 $teks .= (string) $t;
             }
 
+            if (count($hasil) >= 100000 || strlen($teks) > 32768) {
+                throw new RuntimeException('Batas shared strings terlampaui.');
+            }
             $hasil[] = $teks;
         }
 
@@ -172,13 +201,26 @@ class XlsxReader
         $doc = self::xml($sheetXml);
         $rows = [];
 
+        if (! isset($doc->sheetData)) {
+            return [];
+        }
+        $jumlahSel = 0;
         foreach ($doc->sheetData->row as $row) {
+            if (count($rows) >= self::MAX_BARIS) {
+                throw new RuntimeException('Batas baris berkas terlampaui.');
+            }
             $cells = [];
             $lebar = 0;
 
             foreach ($row->c as $c) {
+                if (++$jumlahSel > 100000) {
+                    throw new RuntimeException('Batas jumlah sel terlampaui.');
+                }
                 $kolom = self::indeksKolom((string) $c['r']);
                 $cells[$kolom] = self::nilai($c, $shared);
+                if (strlen($cells[$kolom]) > 32768) {
+                    throw new RuntimeException('Batas isi sel terlampaui.');
+                }
                 $lebar = max($lebar, $kolom + 1);
             }
 
@@ -188,9 +230,7 @@ class XlsxReader
                 range(0, max(0, $lebar - 1))
             );
 
-            if (count($rows) >= self::MAX_BARIS) {
-                break;
-            }
+
         }
 
         return $rows;
@@ -226,11 +266,18 @@ class XlsxReader
     /** "BC12" -> 54. The row number is ignored; only the letters matter. */
     private static function indeksKolom(string $ref): int
     {
-        $huruf = preg_replace('/[^A-Z]/', '', strtoupper($ref)) ?? '';
+        if (! preg_match('/^([A-Z]{1,2})[1-9][0-9]{0,6}$/', $ref, $matches)) {
+            throw new RuntimeException('Batas kolom berkas terlampaui.');
+        }
+        $huruf = $matches[1];
         $indeks = 0;
 
         for ($i = 0; $i < strlen($huruf); $i++) {
             $indeks = $indeks * 26 + (ord($huruf[$i]) - 64);
+        }
+
+        if ($indeks > 64) {
+            throw new RuntimeException('Batas kolom berkas terlampaui.');
         }
 
         return max(0, $indeks - 1);
@@ -243,7 +290,16 @@ class XlsxReader
      */
     private static function xml(string $raw): SimpleXMLElement
     {
-        $doc = simplexml_load_string($raw, SimpleXMLElement::class, LIBXML_NONET);
+        if (strlen($raw) > 4 * 1024 * 1024 || preg_match('/<!DOCTYPE|<!ENTITY/i', $raw)) {
+            throw new RuntimeException('Isi berkas Excel tidak dapat dibaca.');
+        }
+        $previous = libxml_use_internal_errors(true);
+        try {
+            $doc = simplexml_load_string($raw, SimpleXMLElement::class, LIBXML_NONET);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
 
         if ($doc === false) {
             throw new RuntimeException('Isi berkas Excel tidak dapat dibaca.');

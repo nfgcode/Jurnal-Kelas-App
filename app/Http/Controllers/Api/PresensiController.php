@@ -11,6 +11,7 @@ use App\Models\Kelas;
 use App\Models\Presensi;
 use App\Models\PresensiHarian;
 use App\Support\SimpanPresensiJurnal;
+use App\Support\RosterPresensi;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -101,11 +102,11 @@ class PresensiController extends Controller
         }
 
         // Attendance may only be recorded for students actually in this class.
-        $roster = $kelas->siswa()->pluck('nis')->all();
+        $roster = RosterPresensi::untukJurnal($jurnal)->pluck('nis')->all();
 
         $validated = $request->validate([
             'presensi' => ['required', 'array', 'min:1'],
-            'presensi.*.siswa_nis' => ['required', Rule::in($roster)],
+            'presensi.*.siswa_nis' => ['required', 'string', 'max:20', 'distinct:strict', Rule::in($roster)],
             'presensi.*.status' => ['required', Rule::in(Presensi::STATUS)],
             'presensi.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);

@@ -45,8 +45,7 @@ class KelasController extends Controller
 
     public function store(KelasRequest $request, PencatatanAkademik $pencatatan)
     {
-        // Same procedure the web form goes through, so the API cannot create a
-        // rombel the form would have refused.
+        // Same serialized writer as the web form, including dependency checks.
         $kelas = $pencatatan->kelas($request->validated());
 
         return (new KelasResource($kelas))->response()->setStatusCode(201);

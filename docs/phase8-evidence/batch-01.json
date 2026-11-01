@@ -1,0 +1,18 @@
+{
+  "batch": "01",
+  "files": [
+    "tests/Feature/AcademicMasterSerializationTest.php",
+    "tests/Feature/AcademicWorkflowFoundationTest.php",
+    "tests/Feature/AcademicWorkflowReadinessTest.php",
+    "tests/Feature/AcademicWorkflowReviewRegressionTest.php"
+  ],
+  "duration_s": 43.25,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 40,
+    "passed": 40,
+    "assertions": 262,
+    "duration_ms": 40729
+  }
+}

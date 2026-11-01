@@ -1,0 +1,625 @@
+{
+  "repo": "C:\\Users\\Tenma\\Jurnal-Kelas-App",
+  "evidence_dir": "C:\\Users\\Tenma\\AppData\\Local\\hermes\\cache\\scratch\\phase2a8-fullsuite-20261031-051924",
+  "expected_files": [
+    "tests/Feature/AcademicMasterSerializationTest.php",
+    "tests/Feature/AcademicYearCalendarTest.php",
+    "tests/Feature/AdminSectionTest.php",
+    "tests/Feature/AksesWebTest.php",
+    "tests/Feature/AkunPantauTest.php",
+    "tests/Feature/ApiJurnalKontrakTest.php",
+    "tests/Feature/ApiStatistikKehadiranTest.php",
+    "tests/Feature/AuditHalamanTest.php",
+    "tests/Feature/AuthorizationTest.php",
+    "tests/Feature/BarchartTest.php",
+    "tests/Feature/CadanganTest.php",
+    "tests/Feature/CrudPagesTest.php",
+    "tests/Feature/DashboardHarianTest.php",
+    "tests/Feature/DashboardPeriodeTest.php",
+    "tests/Feature/ErrorHandlingTest.php",
+    "tests/Feature/ExampleTest.php",
+    "tests/Feature/HariLiburTest.php",
+    "tests/Feature/IkonTest.php",
+    "tests/Feature/ImporPenggunaTest.php",
+    "tests/Feature/ImportRestoreSafetyTest.php",
+    "tests/Feature/JadwalFormTest.php",
+    "tests/Feature/JurnalGandaTest.php",
+    "tests/Feature/JurnalOtomatisTest.php",
+    "tests/Feature/JurusanTest.php",
+    "tests/Feature/KeamananTest.php",
+    "tests/Feature/LoginTest.php",
+    "tests/Feature/PaginationTest.php",
+    "tests/Feature/PeriodeFilterTest.php",
+    "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+    "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+    "tests/Feature/Phase2AReviewGuardsTest.php",
+    "tests/Feature/Phase2AcademicTransitionTest.php",
+    "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+    "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+    "tests/Feature/Phase4AdminActivityAuditTest.php",
+    "tests/Feature/Phase4AnnualMaintenanceReminderTest.php",
+    "tests/Feature/Phase4ExcelImportAndAiAssistanceTest.php",
+    "tests/Feature/Phase4FinalUiPolishAndThemeTest.php",
+    "tests/Feature/PresensiRosterTest.php",
+    "tests/Feature/ProsedurAkademikTest.php",
+    "tests/Feature/QrAksesTest.php",
+    "tests/Feature/RolePagesTest.php",
+    "tests/Feature/SafetyApplicationTest.php",
+    "tests/Feature/StatusSesiTest.php",
+    "tests/Feature/StudentLifecycleIntegrityTest.php",
+    "tests/Feature/TransitionEffectiveMembershipDatesTest.php",
+    "tests/Feature/TransitionPeriodWorkflowTest.php",
+    "tests/Feature/TransitionReviewRegressionTest.php",
+    "tests/Feature/TransitionValidationActivationTest.php",
+    "tests/Unit/ExampleTest.php",
+    "tests/Unit/SafetyFoundationTest.php",
+    "tests/Unit/XlsxReaderSafetyTest.php"
+  ],
+  "batches": [
+    {
+      "id": 1,
+      "files": [
+        "tests/Feature/AcademicMasterSerializationTest.php",
+        "tests/Feature/AcademicYearCalendarTest.php",
+        "tests/Feature/AdminSectionTest.php",
+        "tests/Feature/AksesWebTest.php"
+      ]
+    },
+    {
+      "id": 2,
+      "files": [
+        "tests/Feature/AkunPantauTest.php",
+        "tests/Feature/ApiJurnalKontrakTest.php",
+        "tests/Feature/ApiStatistikKehadiranTest.php",
+        "tests/Feature/AuditHalamanTest.php"
+      ]
+    },
+    {
+      "id": 3,
+      "files": [
+        "tests/Feature/AuthorizationTest.php",
+        "tests/Feature/BarchartTest.php",
+        "tests/Feature/CadanganTest.php",
+        "tests/Feature/CrudPagesTest.php"
+      ]
+    },
+    {
+      "id": 4,
+      "files": [
+        "tests/Feature/DashboardHarianTest.php",
+        "tests/Feature/DashboardPeriodeTest.php",
+        "tests/Feature/ErrorHandlingTest.php",
+        "tests/Feature/ExampleTest.php"
+      ]
+    },
+    {
+      "id": 5,
+      "files": [
+        "tests/Feature/HariLiburTest.php",
+        "tests/Feature/IkonTest.php",
+        "tests/Feature/ImporPenggunaTest.php",
+        "tests/Feature/ImportRestoreSafetyTest.php"
+      ]
+    },
+    {
+      "id": 6,
+      "files": [
+        "tests/Feature/JadwalFormTest.php",
+        "tests/Feature/JurnalGandaTest.php",
+        "tests/Feature/JurnalOtomatisTest.php",
+        "tests/Feature/JurusanTest.php"
+      ]
+    },
+    {
+      "id": 7,
+      "files": [
+        "tests/Feature/KeamananTest.php",
+        "tests/Feature/LoginTest.php",
+        "tests/Feature/PaginationTest.php",
+        "tests/Feature/PeriodeFilterTest.php"
+      ]
+    },
+    {
+      "id": 8,
+      "files": [
+        "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+        "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+        "tests/Feature/Phase2AReviewGuardsTest.php",
+        "tests/Feature/Phase2AcademicTransitionTest.php"
+      ]
+    },
+    {
+      "id": 9,
+      "files": [
+        "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+        "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+        "tests/Feature/Phase4AdminActivityAuditTest.php",
+        "tests/Feature/Phase4AnnualMaintenanceReminderTest.php"
+      ]
+    },
+    {
+      "id": 10,
+      "files": [
+        "tests/Feature/Phase4ExcelImportAndAiAssistanceTest.php",
+        "tests/Feature/Phase4FinalUiPolishAndThemeTest.php",
+        "tests/Feature/PresensiRosterTest.php",
+        "tests/Feature/ProsedurAkademikTest.php"
+      ]
+    },
+    {
+      "id": 11,
+      "files": [
+        "tests/Feature/QrAksesTest.php",
+        "tests/Feature/RolePagesTest.php",
+        "tests/Feature/SafetyApplicationTest.php",
+        "tests/Feature/StatusSesiTest.php"
+      ]
+    },
+    {
+      "id": 12,
+      "files": [
+        "tests/Feature/StudentLifecycleIntegrityTest.php",
+        "tests/Feature/TransitionEffectiveMembershipDatesTest.php",
+        "tests/Feature/TransitionPeriodWorkflowTest.php",
+        "tests/Feature/TransitionValidationActivationTest.php",
+        "tests/Feature/TransitionReviewRegressionTest.php"
+      ]
+    },
+    {
+      "id": 13,
+      "files": [
+        "tests/Unit/ExampleTest.php",
+        "tests/Unit/SafetyFoundationTest.php",
+        "tests/Unit/XlsxReaderSafetyTest.php"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "id": 1,
+      "files": [
+        "tests/Feature/AcademicMasterSerializationTest.php",
+        "tests/Feature/AcademicYearCalendarTest.php",
+        "tests/Feature/AdminSectionTest.php",
+        "tests/Feature/AksesWebTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/AcademicMasterSerializationTest.php",
+        "tests/Feature/AcademicYearCalendarTest.php",
+        "tests/Feature/AdminSectionTest.php",
+        "tests/Feature/AksesWebTest.php"
+      ],
+      "started_utc": "2026-10-30T21:19:54.789617+00:00",
+      "duration_seconds": 12.312,
+      "returncode": 0,
+      "counts": {
+        "tests": 43,
+        "assertions": 210
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":43,\"passed\":43,\"assertions\":210,\"duration_ms\":11287}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/AcademicMasterSerializationTest.php": "708367a176ddab631c2a6cac081bf7a0e9f985bfc15fcafb488f662709bac333",
+        "tests/Feature/AcademicYearCalendarTest.php": "f0d9ee2babe511e9a47449d219e38eef1ebfa857a8bc5193f90ba4cad2bc0695",
+        "tests/Feature/AdminSectionTest.php": "5d66a9a58d8828beffd6444bb36a326137e342c34229813616b816f6d5cc960f",
+        "tests/Feature/AksesWebTest.php": "e6974cabad3b28ec5ab2ffb1972abe1334db09216527a820c08a7855f2f0e2eb"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 2,
+      "files": [
+        "tests/Feature/AkunPantauTest.php",
+        "tests/Feature/ApiJurnalKontrakTest.php",
+        "tests/Feature/ApiStatistikKehadiranTest.php",
+        "tests/Feature/AuditHalamanTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/AkunPantauTest.php",
+        "tests/Feature/ApiJurnalKontrakTest.php",
+        "tests/Feature/ApiStatistikKehadiranTest.php",
+        "tests/Feature/AuditHalamanTest.php"
+      ],
+      "started_utc": "2026-10-30T21:20:35.367591+00:00",
+      "duration_seconds": 53.516,
+      "returncode": 0,
+      "counts": {
+        "tests": 28,
+        "assertions": 117
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":28,\"passed\":28,\"assertions\":117,\"duration_ms\":50399}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/AkunPantauTest.php": "8b1e4ea3cbc0fd0fe7de9c27300a225be4d1c47f32de1779137426d888b694ad",
+        "tests/Feature/ApiJurnalKontrakTest.php": "5e734d6d43848491896581fc86670ab9320a90866ef93f0c7ad2235f8bcc8136",
+        "tests/Feature/ApiStatistikKehadiranTest.php": "3304d790590777bc6af6ae33e378693dbc9dd7d20d2e5d34080778d4487d2eb7",
+        "tests/Feature/AuditHalamanTest.php": "2dbc0dbc576fb3a7394554ea83e544dee527ce0a91bbbc6479003004c9351c60"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 3,
+      "files": [
+        "tests/Feature/AuthorizationTest.php",
+        "tests/Feature/BarchartTest.php",
+        "tests/Feature/CadanganTest.php",
+        "tests/Feature/CrudPagesTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/AuthorizationTest.php",
+        "tests/Feature/BarchartTest.php",
+        "tests/Feature/CadanganTest.php",
+        "tests/Feature/CrudPagesTest.php"
+      ],
+      "started_utc": "2026-10-30T21:21:28.899044+00:00",
+      "duration_seconds": 220.125,
+      "returncode": 0,
+      "counts": {
+        "tests": 65,
+        "assertions": 229
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":65,\"passed\":65,\"assertions\":229,\"duration_ms\":217238}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/AuthorizationTest.php": "f191da719adce2f96fc904eff78f3c1af4d898d00013f6254f07770356d02795",
+        "tests/Feature/BarchartTest.php": "f9777178e9724f2b24b5d7b13e5bb43b33e826db6d824e72b7173f4e12f2f9ba",
+        "tests/Feature/CadanganTest.php": "1fb1cf567773782e52638fcdb6b41899cce89ac269c4365ec256226796f213ac",
+        "tests/Feature/CrudPagesTest.php": "07d656e778b1cdde34ef938a42cb045b2a78ad48e702ffb4ab41f2bc56b84b08"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 5,
+      "files": [
+        "tests/Feature/HariLiburTest.php",
+        "tests/Feature/IkonTest.php",
+        "tests/Feature/ImporPenggunaTest.php",
+        "tests/Feature/ImportRestoreSafetyTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/HariLiburTest.php",
+        "tests/Feature/IkonTest.php",
+        "tests/Feature/ImporPenggunaTest.php",
+        "tests/Feature/ImportRestoreSafetyTest.php"
+      ],
+      "started_utc": "2026-10-30T21:28:52.116548+00:00",
+      "duration_seconds": 70.141,
+      "returncode": 0,
+      "counts": {
+        "tests": 43,
+        "assertions": 187
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":43,\"passed\":43,\"assertions\":187,\"duration_ms\":67089}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/HariLiburTest.php": "fde77d4bd393790e1314b527af007cafde716f4a2224f8290f51073382911360",
+        "tests/Feature/IkonTest.php": "ad0e714cb087b1a91c05118a4fc263e29663edba260321c99d5004ba9fbbc632",
+        "tests/Feature/ImporPenggunaTest.php": "d0e7d1fe36a8420d7dff92f883b5d88d06601704565ba4f8850567b0b71243f9",
+        "tests/Feature/ImportRestoreSafetyTest.php": "861496851b95a12e679e80d80795faec1b9f9aface15b9442866d2129dab2bec"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 4,
+      "files": [
+        "tests/Feature/DashboardHarianTest.php",
+        "tests/Feature/DashboardPeriodeTest.php",
+        "tests/Feature/ErrorHandlingTest.php",
+        "tests/Feature/ExampleTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/DashboardHarianTest.php",
+        "tests/Feature/DashboardPeriodeTest.php",
+        "tests/Feature/ErrorHandlingTest.php",
+        "tests/Feature/ExampleTest.php"
+      ],
+      "started_utc": "2026-10-30T21:30:21.342212+00:00",
+      "duration_seconds": 176.266,
+      "returncode": 0,
+      "counts": {
+        "tests": 43,
+        "assertions": 143
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":43,\"passed\":43,\"assertions\":143,\"duration_ms\":173433}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/DashboardHarianTest.php": "83a632f1addaf79d548b48457be355b2db8c4c481ea2fb34a165176f3a97c8ed",
+        "tests/Feature/DashboardPeriodeTest.php": "0aae613a3dcb62b30b7c5a23b50ef6318a6b757ccc4c48b9f86b3eeaa653920f",
+        "tests/Feature/ErrorHandlingTest.php": "a15b508af0f5ed5aabfced7c1161a9b09702b71db2cdbddea37e5c9cfb4ceabf",
+        "tests/Feature/ExampleTest.php": "8fb940b41dbcb765a01de8e487340f081b8a4b95fca445cca64cdf0a217a03c3"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 6,
+      "files": [
+        "tests/Feature/JadwalFormTest.php",
+        "tests/Feature/JurnalGandaTest.php",
+        "tests/Feature/JurnalOtomatisTest.php",
+        "tests/Feature/JurusanTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/JadwalFormTest.php",
+        "tests/Feature/JurnalGandaTest.php",
+        "tests/Feature/JurnalOtomatisTest.php",
+        "tests/Feature/JurusanTest.php"
+      ],
+      "started_utc": "2026-10-30T21:33:25.813059+00:00",
+      "duration_seconds": 100.203,
+      "returncode": 0,
+      "counts": {
+        "tests": 69,
+        "assertions": 309
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":69,\"passed\":69,\"assertions\":309,\"duration_ms\":97228}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/JadwalFormTest.php": "60fecd5b5dec91866a4a98cc33bee843c077788363658ea42291c796c3a38cfd",
+        "tests/Feature/JurnalGandaTest.php": "f3119fcdba68abe035f66493ad6bd190b507a171299778088ec24876631a84a1",
+        "tests/Feature/JurnalOtomatisTest.php": "43bd56c86f27ce9827ef077aecc266c511e97754b6cc1583e5688398ee87d771",
+        "tests/Feature/JurusanTest.php": "42ce69ffd347c15ea0962460326fc3957f9a027c546a3eb7df296022da374f0c"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 7,
+      "files": [
+        "tests/Feature/KeamananTest.php",
+        "tests/Feature/LoginTest.php",
+        "tests/Feature/PaginationTest.php",
+        "tests/Feature/PeriodeFilterTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/KeamananTest.php",
+        "tests/Feature/LoginTest.php",
+        "tests/Feature/PaginationTest.php",
+        "tests/Feature/PeriodeFilterTest.php"
+      ],
+      "started_utc": "2026-10-30T21:35:19.755293+00:00",
+      "duration_seconds": 95.75,
+      "returncode": 0,
+      "counts": {
+        "tests": 38,
+        "assertions": 186
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":38,\"passed\":38,\"assertions\":186,\"duration_ms\":92953}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/KeamananTest.php": "c65fa6634d51aa609bfe4840fa719df6f66f41222a40b7e997a2f8ae0aff88d6",
+        "tests/Feature/LoginTest.php": "c26e32f918af401765ac4771a6e596b99935452e720ca981922910be5a5718f9",
+        "tests/Feature/PaginationTest.php": "21a7d6a731b073e978a26b04633b8cce9c40af66b7894c53cc47df9c2613ecbc",
+        "tests/Feature/PeriodeFilterTest.php": "8976dfbf5150b8f6616eff9f51a6a571c946b6e77ce991228fad133b81d91bdc"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 8,
+      "files": [
+        "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+        "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+        "tests/Feature/Phase2AReviewGuardsTest.php",
+        "tests/Feature/Phase2AcademicTransitionTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+        "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+        "tests/Feature/Phase2AReviewGuardsTest.php",
+        "tests/Feature/Phase2AcademicTransitionTest.php"
+      ],
+      "started_utc": "2026-10-30T21:37:03.457661+00:00",
+      "duration_seconds": 15.625,
+      "returncode": 0,
+      "counts": {
+        "tests": 57,
+        "assertions": 266
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":57,\"passed\":57,\"assertions\":266,\"duration_ms\":12470}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php": "e5c2782238f52fb379256df402a7f5d13d19597a7551296b424bc21a022724a3",
+        "tests/Feature/Phase2AHistoricalIntegrityTest.php": "c78c88681f1cc7601a34217d008e4e4f79605867dde65f9479d08bc0083912af",
+        "tests/Feature/Phase2AReviewGuardsTest.php": "b2b46c6df51a7f7b58950cad81af3c0ef30b915f074f312ff3463cb0eeb57818",
+        "tests/Feature/Phase2AcademicTransitionTest.php": "0836524aa9954f8b3f262040713bde3fd670b2140b5227f6f25e207544276b5f"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 9,
+      "files": [
+        "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+        "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+        "tests/Feature/Phase4AdminActivityAuditTest.php",
+        "tests/Feature/Phase4AnnualMaintenanceReminderTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+        "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+        "tests/Feature/Phase4AdminActivityAuditTest.php",
+        "tests/Feature/Phase4AnnualMaintenanceReminderTest.php"
+      ],
+      "started_utc": "2026-10-30T21:37:26.987140+00:00",
+      "duration_seconds": 11.125,
+      "returncode": 0,
+      "counts": {
+        "tests": 36,
+        "assertions": 161
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":36,\"passed\":36,\"assertions\":161,\"duration_ms\":8432}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/Phase3LifecycleAndRetentionTest.php": "62afeb57004322744ba057ba4304bff78dffa6d223fb22a3112e6c73acf6b059",
+        "tests/Feature/Phase4AcademicTransitionChecklistTest.php": "d023f34a8e0048eb360857002ba5209290b32e3d599e85e0daec564fca754b3b",
+        "tests/Feature/Phase4AdminActivityAuditTest.php": "7af51b32050f89452aedd6ff693491d24aff22e6506c41d598eaca180911fd7e",
+        "tests/Feature/Phase4AnnualMaintenanceReminderTest.php": "db60045ba600a3ded11cd752956528dd4251c2d3d770b479453c33a4ae5bdd1e"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 10,
+      "files": [
+        "tests/Feature/Phase4ExcelImportAndAiAssistanceTest.php",
+        "tests/Feature/Phase4FinalUiPolishAndThemeTest.php",
+        "tests/Feature/PresensiRosterTest.php",
+        "tests/Feature/ProsedurAkademikTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/Phase4ExcelImportAndAiAssistanceTest.php",
+        "tests/Feature/Phase4FinalUiPolishAndThemeTest.php",
+        "tests/Feature/PresensiRosterTest.php",
+        "tests/Feature/ProsedurAkademikTest.php"
+      ],
+      "started_utc": "2026-10-30T21:37:44.504736+00:00",
+      "duration_seconds": 50.953,
+      "returncode": 0,
+      "counts": {
+        "tests": 37,
+        "assertions": 121
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":37,\"passed\":37,\"assertions\":121,\"duration_ms\":48732}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/Phase4ExcelImportAndAiAssistanceTest.php": "9a82bbf36feaf8c12f784fc415b96583fb12f552989449cb03c79239c7057252",
+        "tests/Feature/Phase4FinalUiPolishAndThemeTest.php": "c7c12e9b437a7747c6bb381b53eaa34f15bafebf07ff8d5bca304e2693537071",
+        "tests/Feature/PresensiRosterTest.php": "3dc2c4d9510868786cc168f3b985b4ae712d41ee2113162f3482982fb0c1772a",
+        "tests/Feature/ProsedurAkademikTest.php": "a89e8ee8947c3a4be9e516fff50d47e9a262e967e0c6db3ded244c09c509604f"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 11,
+      "files": [
+        "tests/Feature/QrAksesTest.php",
+        "tests/Feature/RolePagesTest.php",
+        "tests/Feature/SafetyApplicationTest.php",
+        "tests/Feature/StatusSesiTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/QrAksesTest.php",
+        "tests/Feature/RolePagesTest.php",
+        "tests/Feature/SafetyApplicationTest.php",
+        "tests/Feature/StatusSesiTest.php"
+      ],
+      "started_utc": "2026-10-30T21:38:50.864163+00:00",
+      "duration_seconds": 107.969,
+      "returncode": 0,
+      "counts": {
+        "tests": 31,
+        "assertions": 168
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":31,\"passed\":31,\"assertions\":168,\"duration_ms\":105265}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/QrAksesTest.php": "2650ff82ecb4ce28115c9f61b0307c15b908afd6fb55b8322bb3fd47185ed58d",
+        "tests/Feature/RolePagesTest.php": "efcc01ec131cec33476d1ae9e765315f0dc5d916b724a378d23dcf946c684b04",
+        "tests/Feature/SafetyApplicationTest.php": "ac807c048428d28be76d210e726795de8b5e7e0ab9d41bd870f9183b5c48a307",
+        "tests/Feature/StatusSesiTest.php": "c1c11498d7a34058ed2b8d994d5e018dff345e2c86d85a7cdbf9e2c9382d9a1d"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 12,
+      "files": [
+        "tests/Feature/StudentLifecycleIntegrityTest.php",
+        "tests/Feature/TransitionEffectiveMembershipDatesTest.php",
+        "tests/Feature/TransitionPeriodWorkflowTest.php",
+        "tests/Feature/TransitionValidationActivationTest.php",
+        "tests/Feature/TransitionReviewRegressionTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Feature/StudentLifecycleIntegrityTest.php",
+        "tests/Feature/TransitionEffectiveMembershipDatesTest.php",
+        "tests/Feature/TransitionPeriodWorkflowTest.php",
+        "tests/Feature/TransitionValidationActivationTest.php",
+        "tests/Feature/TransitionReviewRegressionTest.php"
+      ],
+      "started_utc": "2026-10-30T21:40:45.902883+00:00",
+      "duration_seconds": 16.297,
+      "returncode": 0,
+      "counts": {
+        "tests": 83,
+        "assertions": 543
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":83,\"passed\":83,\"assertions\":543,\"duration_ms\":13805}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Feature/StudentLifecycleIntegrityTest.php": "9e2d95bcf193703f8fa8e0051e0f151d9ffcdab8ad6f6e1af824ee006fe5c3e7",
+        "tests/Feature/TransitionEffectiveMembershipDatesTest.php": "2a586e5145c7b32849460c0be1e2d1521713b7a23a885f71bc1e30cb98870d26",
+        "tests/Feature/TransitionPeriodWorkflowTest.php": "7c6b3c3fdea5dd6852111b1a82e14245e6973fcdfce2f5e4664f261d2ff8bd85",
+        "tests/Feature/TransitionValidationActivationTest.php": "6722f41b12feb4ca701e1fb02e5e7b2493e084d6a76c710cf6b0c78ff99d26d3",
+        "tests/Feature/TransitionReviewRegressionTest.php": "bf56defb51724509c32db67b1ef10889068ae7f6d59e3d2ff6b09a03871e531d"
+      },
+      "tests_unchanged": true
+    },
+    {
+      "id": 13,
+      "files": [
+        "tests/Unit/ExampleTest.php",
+        "tests/Unit/SafetyFoundationTest.php",
+        "tests/Unit/XlsxReaderSafetyTest.php"
+      ],
+      "command": [
+        "php",
+        "tests/run.php",
+        "tests/Unit/ExampleTest.php",
+        "tests/Unit/SafetyFoundationTest.php",
+        "tests/Unit/XlsxReaderSafetyTest.php"
+      ],
+      "started_utc": "2026-10-30T21:41:11.384471+00:00",
+      "duration_seconds": 4.547,
+      "returncode": 0,
+      "counts": {
+        "tests": 15,
+        "assertions": 24
+      },
+      "passed": true,
+      "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":15,\"passed\":15,\"assertions\":24,\"duration_ms\":2010}\n",
+      "stderr": "",
+      "test_sha256": {
+        "tests/Unit/ExampleTest.php": "ffacae5c1a2a44c809420af5b3b404910da1b12167d58764dac6d10b8ba8cfaf",
+        "tests/Unit/SafetyFoundationTest.php": "e2b67266de4704a75ea909b7c0bccf6a63ca637f95b48a4f235f7fc5503c7bbb",
+        "tests/Unit/XlsxReaderSafetyTest.php": "6a0e1e49467d1f331d141524845f8962a92797717c3fec6f9e03a36eaaaf40f3"
+      },
+      "tests_unchanged": true
+    }
+  ],
+  "notes": [
+    "Initial combined batch tool call timed out after 420 seconds: batches 2 and 3 persisted; batch 4 produced no recorded output and was rerun separately.",
+    "Final source notice received before batches 7-13: transition, activation, review and checklist batches not yet run; new TransitionReviewRegressionTest.php added to batch 12."
+  ]
+}

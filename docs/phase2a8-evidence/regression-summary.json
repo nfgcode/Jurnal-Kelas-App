@@ -1,0 +1,44 @@
+{
+  "recorded_batches": 13,
+  "expected_batches": 13,
+  "covered_files": 52,
+  "unique_files": 52,
+  "expected_files": 52,
+  "missing": [],
+  "overlap": [],
+  "tests": 588,
+  "assertions": 2664,
+  "failed_batches": [],
+  "duration_seconds": 934.829,
+  "current_discovery_matches_manifest": true,
+  "changed_tests_since_execution": [],
+  "all_actual_json_passed": true,
+  "actual_json_total_tests": 588,
+  "actual_json_total_assertions": 2664,
+  "tests_added_over_552": 36,
+  "source_edits_by_this_agent": false,
+  "final_transition_batches": [
+    8,
+    9,
+    12
+  ],
+  "batch_seconds": {
+    "1": 12.312,
+    "2": 53.516,
+    "3": 220.125,
+    "5": 70.141,
+    "4": 176.266,
+    "6": 100.203,
+    "7": 95.75,
+    "8": 15.625,
+    "9": 11.125,
+    "10": 50.953,
+    "11": 107.969,
+    "12": 16.297,
+    "13": 4.547
+  },
+  "notes": [
+    "Initial combined batch tool call timed out after 420 seconds: batches 2 and 3 persisted; batch 4 produced no recorded output and was rerun separately.",
+    "Final source notice received before batches 7-13: transition, activation, review and checklist batches not yet run; new TransitionReviewRegressionTest.php added to batch 12."
+  ]
+}

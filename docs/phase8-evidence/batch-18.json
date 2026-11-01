@@ -1,0 +1,18 @@
+{
+  "batch": "18",
+  "files": [
+    "tests/Feature/TransitionPeriodWorkflowTest.php",
+    "tests/Feature/TransitionReviewRegressionTest.php",
+    "tests/Feature/TransitionValidationActivationTest.php",
+    "tests/Unit/ExampleTest.php"
+  ],
+  "duration_s": 9.24,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 46,
+    "passed": 46,
+    "assertions": 414,
+    "duration_ms": 7156
+  }
+}

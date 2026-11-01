@@ -1,0 +1,17 @@
+{
+  "batch": "batch-12",
+  "files": [
+    "tests/Feature/Phase4AnnualMaintenanceReminderTest.php",
+    "tests/Feature/Phase4ExcelImportAndAiAssistanceTest.php",
+    "tests/Feature/Phase4FinalUiPolishAndThemeTest.php",
+    "tests/Feature/Phase5SecurityAndAccountAccessTest.php"
+  ],
+  "result": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 25,
+    "passed": 25,
+    "assertions": 119,
+    "duration_ms": 8057
+  }
+}

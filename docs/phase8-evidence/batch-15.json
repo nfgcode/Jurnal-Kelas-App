@@ -1,0 +1,18 @@
+{
+  "batch": "15",
+  "files": [
+    "tests/Feature/Phase8RestoreStagingEngineTest.php",
+    "tests/Feature/PresensiRosterTest.php",
+    "tests/Feature/PromotionReviewAndGatingTest.php",
+    "tests/Feature/PromotionWorkflowExecutionTest.php"
+  ],
+  "duration_s": 65.28,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 24,
+    "passed": 24,
+    "assertions": 119,
+    "duration_ms": 61055
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "batch": 12,
+  "files": [
+    "tests/Feature/StudentLifecycleIntegrityTest.php",
+    "tests/Feature/TransitionEffectiveMembershipDatesTest.php",
+    "tests/Feature/TransitionPeriodWorkflowTest.php",
+    "tests/Feature/TransitionReviewRegressionTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/StudentLifecycleIntegrityTest.php",
+    "tests/Feature/TransitionEffectiveMembershipDatesTest.php",
+    "tests/Feature/TransitionPeriodWorkflowTest.php",
+    "tests/Feature/TransitionReviewRegressionTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 20.185,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":56,\"passed\":56,\"assertions\":493,\"duration_ms\":16444}\n",
+  "stderr": "",
+  "tests": 56,
+  "assertions": 493,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/StudentLifecycleIntegrityTest.php": "9e2d95bcf193703f8fa8e0051e0f151d9ffcdab8ad6f6e1af824ee006fe5c3e7",
+    "tests/Feature/TransitionEffectiveMembershipDatesTest.php": "2a586e5145c7b32849460c0be1e2d1521713b7a23a885f71bc1e30cb98870d26",
+    "tests/Feature/TransitionPeriodWorkflowTest.php": "7c6b3c3fdea5dd6852111b1a82e14245e6973fcdfce2f5e4664f261d2ff8bd85",
+    "tests/Feature/TransitionReviewRegressionTest.php": "bf56defb51724509c32db67b1ef10889068ae7f6d59e3d2ff6b09a03871e531d"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 56,
+    "passed": 56,
+    "assertions": 493,
+    "duration_ms": 16444
+  }
+}

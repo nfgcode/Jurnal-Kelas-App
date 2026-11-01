@@ -1,0 +1,38 @@
+{
+  "batch": 2,
+  "files": [
+    "tests/Feature/AkunPantauTest.php",
+    "tests/Feature/ApiJurnalKontrakTest.php",
+    "tests/Feature/ApiStatistikKehadiranTest.php",
+    "tests/Feature/AuditHalamanTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/AkunPantauTest.php",
+    "tests/Feature/ApiJurnalKontrakTest.php",
+    "tests/Feature/ApiStatistikKehadiranTest.php",
+    "tests/Feature/AuditHalamanTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 106.84,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":28,\"passed\":28,\"assertions\":117,\"duration_ms\":103187}\n",
+  "stderr": "",
+  "tests": 28,
+  "assertions": 117,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/AkunPantauTest.php": "8b1e4ea3cbc0fd0fe7de9c27300a225be4d1c47f32de1779137426d888b694ad",
+    "tests/Feature/ApiJurnalKontrakTest.php": "5e734d6d43848491896581fc86670ab9320a90866ef93f0c7ad2235f8bcc8136",
+    "tests/Feature/ApiStatistikKehadiranTest.php": "3304d790590777bc6af6ae33e378693dbc9dd7d20d2e5d34080778d4487d2eb7",
+    "tests/Feature/AuditHalamanTest.php": "2dbc0dbc576fb3a7394554ea83e544dee527ce0a91bbbc6479003004c9351c60"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 28,
+    "passed": 28,
+    "assertions": 117,
+    "duration_ms": 103187
+  }
+}

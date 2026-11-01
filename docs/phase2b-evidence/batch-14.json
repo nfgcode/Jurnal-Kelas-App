@@ -1,0 +1,35 @@
+{
+  "batch": 14,
+  "files": [
+    "tests/Feature/AcademicWorkflowFoundationTest.php",
+    "tests/Feature/AcademicWorkflowReadinessTest.php",
+    "tests/Feature/AcademicWorkflowReviewRegressionTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/AcademicWorkflowFoundationTest.php",
+    "tests/Feature/AcademicWorkflowReadinessTest.php",
+    "tests/Feature/AcademicWorkflowReviewRegressionTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 39.58,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":35,\"passed\":35,\"assertions\":227,\"duration_ms\":36988}\n",
+  "stderr": "",
+  "tests": 35,
+  "assertions": 227,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/AcademicWorkflowFoundationTest.php": "41d0730f0cdd0f42a10c4b5442a62325b20c36f2a32ca3cc1498d468da59fb94",
+    "tests/Feature/AcademicWorkflowReadinessTest.php": "e1133c57fd53c562c50c91e8fc889ad8782fda169cb4872dd935e2474e3b23ce",
+    "tests/Feature/AcademicWorkflowReviewRegressionTest.php": "2c49c307b2b1749456b5f2381006a6b96e675151f85e43242e84068710e57191"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 35,
+    "passed": 35,
+    "assertions": 227,
+    "duration_ms": 36988
+  }
+}

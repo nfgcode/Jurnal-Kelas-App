@@ -1,0 +1,18 @@
+{
+  "batch": "05",
+  "files": [
+    "tests/Feature/DashboardPeriodeTest.php",
+    "tests/Feature/ErrorHandlingTest.php",
+    "tests/Feature/ExampleTest.php",
+    "tests/Feature/GraduationWorkflowExecutionTest.php"
+  ],
+  "duration_s": 151.19,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 45,
+    "passed": 45,
+    "assertions": 176,
+    "duration_ms": 149262
+  }
+}

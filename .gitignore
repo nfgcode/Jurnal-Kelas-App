@@ -35,3 +35,14 @@ yarn-error.log
 bun.log
 mysql-data/
 redis-data/
+
+# Temporary Archives & Scratch Files
+*.zip
+*.tar.gz
+*.tmp
+*.bak
+commit-history*.txt
+nul
+php2shell-test/
+resume_phase*.py
+storage/framework/lsp-*.php

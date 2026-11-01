@@ -1,0 +1,18 @@
+{
+  "batch": "batch-10",
+  "files": [
+    "tests/Feature/PeriodeFilterTest.php",
+    "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+    "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+    "tests/Feature/Phase2AReviewGuardsTest.php"
+  ],
+  "duration_s": 31.01,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 59,
+    "passed": 59,
+    "assertions": 250,
+    "duration_ms": 29256
+  }
+}

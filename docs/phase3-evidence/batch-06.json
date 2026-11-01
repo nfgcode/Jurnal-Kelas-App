@@ -1,0 +1,38 @@
+{
+  "batch": 6,
+  "files": [
+    "tests/Feature/JadwalFormTest.php",
+    "tests/Feature/JurnalGandaTest.php",
+    "tests/Feature/JurnalOtomatisTest.php",
+    "tests/Feature/JurusanTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/JadwalFormTest.php",
+    "tests/Feature/JurnalGandaTest.php",
+    "tests/Feature/JurnalOtomatisTest.php",
+    "tests/Feature/JurusanTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 75.24,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":69,\"passed\":69,\"assertions\":309,\"duration_ms\":73165}\n",
+  "stderr": "",
+  "tests": 69,
+  "assertions": 309,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/JadwalFormTest.php": "60fecd5b5dec91866a4a98cc33bee843c077788363658ea42291c796c3a38cfd",
+    "tests/Feature/JurnalGandaTest.php": "f3119fcdba68abe035f66493ad6bd190b507a171299778088ec24876631a84a1",
+    "tests/Feature/JurnalOtomatisTest.php": "43bd56c86f27ce9827ef077aecc266c511e97754b6cc1583e5688398ee87d771",
+    "tests/Feature/JurusanTest.php": "42ce69ffd347c15ea0962460326fc3957f9a027c546a3eb7df296022da374f0c"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 69,
+    "passed": 69,
+    "assertions": 309,
+    "duration_ms": 73165
+  }
+}

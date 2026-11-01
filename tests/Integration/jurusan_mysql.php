@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-// Run only against a disposable MySQL database, never the application's database.
+// Guard must precede autoload, Laravel bootstrap, and every DB call.
+require __DIR__.'/mysql_guard.php';
 require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();

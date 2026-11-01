@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Jurusan extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SerializesAcademicMaster;
 
     protected $table = 'jurusan';
 

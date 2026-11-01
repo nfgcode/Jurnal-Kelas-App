@@ -109,7 +109,8 @@ class ImporPengguna
         $kelas = Kelas::orderBy('nama_kelas')->value('nama_kelas') ?? 'X RPL 1';
 
         if ($jenis === 'guru') {
-            $mapel = MataPelajaran::orderBy('nama')->limit(2)->pluck('nama')->all() + [0 => 'Matematika', 1 => 'Fisika'];
+            $mapelList = MataPelajaran::orderBy('nama')->limit(2)->pluck('nama')->toArray();
+            $mapel = ! empty($mapelList) ? $mapelList : [0 => 'Matematika', 1 => 'Fisika'];
 
             return [
                 ['Budi Santoso', 'budi.santoso@contoh.sch.id', '198501012010011001', 'L', '081234567890', 'Jl. Merdeka No. 1', $mapel[0], $kelas, '', 'aktif'],
@@ -300,12 +301,12 @@ class ImporPengguna
             $error[] = $labelIdentitas.' wajib diisi.';
         }
 
-        // A password must come from somewhere: the row, or the form's fallback.
-        $password = $data['password'] !== '' ? $data['password'] : (string) $passwordBawaan;
+        $adaIdentitas = User::where($identitas, $data[$identitas] ?? '')->first();
+        $password = ($data['password'] ?? '') !== '' ? $data['password'] : ($adaIdentitas ? '' : (string) $passwordBawaan);
 
-        if ($password === '') {
+        if ($password === '' && ! $adaIdentitas) {
             $error[] = 'Password wajib diisi, atau isi Password Bawaan pada formulir impor.';
-        } elseif (mb_strlen($password) < 8) {
+        } elseif ($password !== '' && mb_strlen($password) < 8) {
             $error[] = 'Password minimal 8 karakter.';
         }
 
@@ -352,7 +353,9 @@ class ImporPengguna
             $namaKelas = mb_strtolower($data['kelas'] ?? '');
 
             if ($namaKelas === '') {
-                $error[] = 'Kelas wajib diisi.';
+                if (! ($perbarui && Siswa::whereKey($data['nis'] ?? '')->whereNull('kelas_id')->exists())) {
+                    $error[] = 'Kelas wajib diisi.';
+                }
             } elseif (! isset($kelasPeta[$namaKelas])) {
                 $error[] = 'Kelas "'.$data['kelas'].'" tidak terdaftar.';
             } else {
@@ -375,31 +378,18 @@ class ImporPengguna
             }
         }
 
-        // Duplicates against accounts that already exist. The email is the
-        // identity an import updates on; a clashing NIP/NIS on a *different*
-        // account is always an error, since both double as login identifiers.
-        $adaEmail = $data['email'] !== ''
-            ? User::where('email', $data['email'])->first()
-            : null;
-
-        if ($adaEmail && ! $perbarui) {
-            $error[] = 'Email sudah terdaftar atas nama '.$adaEmail->nama
-                .'. Centang "Perbarui data yang sudah ada" bila memang ingin menimpanya.';
-        }
-
-        // A NIP/NIS clash is checked against the *person* register, not the
-        // account table: that is where the identifier is the primary key, and a
-        // person can exist there with no login at all.
-        if (($data[$identitas] ?? '') !== '') {
-            $orangLain = $jenis === 'guru'
-                ? Guru::whereKey($data['nip'])->first()
-                : Siswa::whereKey($data['nis'])->first();
-
-            $miliknyaSendiri = $adaEmail && $adaEmail->{$identitas} === $data[$identitas];
-
-            if ($orangLain && ! $miliknyaSendiri) {
-                $error[] = $labelIdentitas.' sudah terdaftar atas nama '.$orangLain->nama.'.';
+        $adaEmail = null;
+        try {
+            $adaEmail = self::identitasAkun($jenis, $data);
+            $orangLain = $jenis === 'guru' ? Guru::find($data['nip'] ?? '') : Siswa::find($data['nis'] ?? '');
+            if (($adaEmail || $orangLain) && ! $perbarui) {
+                $error[] = 'Identitas sudah terdaftar. Centang "Perbarui data yang sudah ada" untuk memperbarui profil.';
             }
+            if ($jenis === 'siswa' && $orangLain) {
+                app(SiklusHidupSiswa::class)->validasiProfilImpor($orangLain, $data + ['_kelas_id' => $kelasId]);
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            array_push($error, ...$e->validator->errors()->all());
         }
 
         return [
@@ -429,6 +419,7 @@ class ImporPengguna
         $hasil = ['baru' => 0, 'perbarui' => 0, 'dilewati' => 0];
 
         DB::transaction(function () use ($baris, $jenis, &$hasil) {
+            \App\Services\AktivasiTahunAjaran::kunci();
             foreach ($baris as $row) {
                 if ($row['error'] !== []) {
                     $hasil['dilewati']++;
@@ -437,7 +428,12 @@ class ImporPengguna
                 }
 
                 $data = $row['data'];
-                $status = $data['status'] !== '' ? $data['status'] : 'aktif';
+                $user = self::identitasAkun($jenis, $data, true);
+                $existing = $jenis === 'siswa' ? Siswa::whereKey($data['nis'])->lockForUpdate()->first() : null;
+                if ($existing) {
+                    app(SiklusHidupSiswa::class)->profilImpor($existing, $data);
+                }
+                $status = $data['status'] !== '' ? $data['status'] : ($user?->status ?? 'aktif');
                 // The person register has no "pending" — that is a fact about a
                 // login, not about someone being on the school's books.
                 $statusOrang = $status === 'nonaktif' ? 'nonaktif' : 'aktif';
@@ -452,11 +448,15 @@ class ImporPengguna
                         'no_hp' => $data['no_hp'] ?? '',
                         'alamat' => $data['alamat'] ?? '',
                     ], fn ($v) => $v !== ''))
-                    : Siswa::updateOrCreate(['nis' => $data['nis']], [
+                    : ($existing ?? Siswa::create(['nis' => $data['nis']] + [
                         'nama' => $data['nama'],
                         'kelas_id' => $data['_kelas_id'],
                         'status' => $statusOrang,
-                    ]);
+                    ]));
+
+                if ($jenis === 'siswa' && ! $existing) {
+                    app(SiklusHidupSiswa::class)->daftarkan($orang);
+                }
 
                 // The chair is a property of the class, so the "Ketua Kelas"
                 // column writes there. Later rows naming a different chair for
@@ -473,13 +473,15 @@ class ImporPengguna
                     'email' => $data['email'],
                     'role' => $jenis,
                     'status' => $status,
-                    'password' => Hash::make($data['_password']),
                     $jenis === 'guru' ? 'nip' : 'nis' => $orang->getKey(),
                 ];
 
-                $user = $data['_user_id']
-                    ? User::find($data['_user_id'])
-                    : User::where($jenis === 'guru' ? 'nip' : 'nis', $orang->getKey())->first();
+                $password = $user ? ($data['password'] ?? '') : ($data['_password'] ?? $data['password'] ?? '');
+                if (filled($password)) {
+                    $atribut['password'] = Hash::make($password);
+                } elseif (! $user) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['password' => 'Password akun baru wajib diisi.']);
+                }
 
                 if ($user) {
                     $user->update($atribut);
@@ -512,6 +514,29 @@ class ImporPengguna
      * a blank column in a bulk file is much more likely to mean "not stated"
      * than "release every class this teacher looks after".
      */
+    private static function identitasAkun(string $jenis, array $data, bool $lock = false): ?User
+    {
+        if (! in_array($jenis, self::JENIS, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['jenis' => 'Jenis impor tidak sah.']);
+        }
+        $key = $jenis === 'guru' ? 'nip' : 'nis';
+        $id = $data[$key] ?? null;
+        if (! is_string($id) || $id === '') {
+            throw \Illuminate\Validation\ValidationException::withMessages([$key => 'Identitas wajib berupa string dan tidak dapat diganti.']);
+        }
+        $query = User::query();
+        if ($lock) { $query->lockForUpdate(); }
+        $user = (clone $query)->where($key, $id)->first();
+        $email = (clone $query)->where('email', $data['email'])->first();
+        $pointer = ! empty($data['_user_id']) ? (clone $query)->find($data['_user_id']) : null;
+        foreach ([$user, $email, $pointer] as $candidate) {
+            if ($candidate && ($candidate->role !== $jenis || $candidate->{$key} !== $id || ($user && $candidate->id !== $user->id))) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['email' => 'Konflik identitas/peran akun. NIS/NIP tidak boleh dialihkan melalui email.']);
+            }
+        }
+        return $user;
+    }
+
     private static function terapkanPerwalian(Guru $guru, string $daftar): void
     {
         $nama = array_filter(array_map('trim', explode(',', $daftar)));

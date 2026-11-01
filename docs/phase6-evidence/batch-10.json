@@ -1,0 +1,17 @@
+{
+  "batch": "batch-10",
+  "files": [
+    "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+    "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+    "tests/Feature/Phase2AReviewGuardsTest.php",
+    "tests/Feature/Phase2AcademicTransitionTest.php"
+  ],
+  "result": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 57,
+    "passed": 57,
+    "assertions": 266,
+    "duration_ms": 8483
+  }
+}

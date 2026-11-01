@@ -1,0 +1,18 @@
+{
+  "batch": "02",
+  "files": [
+    "tests/Feature/AcademicYearCalendarTest.php",
+    "tests/Feature/AdminSectionTest.php",
+    "tests/Feature/AksesWebTest.php",
+    "tests/Feature/AkunPantauTest.php"
+  ],
+  "duration_s": 20.38,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 47,
+    "passed": 47,
+    "assertions": 227,
+    "duration_ms": 17029
+  }
+}

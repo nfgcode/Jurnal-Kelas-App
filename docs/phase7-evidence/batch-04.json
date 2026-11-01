@@ -1,0 +1,17 @@
+{
+  "batch": "batch-04",
+  "files": [
+    "tests/Feature/BarchartTest.php",
+    "tests/Feature/CadanganTest.php",
+    "tests/Feature/CrudPagesTest.php",
+    "tests/Feature/DashboardHarianTest.php"
+  ],
+  "result": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 49,
+    "passed": 49,
+    "assertions": 156,
+    "duration_ms": 100118
+  }
+}

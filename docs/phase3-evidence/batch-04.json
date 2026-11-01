@@ -1,0 +1,38 @@
+{
+  "batch": 4,
+  "files": [
+    "tests/Feature/DashboardHarianTest.php",
+    "tests/Feature/DashboardPeriodeTest.php",
+    "tests/Feature/ErrorHandlingTest.php",
+    "tests/Feature/ExampleTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/DashboardHarianTest.php",
+    "tests/Feature/DashboardPeriodeTest.php",
+    "tests/Feature/ErrorHandlingTest.php",
+    "tests/Feature/ExampleTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 112.801,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":43,\"passed\":43,\"assertions\":143,\"duration_ms\":110965}\n",
+  "stderr": "",
+  "tests": 43,
+  "assertions": 143,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/DashboardHarianTest.php": "83a632f1addaf79d548b48457be355b2db8c4c481ea2fb34a165176f3a97c8ed",
+    "tests/Feature/DashboardPeriodeTest.php": "0aae613a3dcb62b30b7c5a23b50ef6318a6b757ccc4c48b9f86b3eeaa653920f",
+    "tests/Feature/ErrorHandlingTest.php": "a15b508af0f5ed5aabfced7c1161a9b09702b71db2cdbddea37e5c9cfb4ceabf",
+    "tests/Feature/ExampleTest.php": "8fb940b41dbcb765a01de8e487340f081b8a4b95fca445cca64cdf0a217a03c3"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 143,
+    "duration_ms": 110965
+  }
+}

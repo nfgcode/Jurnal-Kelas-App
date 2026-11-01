@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  *
  * Two shapes come out of here:
  *  - a single **JSON** file with every table, ids and relations intact — the
- *    restore format (round-trips exactly, both "merge" and "replace" modes);
+ *    archival format; legacy restore is disabled;
  *  - a readable **XLSX** workbook (one sheet per master table) for people who
  *    just want to look at or edit the data in a spreadsheet.
  *
@@ -128,6 +128,7 @@ class CadanganData
      */
     public function tulisJson(string $path, ?array $only = null, bool $gzip = false): void
     {
+        $this->validasiPilihan($only);
         $fh = $gzip ? gzopen($path, 'wb6') : fopen($path, 'w');
         $tulis = $gzip
             ? fn (string $s) => gzwrite($fh, $s)
@@ -156,77 +157,11 @@ class CadanganData
         $gzip ? gzclose($fh) : fclose($fh);
     }
 
-    /**
-     * Restore from a decoded backup array. $mode is 'gabung' (upsert by primary key, keeps
-     * everything else) or 'ganti' (wipe the covered tables, then reinsert the
-     * snapshot). Only tables the file actually carries are touched, so a partial
-     * file can never blank a table it does not mention.
-     *
-     * Foreign keys are disabled for the duration (the users ↔ kelas cycle, and so
-     * a "replace" need not delete in perfect order) and the whole thing runs in a
-     * transaction — a failure half-way leaves the data as it was.
-     *
-     * @return array<string, int> rows written per table
-     */
+    /** Legacy restore is hard-blocked in every environment pending Fase 7–8. */
     public function pulihkan(array $data, string $mode): array
     {
-        $tabel = $data['tabel'] ?? null;
-
-        if (! is_array($tabel)) {
-            throw new InvalidArgumentException('Berkas cadangan tidak berisi bagian "tabel".');
-        }
-
-        if (! in_array($mode, ['gabung', 'ganti'], true)) {
-            throw new InvalidArgumentException('Mode pemulihan tidak dikenal.');
-        }
-
-        // Known tables only, in dependency order; unknown keys in the file are ignored.
-        $urut = array_values(array_filter(
-            self::TABEL,
-            fn ($t) => isset($tabel[$t]) && is_array($tabel[$t]) && Schema::hasTable($t)
-        ));
-
-        $hasil = [];
-
-        // Disable FK checks OUTSIDE the transaction: on SQLite `PRAGMA foreign_keys`
-        // is a no-op once a transaction is open, so the order here matters.
-        Schema::withoutForeignKeyConstraints(function () use ($urut, $tabel, $mode, &$hasil) {
-            DB::transaction(function () use ($urut, $tabel, $mode, &$hasil) {
-                $kelasSiswa = $mode === 'ganti' && in_array('kelas', $urut, true) && ! in_array('siswa', $urut, true)
-                    ? DB::table('siswa')->whereNotNull('kelas_id')->pluck('kelas_id', 'nis')
-                    : collect();
-
-                if ($mode === 'ganti') {
-                    // DELETE, not TRUNCATE — TRUNCATE implicitly commits on MySQL and
-                    // would break the surrounding transaction.
-                    foreach (array_reverse($urut) as $tabelNama) {
-                        if ($tabelNama === 'admin_audit_log') {
-                            continue; // Jejak audit historis tidak boleh dihapus saat pemulihan data
-                        }
-                        DB::table($tabelNama)->delete();
-                    }
-                }
-
-                foreach ($urut as $tabelNama) {
-                    $hasil[$tabelNama] = $this->tulisTabel($tabelNama, $tabel[$tabelNama], $mode);
-                }
-
-                $kelasAda = DB::table('kelas')->whereIn('id', $kelasSiswa->unique())->pluck('id')->all();
-                foreach ($kelasSiswa->groupBy(fn ($id) => $id, preserveKeys: true) as $kelasId => $siswa) {
-                    if (in_array($kelasId, $kelasAda)) {
-                        DB::table('siswa')->whereIn('nis', $siswa->keys())->update(['kelas_id' => $kelasId]);
-                    }
-                }
-
-                if (array_intersect($urut, ['kelas', 'siswa']) !== []) {
-                    DB::table('siswa')->update([
-                        'jurusan_kode' => DB::raw('(SELECT jurusan_kode FROM kelas WHERE kelas.id = siswa.kelas_id)'),
-                    ]);
-                }
-            });
-        });
-
-        return $hasil;
+        // Legacy restore bypasses identity/lifecycle invariants. No runtime opt-in.
+        throw new \RuntimeException('Pemulihan dinonaktifkan sampai pipeline staging Fase 7–8 tersedia.');
     }
 
     /**
@@ -237,7 +172,11 @@ class CadanganData
      */
     public function unduhXlsx(string $filename, ?array $only = null): BinaryFileResponse
     {
-        $pilih = $only ? array_intersect(self::TABEL_XLSX, $only) : self::TABEL_XLSX;
+        $this->validasiPilihan($only);
+        $pilih = $only !== null ? array_intersect(self::TABEL_XLSX, $only) : self::TABEL_XLSX;
+        if ($pilih === []) {
+            throw new InvalidArgumentException('Tidak ada tabel Excel yang dipilih.');
+        }
         $sheets = [];
 
         foreach ($pilih as $tabel) {
@@ -253,56 +192,11 @@ class CadanganData
             ];
         }
 
-        return XlsxExport::downloadWorkbook($filename, $sheets);
-    }
+        $response = XlsxExport::downloadWorkbook($filename, $sheets);
+        $response->headers->set('Cache-Control', 'private, no-store, max-age=0');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
 
-    /**
-     * Write one table's rows in the requested mode.
-     *
-     * @param  array<int, array<string, mixed>>  $rows
-     */
-    private function tulisTabel(string $tabel, array $rows, string $mode): int
-    {
-        if ($rows === []) {
-            return 0;
-        }
-
-        $cols = array_keys((array) $rows[0]);
-        $primer = collect(Schema::getIndexes($tabel))->firstWhere('primary', true)['columns'];
-        $update = array_values(array_diff($cols, $primer));
-        $jurnalLama = $tabel === 'jurnal' && ! in_array('siswa_nis', $cols, true);
-
-        if ($jurnalLama) {
-            $update[] = 'siswa_nis';
-        }
-
-        $ditulis = 0;
-
-        foreach (array_chunk($rows, 500) as $chunk) {
-            $chunk = array_map(fn ($r) => (array) $r, $chunk);
-
-            if ($jurnalLama) {
-                $pengisi = DB::table('users')->where('role', 'siswa')
-                    ->whereIn('id', array_column($chunk, 'diisi_oleh_id'))->pluck('nis', 'id');
-
-                foreach ($chunk as &$row) {
-                    $row['siswa_nis'] = $pengisi[$row['diisi_oleh_id'] ?? null] ?? null;
-                }
-                unset($row);
-            }
-
-            if ($mode === 'ganti') {
-                DB::table($tabel)->insert($chunk);
-            } elseif ($update === []) {
-                DB::table($tabel)->insertOrIgnore($chunk);
-            } else {
-                DB::table($tabel)->upsert($chunk, $primer, $update);
-            }
-
-            $ditulis += count($chunk);
-        }
-
-        return $ditulis;
+        return $response;
     }
 
     /** Lazily stream a table's rows as ordered value arrays for the sheet writer. */
@@ -341,9 +235,19 @@ class CadanganData
 
     private function tabelDipilih(?array $only): array
     {
-        $dipilih = $only ? array_intersect(self::TABEL, $only) : self::TABEL;
+        $this->validasiPilihan($only);
+        $dipilih = $only !== null ? array_intersect(self::TABEL, $only) : self::TABEL;
 
         return array_values(array_filter($dipilih, fn ($t) => Schema::hasTable($t)));
+    }
+
+    private function validasiPilihan(?array $only): void
+    {
+        if ($only !== null && ($only === [] || ! array_is_list($only)
+            || count(array_filter($only, 'is_string')) !== count($only)
+            || array_diff($only, self::TABEL) !== [] || count(array_unique($only)) !== count($only))) {
+            throw new InvalidArgumentException('Pilihan tabel tidak valid.');
+        }
     }
 
     private function meta(?array $only = null): array

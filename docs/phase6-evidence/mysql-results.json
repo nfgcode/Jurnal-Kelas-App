@@ -1,0 +1,22 @@
+{
+  "mode": "disposable-mysql8",
+  "migrations_count": 60,
+  "assertions_count": 145,
+  "concurrency_verified": true,
+  "cases": [
+    "same-confirmed-operation",
+    "competing-identity-snapshots",
+    "master-before-execute",
+    "coordinator-resume",
+    "real-graduation-mysql",
+    "real-promotion-mysql",
+    "real-intake-mysql",
+    "real-coordinator-mysql"
+  ],
+  "lock_evidence": {
+    "lock_type": "X,REC_NOT_GAP",
+    "object_name": "academic_operation_lock",
+    "status": "WAITING",
+    "concurrency_resolution": "SERIALIZED"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "batch": 15,
+  "files": [
+    "tests/Feature/GraduationWorkflowExecutionTest.php",
+    "tests/Feature/KelulusanControllerTest.php",
+    "tests/Unit/GraduationSpreadsheetTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/GraduationWorkflowExecutionTest.php",
+    "tests/Feature/KelulusanControllerTest.php",
+    "tests/Unit/GraduationSpreadsheetTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 42.068,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":22,\"passed\":22,\"assertions\":113,\"duration_ms\":36716}\n",
+  "stderr": "",
+  "tests": 22,
+  "assertions": 113,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/GraduationWorkflowExecutionTest.php": "4728fa350b3ac5476f8f46017a9cc954308c4437bd36b689cbfc354b2d448584",
+    "tests/Feature/KelulusanControllerTest.php": "6a149ddddc89fc5329c7ffa29d81e7df3511e7009a5eca8c28fe5efcab6d4858",
+    "tests/Unit/GraduationSpreadsheetTest.php": "9cd39f1ad64b22659ee3fa2c85507cb91e997db19b9ed87a1de9ebf205c1b71b"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 22,
+    "passed": 22,
+    "assertions": 113,
+    "duration_ms": 36716
+  }
+}

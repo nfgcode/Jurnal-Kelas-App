@@ -1,0 +1,129 @@
+{
+  "total_files": 77,
+  "total_batches": 20,
+  "passed_tests": 728,
+  "passed_assertions": 3444,
+  "failed_tests": 1,
+  "batches": {
+    "batch-01": {
+      "tests": 40,
+      "assertions": 262,
+      "failed": 0,
+      "duration_s": 43.25
+    },
+    "batch-02": {
+      "tests": 47,
+      "assertions": 227,
+      "failed": 0,
+      "duration_s": 20.38
+    },
+    "batch-03": {
+      "tests": 42,
+      "assertions": 166,
+      "failed": 0,
+      "duration_s": 116.76
+    },
+    "batch-04": {
+      "tests": 49,
+      "assertions": 156,
+      "failed": 0,
+      "duration_s": 154.38
+    },
+    "batch-05": {
+      "tests": 45,
+      "assertions": 176,
+      "failed": 0,
+      "duration_s": 124.12
+    },
+    "batch-06": {
+      "tests": 43,
+      "assertions": 187,
+      "failed": 0,
+      "duration_s": 59.79
+    },
+    "batch-07": {
+      "tests": 33,
+      "assertions": 145,
+      "failed": 0,
+      "duration_s": 106.24
+    },
+    "batch-08": {
+      "tests": 65,
+      "assertions": 275,
+      "failed": 1,
+      "duration_s": 53.65
+    },
+    "batch-09": {
+      "tests": 30,
+      "assertions": 147,
+      "failed": 0,
+      "duration_s": 38.51
+    },
+    "batch-10": {
+      "tests": 59,
+      "assertions": 250,
+      "failed": 0,
+      "duration_s": 49.4
+    },
+    "batch-11": {
+      "tests": 37,
+      "assertions": 203,
+      "failed": 0,
+      "duration_s": 12.39
+    },
+    "batch-12": {
+      "tests": 25,
+      "assertions": 119,
+      "failed": 0,
+      "duration_s": 12.69
+    },
+    "batch-13": {
+      "tests": 13,
+      "assertions": 77,
+      "failed": 0,
+      "duration_s": 15.29
+    },
+    "batch-14": {
+      "tests": 14,
+      "assertions": 68,
+      "failed": 0,
+      "duration_s": 22.99
+    },
+    "batch-15": {
+      "tests": 24,
+      "assertions": 119,
+      "failed": 0,
+      "duration_s": 65.28
+    },
+    "batch-16": {
+      "tests": 34,
+      "assertions": 151,
+      "failed": 0,
+      "duration_s": 130.67
+    },
+    "batch-17": {
+      "tests": 49,
+      "assertions": 183,
+      "failed": 0,
+      "duration_s": 45.28
+    },
+    "batch-18": {
+      "tests": 46,
+      "assertions": 414,
+      "failed": 0,
+      "duration_s": 9.24
+    },
+    "batch-19": {
+      "tests": 24,
+      "assertions": 109,
+      "failed": 0,
+      "duration_s": 14.39
+    },
+    "batch-20": {
+      "tests": 10,
+      "assertions": 10,
+      "failed": 0,
+      "duration_s": 1.91
+    }
+  }
+}

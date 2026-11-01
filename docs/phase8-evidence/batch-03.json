@@ -1,0 +1,18 @@
+{
+  "batch": "03",
+  "files": [
+    "tests/Feature/ApiJurnalKontrakTest.php",
+    "tests/Feature/ApiStatistikKehadiranTest.php",
+    "tests/Feature/AuditHalamanTest.php",
+    "tests/Feature/AuthorizationTest.php"
+  ],
+  "duration_s": 116.76,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 42,
+    "passed": 42,
+    "assertions": 166,
+    "duration_ms": 113587
+  }
+}

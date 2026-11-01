@@ -1,0 +1,38 @@
+{
+  "batch": 9,
+  "files": [
+    "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+    "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+    "tests/Feature/Phase4AdminActivityAuditTest.php",
+    "tests/Feature/Phase4AnnualMaintenanceReminderTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+    "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+    "tests/Feature/Phase4AdminActivityAuditTest.php",
+    "tests/Feature/Phase4AnnualMaintenanceReminderTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 14.607,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":36,\"passed\":36,\"assertions\":161,\"duration_ms\":10708}\n",
+  "stderr": "",
+  "tests": 36,
+  "assertions": 161,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/Phase3LifecycleAndRetentionTest.php": "62afeb57004322744ba057ba4304bff78dffa6d223fb22a3112e6c73acf6b059",
+    "tests/Feature/Phase4AcademicTransitionChecklistTest.php": "d023f34a8e0048eb360857002ba5209290b32e3d599e85e0daec564fca754b3b",
+    "tests/Feature/Phase4AdminActivityAuditTest.php": "7af51b32050f89452aedd6ff693491d24aff22e6506c41d598eaca180911fd7e",
+    "tests/Feature/Phase4AnnualMaintenanceReminderTest.php": "db60045ba600a3ded11cd752956528dd4251c2d3d770b479453c33a4ae5bdd1e"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 36,
+    "passed": 36,
+    "assertions": 161,
+    "duration_ms": 10708
+  }
+}

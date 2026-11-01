@@ -1,0 +1,102 @@
+[
+  {
+    "state": "empty",
+    "viewport": "desktop",
+    "width": 1920,
+    "scroll": 1920,
+    "selectors": 2,
+    "simulation": true,
+    "buttonTop": 618.53125,
+    "details_toggle": true
+  },
+  {
+    "state": "empty",
+    "viewport": "laptop",
+    "width": 1366,
+    "scroll": 1366,
+    "selectors": 2,
+    "simulation": true,
+    "buttonTop": 618.53125,
+    "details_toggle": true
+  },
+  {
+    "state": "empty",
+    "viewport": "tablet",
+    "width": 768,
+    "scroll": 768,
+    "selectors": 2,
+    "simulation": true,
+    "buttonTop": 613.09375,
+    "details_toggle": true
+  },
+  {
+    "state": "empty",
+    "viewport": "mobile",
+    "width": 390,
+    "scroll": 390,
+    "selectors": 2,
+    "simulation": true,
+    "buttonTop": 1035.546875,
+    "details_toggle": true
+  },
+  {
+    "state": "empty",
+    "viewport": "zoom200",
+    "width": 960,
+    "scroll": 960,
+    "selectors": 2,
+    "simulation": true,
+    "buttonTop": 609.53125,
+    "details_toggle": true
+  },
+  {
+    "state": "ready",
+    "viewport": "desktop",
+    "width": 1920,
+    "scroll": 1920,
+    "selectors": 2,
+    "simulation": false,
+    "buttonTop": 632.125,
+    "details_toggle": true
+  },
+  {
+    "state": "ready",
+    "viewport": "laptop",
+    "width": 1366,
+    "scroll": 1366,
+    "selectors": 2,
+    "simulation": false,
+    "buttonTop": 632.125,
+    "details_toggle": true
+  },
+  {
+    "state": "ready",
+    "viewport": "tablet",
+    "width": 768,
+    "scroll": 768,
+    "selectors": 2,
+    "simulation": false,
+    "buttonTop": 647.5,
+    "details_toggle": true
+  },
+  {
+    "state": "ready",
+    "viewport": "mobile",
+    "width": 390,
+    "scroll": 390,
+    "selectors": 2,
+    "simulation": false,
+    "buttonTop": 1065.5625,
+    "details_toggle": true
+  },
+  {
+    "state": "ready",
+    "viewport": "zoom200",
+    "width": 960,
+    "scroll": 960,
+    "selectors": 2,
+    "simulation": false,
+    "buttonTop": 623.125,
+    "details_toggle": true
+  }
+]

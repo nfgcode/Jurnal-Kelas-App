@@ -1,0 +1,299 @@
+
+   PASS  Tests\Unit\ExampleTest
+  ✓ that true is true
+
+   PASS  Tests\Feature\AdminSectionTest
+  ✓ landing page is publicly accessible                                 16.58s
+  ✓ admin can view dashboard                                             2.00s
+  ✓ generic dashboard redirects admin to admin dashboard                 0.37s
+  ✓ guru cannot access admin section                                     1.34s
+  ✓ guest is redirected to login                                         0.33s
+  ✓ creating a guru creates the person and the account together          0.95s
+  ✓ a duplicate nip is refused and leaves no orphan account              0.45s
+  ✓ a duplicate guru name is refused unless explicitly allowed           0.56s
+  ✓ admin can list and filter guru                                       1.87s
+  ✓ admin can update a guru without changing the password                0.37s
+  ✓ admin can assign and release wali from the guru form                 1.04s
+  ✓ a guru with history cannot be deleted                                0.32s
+  ✓ creating a siswa creates the person and the account together         0.39s
+  ✓ creating a siswa requires a nis                                      0.42s
+  ✓ promoting a ketua kelas demotes the previous one                     0.38s
+  ✓ admin can filter siswa by class                                      0.91s
+  ✓ admin can list and filter accounts                                   1.40s
+  ✓ the account page only creates admins                                 0.32s
+  ✓ admin can create another admin account                               0.33s
+  ✓ an accounts role cannot be changed away from its person              0.31s
+  ✓ admin cannot demote their own account                                0.30s
+  ✓ admin cannot delete their own account                                0.31s
+  ✓ deleting an account leaves the person on the register                0.30s
+  ✓ admin can view the guru detail page                                  0.76s
+  ✓ admin can open reports                                               2.12s
+
+   PASS  Tests\Feature\ApiJurnalKontrakTest
+  ✓ the api exposes the public id it binds on                            1.26s
+  ✓ a client can update using only what the api returned                 0.46s
+  ✓ the numeric id is not a url key                                      0.50s
+
+   PASS  Tests\Feature\ApiStatistikKehadiranTest
+  ✓ a student is answered from their nis not their account id            0.67s
+  ✓ a student cannot ask about someone else                              0.53s
+  ✓ an admin may ask by nis                                              0.49s
+  ✓ a guru may ask by nis                                                0.56s
+  ✓ an unknown nis is refused                                            0.48s
+  ✓ asking for nothing answers nothing rather than zero                  0.41s
+
+   PASS  Tests\Feature\AuthorizationTest
+  ✓ siswa is denied master data screens                                  2.47s
+  ✓ siswa cannot write master data                                       2.53s
+  ✓ siswa may still see their own timetable and journals                 5.61s
+  ✓ siswa cannot open another classs journal or attendance               1.84s
+  ✓ a student with no class sees no journals                             2.62s
+  ✓ a guru cannot edit another gurus journal                             2.46s
+  ✓ a guru cannot view a class they do not teach                         1.92s
+  ✓ a guru marks only the meetings they teach                            2.09s
+  ✓ a ketua kelas cannot mark attendance                                 1.76s
+  ✓ a guru outside the class cannot even read its attendance             2.07s
+  ✓ a regular siswa cannot author a journal                              2.55s
+  ✓ a ketua cannot write against another classs schedule                 1.73s
+  ✓ the ketua flow reaches the roster after saving                       2.07s
+  ✓ a guru cannot write against another gurus schedule                   1.69s
+  ✓ only admin can export the reports                                    2.23s
+  ✓ a wali kelas reads but cannot edit another gurus journal in their c… 2.80s
+  ✓ a guru outside the class cannot read its journal                     1.61s
+  ✓ the numeric journal id no longer resolves in web routes              2.42s
+  ✓ only the class or admin may delete a journal                         4.15s
+  ✓ deleting a journal removes its own roster only                       2.25s
+
+   PASS  Tests\Feature\CadanganTest
+  ✓ the backup page is admin only                                        0.87s
+  ✓ json export downloads and carries every table                        0.34s
+  ✓ export can be limited to a chosen subset of tables                   0.56s
+  ✓ exports are admin only                                               0.77s
+  ✓ xlsx export is a real workbook                                       0.43s
+  ✓ merge restore puts back changed rows but keeps newer ones            0.65s
+  ✓ replace restore wipes rows absent from the snapshot                  0.56s
+  ✓ restore accepts the gzipped download                                 0.55s
+  ✓ restore requires the confirmation box                                0.57s
+  ✓ a file that is not a backup is rejected cleanly                      0.80s
+  ✓ restore is admin only                                                0.36s
+
+   PASS  Tests\Feature\CrudPagesTest
+  ✓ static page renders with data set "dashboard admin"                  3.44s
+  ✓ static page renders with data set "kelas index"                      2.64s
+  ✓ static page renders with data set "kelas create"                     2.31s
+  ✓ static page renders with data set "mata pelajaran index"             3.22s
+  ✓ static page renders with data set "mata pelajaran create"            2.33s
+  ✓ static page renders with data set "jadwal index"                     2.18s
+  ✓ static page renders with data set "jadwal create"                    2.84s
+  ✓ static page renders with data set "jurnal index"                     4.83s
+  ✓ static page renders with data set "jurnal create"                    3.11s
+  ✓ static page renders with data set "presensi index"                   3.71s
+  ✓ static page renders with data set "admin akun"                       3.92s
+  ✓ static page renders with data set "admin akun create"                2.41s
+  ✓ static page renders with data set "admin guru"                       2.87s
+  ✓ static page renders with data set "admin guru create"                2.59s
+  ✓ static page renders with data set "admin siswa"                      3.04s
+  ✓ static page renders with data set "admin siswa create"               2.22s
+  ✓ static page renders with data set "ruangan index"                    3.16s
+  ✓ static page renders with data set "ruangan create"                   2.42s
+  ✓ static page renders with data set "laporan jurnal"                   3.51s
+  ✓ static page renders with data set "laporan presensi"                 3.80s
+  ✓ record pages render                                                 10.57s
+  ✓ kelas can be created from the form fields                            2.02s
+  ✓ a duplicate rombel is refused                                        1.74s
+  ✓ kelas index shows the class name                                     2.73s
+  ✓ jadwal can be created                                                2.86s
+  ✓ jadwal create form lists the dropdown options                        3.23s
+  ✓ presensi can be submitted with the form field names                  2.15s
+  ✓ presensi form lists the students and a submit button                 2.77s
+  ✓ the guru attendance export downloads for both modes                  3.88s
+
+   PASS  Tests\Feature\DashboardPeriodeTest
+  ✓ dashboard renders for each preset with data set "hari ini"           4.08s
+  ✓ dashboard renders for each preset with data set "minggu ini"         4.51s
+  ✓ dashboard renders for each preset with data set "minggu lalu"        4.42s
+  ✓ dashboard renders for each preset with data set "bulan ini"          4.56s
+  ✓ dashboard renders for each preset with data set "bulan lalu"         4.31s
+  ✓ dashboard renders for each preset with data set "30 hari"            3.13s
+  ✓ dashboard renders for each preset with data set "tahun ini"          3.99s
+  ✓ custom range is accepted                                             3.75s
+  ✓ custom range with end before start is rejected                       2.16s
+  ✓ reports also take the period                                         4.74s
+  ✓ detail returns journals for a populated date                         2.42s
+  ✓ detail reports empty for a date without journals                     2.22s
+  ✓ detail lists a teachers journals                                     2.27s
+  ✓ dashboard marks up the drill targets                                 4.10s
+  ✓ detail lists student attendance for a status                         2.25s
+  ✓ detail lists one class on one date                                   2.14s
+  ✓ detail lists filled journals                                         2.79s
+  ✓ detail lists unfilled meetings with their teacher                    3.14s
+  ✓ detail lists completeness per class                                  2.25s
+  ✓ detail late journals render                                          2.25s
+  ✓ reports mark up their card drills and teacher links                  6.90s
+  ✓ detail is forbidden for non admin                                    2.14s
+
+   PASS  Tests\Feature\ErrorHandlingTest
+  ✓ a guru sees a friendly page instead of a stack trace                 3.39s
+  ✓ a siswa also sees the friendly page                                  2.63s
+  ✓ an admin keeps the full laravel error output                        84.46s
+  ✓ a missing page is a friendly 404 not a 500                           2.88s
+  ✓ a validation failure still returns to the form with errors           2.97s
+  ✓ a guest is redirected to login not shown an error                    2.49s
+  ✓ a report stores the technical details from the session               2.63s
+  ✓ a second report within the window is throttled                       3.13s
+  ✓ reporting the same fault again increments the counter                2.73s
+  ✓ the sistem page is admin only                                        3.08s
+  ✓ an admin can triage a report                                         2.48s
+  ✓ an announcement banner shows to guru and siswa but not admin         4.94s
+  ✓ a switched off announcement does not show                            2.95s
+
+   PASS  Tests\Feature\ExampleTest
+  ✓ the application returns a successful response                        0.52s
+
+   PASS  Tests\Feature\IkonTest
+  ✓ every icon the app renders exists                                    2.38s
+  ✓ an icon renders as inline svg sized to the text                      0.33s
+  ✓ the bi prefix is accepted because stored values still carry it       0.34s
+  ✓ an unknown name renders nothing instead of failing                   0.39s
+  ✓ the font is gone from the build input                                0.42s
+
+   PASS  Tests\Feature\ImporPenggunaTest
+  ✓ the template downloads as a real xlsx with the expected columns      2.34s
+  ✓ the template is offered for guru too                                 2.29s
+  ✓ the import screen and template are admin only                        3.16s
+  ✓ a valid student file previews then creates the accounts              3.89s
+  ✓ rows with problems are reported and never written                    3.36s
+  ✓ the form password fills in for rows that leave it blank              3.59s
+  ✓ existing accounts are only overwritten when asked                    3.93s
+  ✓ a duplicate nis inside the same file is caught                       3.17s
+  ✓ a file with the wrong headers is rejected outright                   2.63s
+  ✓ the confirm step refuses a crafted filename                          3.29s
+
+   PASS  Tests\Feature\JadwalFormTest
+  ✓ a clashing slot is refused with a field error                        2.28s
+  ✓ a teacher cannot be booked into two classes at once                  2.22s
+  ✓ an overlapping period range is refused too                           2.50s
+  ✓ the dropdown only offers that days lessons                           4.13s
+  ✓ changing the date changes the list                                   4.60s
+  ✓ a day without lessons explains itself instead of offering nothing    3.84s
+  ✓ slots already written up are marked                                  3.36s
+  ✓ a guru is not offered the journal form at all                        3.20s
+  ✓ a ketua is only offered their own class                              3.10s
+  ✓ a malformed date is refused                                          2.29s
+  ✓ the duplicate message names the meeting                              2.14s
+
+   PASS  Tests\Feature\JurnalGandaTest
+  ✓ an admin cannot file two journals for one meeting                    2.52s
+  ✓ a guru cannot file a journal at all                                  2.29s
+  ✓ a ketua cannot file two journals for one meeting                     2.29s
+  ✓ an admin and a ketua may each file one for the same meeting          2.04s
+  ✓ the database itself refuses a duplicate                              2.26s
+  ✓ the api rejects a duplicate with 422                                 2.43s
+  ✓ a doubled meeting still derives one row per student                  3.07s
+  ✓ a doubled meeting is counted once                                    2.45s
+
+   PASS  Tests\Feature\JurnalOtomatisTest
+  ✓ backfill creates a system journal                                    0.68s
+  ✓ backfill never invents student attendance                            0.43s
+  ✓ backfill is idempotent                                               0.41s
+  ✓ backfill leaves today and the future alone                           0.37s
+  ✓ editing a system journal requires the honesty checkbox               0.40s
+  ✓ editing a system journal with attestation adopts it                  0.76s
+  ✓ filling a meeting with a system journal redirects to editing it      0.41s
+  ✓ filing a journal beside a system one is refused                      0.43s
+  ✓ a system journal never counts as filled in                           0.38s
+  ✓ the recap splits written automatic and missing                       1.49s
+  ✓ a backfilled journal is not reported as a late teacher               1.33s
+  ✓ api refuses to file a journal beside a system one                    0.41s
+  ✓ api editing a system journal requires the attestation                0.41s
+  ✓ api editing a system journal with attestation adopts it              0.37s
+  ✓ api update cannot move a journal onto another class                  0.39s
+  ✓ api editing an ordinary journal needs no attestation                 0.38s
+  ✓ editing after the lesson day flags and badges the journal            0.88s
+  ✓ admin can filter journals edited after the day                       2.12s
+
+   PASS  Tests\Feature\LoginTest
+  ✓ login form asks for nip or nis                                       1.01s
+  ✓ guru signs in with nip                                               0.50s
+  ✓ siswa signs in with nis                                              0.38s
+  ✓ admin falls back to email                                            0.72s
+  ✓ wrong password is rejected                                           0.68s
+  ✓ unknown identifier is rejected                                       0.50s
+  ✓ blank identifier never matches a null column                         0.47s
+  ✓ a siswa nis cannot be used to log in as a guru                       0.37s
+  ✓ nip must be unique across guru                                       0.41s
+  ✓ username is also a login identifier                                  0.40s
+  ✓ user can log out                                                     0.38s
+
+   PASS  Tests\Feature\PaginationTest
+  ✓ the offered sizes change the page size                               6.60s
+  ✓ a size outside the whitelist falls back to the default               8.03s
+  ✓ the default applies when no size is asked for                        4.60s
+  ✓ a bigger page does not widen what a guru can see                     3.91s
+  ✓ the admin tables take the size too                                   6.60s
+
+   PASS  Tests\Feature\PeriodeFilterTest
+  ✓ a preset narrows the journal rows to its window                      5.33s
+  ✓ a narrower preset returns no more rows than a wider one             12.77s
+  ✓ the current week may reach into the previous month                   3.72s
+  ✓ a custom range is honoured and an incomplete one refused             3.02s
+  ✓ an invented preset is refused                                        2.20s
+  ✓ the period never widens a role scope                                 7.63s
+  ✓ attendance screens follow the period too                             3.18s
+  ✓ other filters survive a change of period                             2.17s
+  ✓ a filter form carries the sort period and page size                  2.78s
+  ✓ sorting still applies alongside a search                             5.39s
+
+   PASS  Tests\Feature\PresensiRosterTest
+  ✓ the teaching guru may mark their own meeting                         2.08s
+  ✓ the ketua kelas may read but not mark attendance                     1.71s
+  ✓ the wali kelas may read but not mark another teachers meeting        1.52s
+  ✓ a regular student may not mark attendance                            2.33s
+  ✓ a guru may not mark another gurus meeting                            2.71s
+  ✓ marking stores one row per student and derives the day               2.29s
+  ✓ marking twice replaces rather than duplicates                        2.41s
+  ✓ two subjects on one day keep separate rosters                        3.06s
+  ✓ a student from another class is rejected                             2.39s
+  ✓ a guru can open a roster for a meeting with no journal yet           2.02s
+  ✓ a guru cannot open a roster for another gurus slot                   2.03s
+  ✓ presensi log page is admin only                                      3.29s
+
+   PASS  Tests\Feature\ProsedurAkademikTest
+  ✓ a subject and its teachers are written together                      0.48s
+  ✓ an unknown teacher rolls the whole subject back                      0.34s
+  ✓ a duplicate subject code is refused                                  0.33s
+  ✓ a duplicate rombel is refused on the paralel field                   0.44s
+  ✓ a class cannot name a school year that does not exist                0.39s
+  ✓ a class cannot be booked twice in one period                         0.39s
+  ✓ a teacher cannot be in two classes at once                           0.40s
+  ✓ an overlapping period range is refused                               0.34s
+  ✓ a teacher cannot be scheduled for a subject they do not hold         0.32s
+
+   PASS  Tests\Feature\QrAksesTest
+  ✓ every class has a unique qr token                                    1.61s
+  ✓ a new class gets a token automatically                               1.59s
+  ✓ a guru teaching the class sees the confirmation                      1.80s
+  ✓ the qr page is guru only                                             2.39s
+  ✓ scanning while logged out redirects to login                         2.15s
+  ✓ an unknown token is not found                                        1.57s
+  ✓ a guru who does not teach the class gets an empty state              1.86s
+  ✓ the confirmation only offers the scanning gurus own subjects         1.83s
+  ✓ the printable qr sheet is admin only                                 3.73s
+  ✓ the sheet covers every class until some are picked                   2.59s
+  ✓ an unknown class id is dropped rather than failing                   2.03s
+  ✓ the sheet downloads as a pdf for admin only                         13.99s
+  ✓ the pdf shrinks when fewer classes are picked                       21.82s
+
+   PASS  Tests\Feature\RolePagesTest
+  ✓ guru screens render                                                  7.50s
+  ✓ siswa screens render                                                 9.02s
+  ✓ wali kelas screens render                                            6.14s
+  ✓ the wali kelas attendance screen offers no way to fill it            2.64s
+  ✓ the admin import screen renders                                      2.69s
+  ✓ siswa cannot access admin section                                    1.96s
+  ✓ a guru cannot author a journal                                       1.69s
+  ✓ siswa reports the guru attendance                                    1.70s
+  ✓ both authors share one attendance vocabulary                         1.78s
+
+  Tests:    252 passed (903 assertions)
+  Duration: 708.01s

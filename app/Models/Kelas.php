@@ -12,6 +12,13 @@ use Illuminate\Support\Str;
 class Kelas extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\SerializesAcademicMaster;
+    use \App\Models\Concerns\MelindungiRiwayat;
+
+    protected function relasiDilindungi(): array
+    {
+        return ['jadwals', 'riwayatSiswa', 'presensiHarian', 'logPresensi', 'alumni'];
+    }
 
     /**
      * The table associated with the model.
@@ -154,6 +161,26 @@ class Kelas extends Model
     /**
      * Get the jadwal (schedules) for this class.
      */
+    public function riwayatSiswa(): HasMany
+    {
+        return $this->hasMany(RiwayatKelasSiswa::class, 'kelas_id');
+    }
+
+    public function presensiHarian(): HasMany
+    {
+        return $this->hasMany(PresensiHarian::class, 'kelas_id');
+    }
+
+    public function logPresensi(): HasMany
+    {
+        return $this->hasMany(PresensiHarianLog::class, 'kelas_id');
+    }
+
+    public function alumni(): HasMany
+    {
+        return $this->hasMany(Alumni::class, 'kelas_terakhir_id');
+    }
+
     public function jadwals(): HasMany
     {
         return $this->hasMany(Jadwal::class);

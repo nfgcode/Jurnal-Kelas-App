@@ -1,0 +1,38 @@
+{
+  "batch": 8,
+  "files": [
+    "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+    "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+    "tests/Feature/Phase2AReviewGuardsTest.php",
+    "tests/Feature/Phase2AcademicTransitionTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php",
+    "tests/Feature/Phase2AHistoricalIntegrityTest.php",
+    "tests/Feature/Phase2AReviewGuardsTest.php",
+    "tests/Feature/Phase2AcademicTransitionTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 11.385,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":57,\"passed\":57,\"assertions\":266,\"duration_ms\":9271}\n",
+  "stderr": "",
+  "tests": 57,
+  "assertions": 266,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/Phase1DatabaseIntegrityAndAuditTest.php": "e5c2782238f52fb379256df402a7f5d13d19597a7551296b424bc21a022724a3",
+    "tests/Feature/Phase2AHistoricalIntegrityTest.php": "c78c88681f1cc7601a34217d008e4e4f79605867dde65f9479d08bc0083912af",
+    "tests/Feature/Phase2AReviewGuardsTest.php": "b2b46c6df51a7f7b58950cad81af3c0ef30b915f074f312ff3463cb0eeb57818",
+    "tests/Feature/Phase2AcademicTransitionTest.php": "0836524aa9954f8b3f262040713bde3fd670b2140b5227f6f25e207544276b5f"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 57,
+    "passed": 57,
+    "assertions": 266,
+    "duration_ms": 9271
+  }
+}

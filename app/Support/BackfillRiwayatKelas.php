@@ -75,7 +75,7 @@ class BackfillRiwayatKelas
 
             $statusRiwayat = match ($s->status) {
                 'lulus' => 'lulus',
-                'nonaktif' => 'keluar',
+                'nonaktif' => 'pindah',
                 default => 'aktif',
             };
 

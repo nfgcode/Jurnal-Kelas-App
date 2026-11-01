@@ -1,0 +1,38 @@
+{
+  "batch": 11,
+  "files": [
+    "tests/Feature/QrAksesTest.php",
+    "tests/Feature/RolePagesTest.php",
+    "tests/Feature/SafetyApplicationTest.php",
+    "tests/Feature/StatusSesiTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/QrAksesTest.php",
+    "tests/Feature/RolePagesTest.php",
+    "tests/Feature/SafetyApplicationTest.php",
+    "tests/Feature/StatusSesiTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 134.028,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":31,\"passed\":31,\"assertions\":168,\"duration_ms\":131009}\n",
+  "stderr": "",
+  "tests": 31,
+  "assertions": 168,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/QrAksesTest.php": "2650ff82ecb4ce28115c9f61b0307c15b908afd6fb55b8322bb3fd47185ed58d",
+    "tests/Feature/RolePagesTest.php": "efcc01ec131cec33476d1ae9e765315f0dc5d916b724a378d23dcf946c684b04",
+    "tests/Feature/SafetyApplicationTest.php": "ac807c048428d28be76d210e726795de8b5e7e0ab9d41bd870f9183b5c48a307",
+    "tests/Feature/StatusSesiTest.php": "c1c11498d7a34058ed2b8d994d5e018dff345e2c86d85a7cdbf9e2c9382d9a1d"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 31,
+    "passed": 31,
+    "assertions": 168,
+    "duration_ms": 131009
+  }
+}

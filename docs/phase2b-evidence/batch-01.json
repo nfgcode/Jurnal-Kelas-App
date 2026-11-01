@@ -1,0 +1,38 @@
+{
+  "batch": 1,
+  "files": [
+    "tests/Feature/AcademicMasterSerializationTest.php",
+    "tests/Feature/AcademicYearCalendarTest.php",
+    "tests/Feature/AdminSectionTest.php",
+    "tests/Feature/AksesWebTest.php"
+  ],
+  "command": [
+    "php",
+    "tests/run.php",
+    "tests/Feature/AcademicMasterSerializationTest.php",
+    "tests/Feature/AcademicYearCalendarTest.php",
+    "tests/Feature/AdminSectionTest.php",
+    "tests/Feature/AksesWebTest.php"
+  ],
+  "exit_code": 0,
+  "duration_seconds": 14.655,
+  "stdout": "{\"tool\":\"phpunit\",\"result\":\"passed\",\"tests\":43,\"passed\":43,\"assertions\":210,\"duration_ms\":12662}\n",
+  "stderr": "",
+  "tests": 43,
+  "assertions": 210,
+  "pass": true,
+  "sha256_after": {
+    "tests/Feature/AcademicMasterSerializationTest.php": "708367a176ddab631c2a6cac081bf7a0e9f985bfc15fcafb488f662709bac333",
+    "tests/Feature/AcademicYearCalendarTest.php": "f0d9ee2babe511e9a47449d219e38eef1ebfa857a8bc5193f90ba4cad2bc0695",
+    "tests/Feature/AdminSectionTest.php": "5d66a9a58d8828beffd6444bb36a326137e342c34229813616b816f6d5cc960f",
+    "tests/Feature/AksesWebTest.php": "e6974cabad3b28ec5ab2ffb1972abe1334db09216527a820c08a7855f2f0e2eb"
+  },
+  "runner_json": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 43,
+    "passed": 43,
+    "assertions": 210,
+    "duration_ms": 12662
+  }
+}

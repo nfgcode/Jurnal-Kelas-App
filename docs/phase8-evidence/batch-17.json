@@ -1,0 +1,18 @@
+{
+  "batch": "17",
+  "files": [
+    "tests/Feature/StatusSesiTest.php",
+    "tests/Feature/StudentLifecycleIntegrityTest.php",
+    "tests/Feature/TransisiTerpaduControllerTest.php",
+    "tests/Feature/TransitionEffectiveMembershipDatesTest.php"
+  ],
+  "duration_s": 45.28,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 49,
+    "passed": 49,
+    "assertions": 183,
+    "duration_ms": 41776
+  }
+}

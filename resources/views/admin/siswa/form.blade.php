@@ -60,6 +60,10 @@
     </x-field>
 </div>
 
+<x-field label="Alasan koreksi kelas/status" name="alasan" hint="Wajib bila kelas atau status berubah. Profil biasa tidak memerlukan alasan.">
+    <textarea class="input-hifi" name="alasan" id="alasan" maxlength="1000">{{ old('alasan') }}</textarea>
+</x-field>
+
 <x-field label="Alamat" name="alamat">
     <textarea class="input-hifi" name="alamat" id="alamat" style="min-height: 60px">{{ old('alamat', $siswa?->alamat) }}</textarea>
 </x-field>

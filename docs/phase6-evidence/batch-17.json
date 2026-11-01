@@ -1,0 +1,17 @@
+{
+  "batch": "batch-17",
+  "files": [
+    "tests/Unit/ExampleTest.php",
+    "tests/Unit/GraduationSpreadsheetTest.php",
+    "tests/Unit/IntakeSpreadsheetTest.php",
+    "tests/Unit/PromotionSpreadsheetTest.php"
+  ],
+  "result": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 21,
+    "passed": 21,
+    "assertions": 97,
+    "duration_ms": 12945
+  }
+}

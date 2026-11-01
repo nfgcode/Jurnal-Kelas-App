@@ -67,24 +67,18 @@ class PendaftaranPengguna extends ProsedurTersimpan
      */
     public function siswa(array $data): Siswa
     {
-        $this->jalankan(
-            mysql: fn () => DB::statement('CALL sp_tambah_siswa(?,?,?,?,?,?,?,?,?,?,?)', [
-                trim((string) $data['nis']),
-                $this->kosongJadiNull($data['nisn'] ?? null),
-                trim((string) $data['nama']),
-                $data['jenis_kelamin'] ?? null,
-                $data['kelas_id'] ?? null,
-                $data['no_hp'] ?? null,
-                $data['alamat'] ?? null,
-                $data['username'],
-                $data['email'],
-                Hash::make($data['password']),
-                empty($data['izinkan_nama_sama']) ? 0 : 1,
-            ]),
-            portabel: fn () => $this->siswaPortabel($data),
-        );
-
-        return Siswa::findOrFail(trim((string) $data['nis']));
+        // The legacy MySQL procedure commits internally. Use the portable
+        // registration path so person, account and membership share one transaction.
+        return DB::transaction(function () use ($data) {
+            \App\Services\AktivasiTahunAjaran::kunci();
+            $this->jalankan(mysql: fn () => $this->siswaPortabel($data), portabel: fn () => $this->siswaPortabel($data));
+            $siswa = Siswa::findOrFail(trim((string) $data['nis']));
+            app(SiklusHidupSiswa::class)->daftarkan($siswa);
+            if (($data['status'] ?? 'aktif') !== 'aktif') {
+                app(SiklusHidupSiswa::class)->perbarui($siswa, $data);
+            }
+            return $siswa;
+        });
     }
 
     /**

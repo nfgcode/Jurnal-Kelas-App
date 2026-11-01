@@ -1,0 +1,18 @@
+{
+  "batch": "batch-11",
+  "files": [
+    "tests/Feature/Phase2AcademicTransitionTest.php",
+    "tests/Feature/Phase3LifecycleAndRetentionTest.php",
+    "tests/Feature/Phase4AcademicTransitionChecklistTest.php",
+    "tests/Feature/Phase4AdminActivityAuditTest.php"
+  ],
+  "duration_s": 9.36,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 37,
+    "passed": 37,
+    "assertions": 203,
+    "duration_ms": 7583
+  }
+}

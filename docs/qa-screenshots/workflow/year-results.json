@@ -1,0 +1,27 @@
+[
+  {
+    "viewport": "desktop",
+    "width": 1920,
+    "scroll": 1920
+  },
+  {
+    "viewport": "laptop",
+    "width": 1366,
+    "scroll": 1366
+  },
+  {
+    "viewport": "tablet",
+    "width": 768,
+    "scroll": 768
+  },
+  {
+    "viewport": "mobile",
+    "width": 390,
+    "scroll": 390
+  },
+  {
+    "viewport": "zoom200",
+    "width": 960,
+    "scroll": 960
+  }
+]

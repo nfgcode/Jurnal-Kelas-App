@@ -1,0 +1,18 @@
+{
+  "batch": "batch-16",
+  "files": [
+    "tests/Feature/Phase9LandingTahunAjaranTest.php",
+    "tests/Feature/Phase9WorkflowNavigationAndHarmonizationTest.php",
+    "tests/Feature/PresensiRosterTest.php",
+    "tests/Feature/PromotionReviewAndGatingTest.php"
+  ],
+  "duration_s": 40.8,
+  "output": {
+    "tool": "phpunit",
+    "result": "passed",
+    "tests": 21,
+    "passed": 21,
+    "assertions": 98,
+    "duration_ms": 38973
+  }
+}

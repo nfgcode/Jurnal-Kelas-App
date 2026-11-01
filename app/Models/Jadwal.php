@@ -14,6 +14,12 @@ use Illuminate\Support\Carbon;
 class Jadwal extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\MelindungiRiwayat;
+
+    protected function relasiDilindungi(): array
+    {
+        return ['jurnals'];
+    }
 
     /**
      * The table associated with the model.
