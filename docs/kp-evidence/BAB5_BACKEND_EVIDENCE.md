@@ -1,6 +1,6 @@
 # Bukti Implementasi Backend
 
-Sistem Informasi Jurnal Mengajar dan Presensi Siswa — SMK Negeri 2 Balikpapan.
+Sistem Informasi Jurnal Mengajar dan Presensi Siswa — SMK Negeri Contoh.
 
 Seluruh isi dokumen ini diambil dari working tree pada branch `main` — commit
 terakhir `4d1a6b5` ditambah dua perbaikan berlingkup sempit yang belum di-commit —

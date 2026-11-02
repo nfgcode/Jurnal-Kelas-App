@@ -41,6 +41,8 @@ redis-data/
 *.tar.gz
 *.tmp
 *.bak
+*.sql
+*.sqlite
 commit-history*.txt
 nul
 php2shell-test/
