@@ -2,176 +2,77 @@
 @section('title', 'Kenaikan & Kelulusan')
 @push('styles')
     <style>
-        .transition-period {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-            gap: 16px;
-            align-items: end
+        .transisi-hub-page .page-head {
+            margin-top: 8px !important;
+            margin-bottom: 24px !important;
         }
-
-        .transition-period label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 15px;
-            font-weight: 600
+        .transisi-hub-page .page-head__title {
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            line-height: 1.25 !important;
+            color: var(--text, #131313) !important;
+            margin-bottom: 6px !important;
         }
-
-        .transition-period select {
-            width: 100%;
-            min-height: 44px
+        .transisi-hub-page .page-head__sub {
+            font-size: 13.5px !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
+            color: var(--muted, #626262) !important;
+            margin: 0 !important;
         }
-
-        .transition-page .btn-hifi {
-            min-height: 44px;
-            white-space: normal
+        .transisi-hub-page .breadcrumb-nav {
+            font-size: 13px !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
         }
-
-        .transition-roster {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 24px;
-            border-top: 1px solid var(--n-200, #e2e8f0);
-            padding-top: 14px;
-            margin-top: 16px;
-            font-size: 14px
+        .transisi-hub-page .breadcrumb-nav a {
+            color: var(--muted, #626262) !important;
         }
-
-        .transition-step {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 24px
+        .transisi-hub-page .breadcrumb-nav a:hover {
+            color: var(--primary, #3b5d32) !important;
         }
-
-        .transition-step p {
-            margin: 0;
-            font-size: 15px;
-            line-height: 1.6
+        .transisi-hub-page .kpi-card__num {
+            font-size: 24px !important;
+            font-weight: 700 !important;
+            line-height: 1.2 !important;
+            color: var(--text, #131313) !important;
         }
-
-        .transition-note {
-            padding: 12px 16px;
-            margin-top: 16px;
-            background: #fefce8;
-            color: #713f12;
-            border-left: 3px solid #ca8a04;
-            line-height: 1.6
+        .transisi-hub-page .kpi-card__label {
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            line-height: 1.3 !important;
+            color: var(--muted, #626262) !important;
         }
-
-        .transition-page summary {
-            cursor: pointer;
-            padding: 10px 0;
-            min-height: 44px;
-            font-size: 15px;
-            font-weight: 600
+        .transisi-hub-page .flow-card {
+            border-radius: var(--radius-card, 12px);
+            background: #ffffff;
+            border: 1px solid var(--n-200, #e6e8e5);
+            transition: all 0.2s ease;
         }
-
-        .transition-page :is(button, a, select, summary):focus-visible {
-            outline: 2px solid #15803d;
-            outline-offset: 3px
+        .transisi-hub-page .flow-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
         }
-
-        .transition-check {
-            padding: 14px 0;
-            border-top: 1px solid var(--n-200, #e2e8f0)
+        .transisi-hub-page .flow-card--recommended {
+            border: 1.5px solid var(--primary, #3b5d32);
+            background: #fafbfa;
         }
-
-        .transition-check p {
-            font-size: 14px;
-            line-height: 1.6;
-            margin: 6px 0
+        .transisi-hub-page .tbl th {
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+            padding: 10px 14px !important;
         }
-
-        .transition-check small {
-            display: block
-        }
-
-        .transition-check .btn-hifi {
-            margin-left: 12px
-        }
-
-        @media(max-width:767.98px) {
-            .transition-period {
-                grid-template-columns: minmax(0, 1fr)
-            }
-
-            .transition-step {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 14px
-            }
-
-            .transition-step .btn-hifi {
-                width: 100%
-            }
-        }
-
-        .transition-page {
-            max-width: 1200px
-        }
-
-        .transition-page .btn-hifi:disabled {
-            opacity: .45;
-            cursor: not-allowed;
-            filter: grayscale(.5)
-        }
-
-        .transition-page .card-hifi__head {
-            padding-top: 12px;
-            padding-bottom: 8px
-        }
-
-        .transition-page .card-hifi__body {
-            padding-top: 12px;
-            padding-bottom: 14px
-        }
-
-        .transition-note {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            font-size: 14px
-        }
-
-        .transition-note>div {
-            margin-top: 0 !important;
-            flex-shrink: 0
-        }
-
-        .transition-page .card-hifi__title {
-            font-size: 15px
-        }
-
-        .transition-page .transition-step p {
-            font-size: 14.5px
-        }
-
-        @media(max-width:767.98px) {
-            .transition-note {
-                display: block
-            }
-
-            .transition-note>div {
-                margin-top: 10px !important
-            }
-
-            .transition-period {
-                gap: 12px
-            }
-
-            .transition-page .card-hifi__body {
-                padding: 12px 16px
-            }
-
-            .transition-page .card-hifi__head {
-                padding: 12px 16px 6px
-            }
+        .transisi-hub-page .tbl td {
+            font-size: 13.5px !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
+            padding: 10px 14px !important;
         }
     </style>
 @endpush
 @section('content')
-    <div class="transition-page space-y-4">
+    <div class="transisi-hub-page transition-page space-y-4">
         {{-- Breadcrumb Navigasi --}}
         <nav class="breadcrumb-nav mb-2" aria-label="Breadcrumb">
             <ol class="breadcrumb">
@@ -180,6 +81,21 @@
                 <li class="breadcrumb-item active" aria-current="page">Kenaikan & Kelulusan (Legacy)</li>
             </ol>
         </nav>
+
+        {{-- Page Header --}}
+        <div class="page-head d-flex justify-content-between align-items-start">
+            <div>
+                <h2 class="page-head__title">Transisi &amp; Siklus Akademik</h2>
+                <p class="page-head__sub">
+                    Pusat koordinasi pemindahan tahun ajaran, proses kelulusan kelas XII, promosi kenaikan kelas, dan penerimaan rombel baru.
+                </p>
+            </div>
+            @if ($tahunAktif)
+                <span class="chip chip--green">Tahun Aktif: {{ $tahunAktif->kode }}</span>
+            @else
+                <span class="chip chip--neutral">Belum Ada Tahun Aktif</span>
+            @endif
+        </div>
 
         {{-- Banner Edukasi & Pengarah Transisi Terpadu --}}
         <div class="card-hifi p-4 border-l-4 border-primary bg-primary-soft mb-3">
@@ -201,119 +117,259 @@
             </div>
         </div>
 
-        <x-page-head title="Kenaikan & Kelulusan"
-            sub="Siapkan kelas tujuan, periksa simulasi, lalu proses setelah dikonfirmasi.">
-            @if ($tahunAktif)
-            <span>Tahun berjalan: <x-chip tone="green" :label="$tahunAktif->kode" /></span>@else<x-chip tone="red"
-                    label="Belum ada tahun aktif" />
-            @endif
-        </x-page-head>
-        <x-card title="Periode Transisi" class="mb-3">
-            <form method="GET" action="{{ route('admin.transisi.index') }}" class="transition-period">
-                <div><label for="tahun_asal">Tahun Ajaran Asal</label><select name="tahun_asal" id="tahun_asal"
-                        class="select-hifi" required
-                        onchange="document.getElementById('tahun_tujuan').disabled=true;this.form.requestSubmit()">
-                        @if (!$tahunAsalPilihan)
-                            <option value="">Pilih tahun asal</option>
-                        @endif
-                        @foreach ($tahunList as $t)
-                            <option value="{{ $t->kode }}" @selected($tahunAsalPilihan === $t->kode)>
-                                {{ $t->kode }}{{ $t->aktif ? ' (Aktif)' : '' }}</option>
-                        @endforeach
-                    </select></div>
-                <div><label for="tahun_tujuan">Tahun Ajaran Tujuan</label><select name="tahun_tujuan" id="tahun_tujuan"
-                        class="select-hifi" @disabled(!$adaTahunTujuan)>
-                        @if (!$adaTahunTujuan)
-                            <option value="">Belum tersedia</option>
-                        @endif
-                        @foreach ($tahunTujuanList as $t)
-                            <option value="{{ $t->kode }}" @selected($tahunTujuanPilihan === $t->kode)>{{ $t->kode }}</option>
-                        @endforeach
-                    </select></div><button type="submit" class="btn-hifi btn-hifi--ghost"
-                    @disabled(!$tahunAsalPilihan)>Terapkan Periode</button>
-            </form>
-            @if (!$tahunAktif)
-                <div class="transition-note">Tetapkan tahun ajaran aktif sebelum memproses transisi. <a
-                        href="{{ route('admin.tahun-ajaran.index') }}">Kelola Tahun Ajaran</a></div>
-            @elseif(!$adaTahunTujuan)
-                <div class="transition-note"><span><strong>Tahun ajaran tujuan belum tersedia.</strong><br>Tanggal periode berikutnya dapat disesuaikan di menu Tahun Ajaran.</span><div class="mt-2"><a class="btn-hifi btn-hifi--ghost"
-                            href="{{ route('admin.tahun-ajaran.index') }}">Siapkan Tahun Berikutnya</a></div>
-                </div>
-            @endif
-            <div class="transition-roster"><span><strong>{{ number_format($statistik['total_siswa'], 0, ',', '.') }}</strong>
-                    siswa aktif · {{ $statistik['tahun_kode'] }}</span><span>X:
-                    {{ $statistik['tingkat_x'] }}</span><span>XI: {{ $statistik['tingkat_xi'] }}</span><span>XII:
-                    {{ $statistik['tingkat_xii'] }} calon lulusan</span></div>
-            <div class="transition-note mt-3">
+        {{-- Bento Baris 1: Filter Periode (Kiri) + 4 Stat Card Siswa Aktif (Kanan) --}}
+        <div style="display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: stretch;" class="mb-4">
+            {{-- Kartu Filter Periode --}}
+            <div class="card-hifi d-flex flex-column justify-content-between p-4">
                 <div>
-                    <strong>Alur Mandiri Kelulusan Kelas XII:</strong><br>
-                    Kelulusan tingkat akhir dapat diproses mandiri berdasarkan berkas resmi sekolah (XLSX/CSV) tanpa menunggu kenaikan kelas X–XI.
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <x-ikon nama="calendar3" />
+                        <h3 class="card-hifi__title mb-0" style="font-size: 18px; font-weight: 600;">Periode Transisi Akademik</h3>
+                    </div>
+                    <p class="field__hint mb-3" style="font-size: 13px; color: var(--muted, #626262);">
+                        Pilih tahun ajaran dasar yang akan dijadikan acuan data statistik dan siklus mutasi.
+                    </p>
+
+                    <form method="GET" action="{{ route('admin.transisi.index') }}" id="formPeriodeHub">
+                        <div class="form-grid form-grid--2 mb-2">
+                            <div class="field">
+                                <label class="field__label" for="tahun_asal" style="font-size: 13.5px; font-weight: 600;">Tahun Ajaran Asal</label>
+                                <select name="tahun_asal" id="tahun_asal" class="select-hifi" onchange="document.getElementById('formPeriodeHub').submit()" required>
+                                    @if (!$tahunAsalPilihan)
+                                        <option value="">Pilih tahun asal</option>
+                                    @endif
+                                    @foreach ($tahunList as $t)
+                                        <option value="{{ $t->kode }}" @selected($tahunAsalPilihan === $t->kode)>
+                                            {{ $t->kode }}{{ $t->aktif ? ' (Aktif)' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field__label" for="tahun_tujuan" style="font-size: 13.5px; font-weight: 600;">Tahun Ajaran Tujuan</label>
+                                <select name="tahun_tujuan" id="tahun_tujuan" class="select-hifi" @disabled(!$adaTahunTujuan) onchange="document.getElementById('formPeriodeHub').submit()">
+                                    @if (!$adaTahunTujuan)
+                                        <option value="">Belum tersedia</option>
+                                    @endif
+                                    @foreach ($tahunTujuanList as $t)
+                                        <option value="{{ $t->kode }}" @selected($tahunTujuanPilihan === $t->kode)>
+                                            {{ $t->kode }} (Mendatang)
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div>
-                    <a href="{{ route('admin.kelulusan.index', ['tahun_asal' => $tahunAsalPilihan, 'tahun_tujuan' => $tahunTujuanPilihan]) }}" class="btn-hifi btn-hifi--primary">
-                        Buka Kelulusan XII
-                    </a>
+
+                <div class="pt-3 border-top d-flex align-items-center gap-2 text-muted" style="font-size: 13px;">
+                    <x-ikon nama="info-circle" />
+                    <span>Statistik di samping mencerminkan populasi siswa aktif pada tahun asal terpilih ({{ $statistik['tahun_kode'] }}).</span>
                 </div>
             </div>
-        </x-card>
-        @if ($transisiSelesai)
-            <p class="alert alert-success">Transisi periode ini sudah selesai.</p>
-        @endif
-        @php
-            $periodeLengkap = $tahunAktif && $tahunAsalPilihan && $tahunTujuanPilihan && !$transisiSelesai;
-            $penghambat = collect($checklist['item'])->filter(fn($i) => $i['status'] === 'terhambat');
-        @endphp
-        <x-card title="1. Persiapan Kelas" class="mb-3">
-            <div class="transition-step">
+
+            {{-- 4 Kartu Metrik Siswa: Total, X, XI, XII --}}
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: stretch;">
+                {{-- Total Siswa --}}
+                <div class="card-hifi p-3 d-flex align-items-center gap-3">
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 93, 50, 0.12); color: var(--primary, #3b5d32); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px;">
+                        <x-ikon nama="people" />
+                    </div>
+                    <div>
+                        <div class="kpi-card__num">{{ number_format($statistik['total_siswa'], 0, ',', '.') }}</div>
+                        <div class="kpi-card__label">Total Siswa Aktif</div>
+                    </div>
+                </div>
+
+                {{-- Siswa Kelas X --}}
+                <div class="card-hifi p-3 d-flex align-items-center gap-3">
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 93, 50, 0.12); color: var(--primary, #3b5d32); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px;">
+                        <x-ikon nama="person-check" />
+                    </div>
+                    <div>
+                        <div class="kpi-card__num">{{ number_format($statistik['tingkat_x'], 0, ',', '.') }}</div>
+                        <div class="kpi-card__label">Siswa Kelas X</div>
+                    </div>
+                </div>
+
+                {{-- Siswa Kelas XI --}}
+                <div class="card-hifi p-3 d-flex align-items-center gap-3">
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 93, 50, 0.12); color: var(--primary, #3b5d32); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px;">
+                        <x-ikon nama="person-check" />
+                    </div>
+                    <div>
+                        <div class="kpi-card__num">{{ number_format($statistik['tingkat_xi'], 0, ',', '.') }}</div>
+                        <div class="kpi-card__label">Siswa Kelas XI</div>
+                    </div>
+                </div>
+
+                {{-- Calon Lulusan (Kelas XII) --}}
+                <div class="card-hifi p-3 d-flex align-items-center gap-3">
+                    <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(59, 93, 50, 0.12); color: var(--primary, #3b5d32); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px;">
+                        <x-ikon nama="mortarboard" />
+                    </div>
+                    <div>
+                        <div class="kpi-card__num">{{ number_format($statistik['tingkat_xii'], 0, ',', '.') }}</div>
+                        <div class="kpi-card__label">Calon Lulusan (XII)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Bento Baris 2: Empat Kartu Utama Alur Transisi Akademik --}}
+        <div>
+            <div class="d-flex justify-content-between align-items-end mb-3">
                 <div>
-                    <p>Siapkan kelas tujuan berdasarkan jurusan dan nomor kelas asal. Kelas yang tersedia tidak dibuat
-                        ulang.</p>
-                    @if ($periodeLengkap)
-                        <p class="mt-2">
-                            <strong>{{ $checklist['jumlah_terhambat'] === 0 ? 'Siap diperiksa melalui simulasi.' : 'Persiapan belum lengkap.' }}</strong>
+                    <h3 class="card-hifi__title mb-1" style="font-size: 18px; font-weight: 600;">Pilih Alur Operasi Akademik</h3>
+                    <p class="text-muted small mb-0">
+                        Jalankan modul secara mandiri per tingkat atau gunakan orkestrasi terpadu untuk alur otomatis 2-3 tahap sekaligus.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid-row grid-row--4" style="gap: 16px;">
+                {{-- Alur 1: Kelulusan XII --}}
+                <div class="flow-card p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="chip chip--neutral fw-bold">Alur Mandiri</span>
+                            <div style="font-size: 20px; color: var(--primary, #3b5d32);">
+                                <x-ikon nama="mortarboard" />
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-2" style="font-size: 16px; color: var(--text, #131313);">Kelulusan Kelas XII</h4>
+                        <p class="text-muted mb-3" style="font-size: 13px; line-height: 1.5;">
+                            Pencatatan status alumni bagi siswa tingkat akhir, penomoran kelulusan, dan pengarsipan akun akademik secara permanen.
                         </p>
+                    </div>
+                    <div class="pt-3 border-top">
+                        <a href="{{ route('admin.kelulusan.index', ['tahun_asal' => $tahunAsalPilihan, 'tahun_tujuan' => $tahunTujuanPilihan]) }}" class="btn-hifi btn-hifi--ghost btn-hifi--sm w-100 text-center justify-content-center">
+                            Buka Kelulusan &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Alur 2: Kenaikan X–XI --}}
+                <div class="flow-card p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="chip chip--neutral fw-bold">Alur Mandiri</span>
+                            <div style="font-size: 20px; color: var(--primary, #3b5d32);">
+                                <x-ikon nama="arrow-up-circle" />
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-2" style="font-size: 16px; color: var(--text, #131313);">Kenaikan Kelas X–XI</h4>
+                        <p class="text-muted mb-3" style="font-size: 13px; line-height: 1.5;">
+                            Promosi siswa tingkat X ke XI dan XI ke XII, alokasi rombel baru, rolling presensi, serta penanganan tinggal kelas.
+                        </p>
+                    </div>
+                    <div class="pt-3 border-top">
+                        <a href="{{ route('admin.kenaikan.index', ['tahun_asal' => $tahunAsalPilihan, 'tahun_tujuan' => $tahunTujuanPilihan]) }}" class="btn-hifi btn-hifi--ghost btn-hifi--sm w-100 text-center justify-content-center">
+                            Buka Kenaikan &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Alur 3: Penerimaan Siswa Baru --}}
+                <div class="flow-card p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="chip chip--neutral fw-bold">Alur Mandiri</span>
+                            <div style="font-size: 20px; color: var(--primary, #3b5d32);">
+                                <x-ikon nama="person-plus" />
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-2" style="font-size: 16px; color: var(--text, #131313);">Penerimaan Siswa Baru</h4>
+                        <p class="text-muted mb-3" style="font-size: 13px; line-height: 1.5;">
+                            Pendaftaran rombel masuk kelas X, pembagian rombel awal, validasi identitas (NIS/NISN), dan aktivasi akun siswa.
+                        </p>
+                    </div>
+                    <div class="pt-3 border-top">
+                        <a href="{{ route('admin.intake.index', ['tahun_tujuan' => $tahunTujuanPilihan]) }}" class="btn-hifi btn-hifi--ghost btn-hifi--sm w-100 text-center justify-content-center">
+                            Buka Penerimaan &rarr;
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Alur 4: Transisi Terpadu (Orkestrator Gabungan) --}}
+                <div class="flow-card flow-card--recommended p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="chip chip--green fw-bold">Rekomendasi Terpadu</span>
+                            <div style="font-size: 20px; color: var(--primary, #3b5d32);">
+                                <x-ikon nama="diagram-3" />
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-2 text-primary" style="font-size: 16px;">Transisi Terpadu</h4>
+                        <p class="text-muted mb-3" style="font-size: 13px; line-height: 1.5;">
+                            Orkestrasi gabungan 2–3 alur berurutan dalam satu transaksi terkontrol dengan checkpoint audit, log bertahap, dan pengamanan atomik.
+                        </p>
+                    </div>
+                    <div class="pt-3 border-top">
+                        <a href="{{ route('admin.transisi-terpadu.index') }}" class="btn-hifi btn-hifi--sm w-100 text-center justify-content-center">
+                            Buka Transisi Terpadu &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Bagian Alur Legacy (Collapsible untuk arsip simulasi) --}}
+        <div class="card-hifi mb-4">
+            <details>
+                <summary class="p-4 cursor-pointer fw-bold text-muted d-flex justify-content-between align-items-center" style="font-size: 14.5px;">
+                    <span>Alat Bantu Persiapan Kelas &amp; Simulasi Transisi Lama (Legacy)</span>
+                    <span class="chip chip--neutral" style="font-size: 12px;">Klik untuk Membuka</span>
+                </summary>
+                <div class="p-4 pt-0 border-top">
+                    @php
+                        $periodeLengkap = $tahunAktif && $tahunAsalPilihan && $tahunTujuanPilihan && !$transisiSelesai;
+                        $penghambat = collect($checklist['item'])->filter(fn($i) => $i['status'] === 'terhambat');
+                    @endphp
+
+                    <div class="grid-row grid-row--2 mb-3 mt-3" style="gap: 16px;">
+                        <div class="card-hifi p-3 border">
+                            <h5 class="fw-bold mb-1" style="font-size: 15px;">1. Persiapan Kelas Tujuan</h5>
+                            <p class="text-muted small mb-3">
+                                Siapkan kelas tujuan berdasarkan jurusan dan nomor kelas asal. Kelas yang sudah ada tidak dibuat ulang.
+                            </p>
+                            <form method="POST" action="{{ route('admin.transisi.siapkan-kelas') }}">
+                                @csrf
+                                <input type="hidden" name="tahun_asal" value="{{ $tahunAsalPilihan }}">
+                                <input type="hidden" name="tahun_tujuan" value="{{ $tahunTujuanPilihan }}">
+                                <button type="submit" class="btn-hifi btn-hifi--ghost btn-hifi--sm" @disabled(!$periodeLengkap)>
+                                    Siapkan Kelas Tujuan
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="card-hifi p-3 border">
+                            <h5 class="fw-bold mb-1" style="font-size: 15px;">2. Simulasi Transisi</h5>
+                            <p class="text-muted small mb-3">
+                                Periksa penempatan siswa, calon lulusan, dan pengecualian. Membuka simulasi tidak mengubah data siswa.
+                            </p>
+                            <form method="GET" action="{{ route('admin.transisi.pratinjau') }}">
+                                <input type="hidden" name="tahun_asal" value="{{ $tahunAsalPilihan }}">
+                                <input type="hidden" name="tahun_tujuan" value="{{ $tahunTujuanPilihan }}">
+                                <button type="submit" class="btn-hifi btn-hifi--sm" @disabled(!$periodeLengkap)>
+                                    Buka Simulasi Transisi
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    @if ($periodeLengkap && $penghambat->isNotEmpty())
+                        <div class="alert alert-danger p-3 mb-3 small" role="alert">
+                            <ul class="mb-0 ps-3">
+                                @foreach ($penghambat as $item)
+                                    <li>{{ $item['pesan'] }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
                     @endif
                 </div>
-                <form method="POST" action="{{ route('admin.transisi.siapkan-kelas') }}" class="flex-shrink-0">@csrf
-                    <input type="hidden" name="tahun_asal" value="{{ $tahunAsalPilihan }}"><input type="hidden"
-                        name="tahun_tujuan" value="{{ $tahunTujuanPilihan }}">
-                    <button type="submit" class="btn-hifi btn-hifi--ghost" @disabled(!$periodeLengkap)>Siapkan Kelas
-                        Tujuan</button>
-                </form>
-            </div>
-            @if ($periodeLengkap && $penghambat->isNotEmpty())
-                <ul class="text-danger mt-3 mb-0" role="alert">
-                    @foreach ($penghambat as $item)
-                        <li>{{ $item['pesan'] }}</li>
-                    @endforeach
-                </ul>
-            @endif
-        </x-card>
-        <x-card title="2. Simulasi Transisi" class="mb-3">
-            <div class="transition-step">
-                <p>Periksa penempatan siswa, calon lulusan, dan pengecualian. Membuka simulasi tidak mengubah data siswa.
-                </p>
-                <form method="GET" action="{{ route('admin.transisi.pratinjau') }}" class="flex-shrink-0"><input
-                        type="hidden" name="tahun_asal" value="{{ $tahunAsalPilihan }}"><input type="hidden"
-                        name="tahun_tujuan" value="{{ $tahunTujuanPilihan }}"><button type="submit" class="btn-hifi"
-                        @disabled(!$periodeLengkap)>Buka Simulasi</button></form>
-            </div>
-        </x-card>
-        <x-card class="mb-3">
-            <details {{ request()->has('detail_kesiapan') ? 'open' : '' }}>
-                <summary>Rincian Pemeriksaan · {{ count($checklist['item']) }} pemeriksaan</summary>
-                @foreach ($checklist['item'] as $item)
-                    <div class="transition-check">
-                        <small>{{ $item['kategori'] }}</small><strong>{{ $item['kriteria'] }}</strong>
-                        <p>{{ $item['pesan'] }}</p><x-chip :tone="$item['tone']" :label="$item['label']" />
-                        @if ($item['tautan'])
-                            <a class="btn-hifi btn-hifi--ghost btn-hifi--sm"
-                                href="{{ $item['tautan'] }}">{{ $item['label_tautan'] ?? 'Buka' }}</a>
-                        @endif
-                    </div>
-                @endforeach
             </details>
-        </x-card>
+        </div>
         <x-card title="Riwayat Transisi" flush>
             <div class="tbl-wrap">
                 <table class="tbl">

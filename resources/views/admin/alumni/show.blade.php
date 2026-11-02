@@ -3,228 +3,239 @@
 @section('title', 'Detail Alumni · ' . $siswa->nama)
 
 @section('content')
-    <x-page-head
-        :title="$siswa->nama"
-        :sub="'NIS: ' . $siswa->nis . ' · Alumni Angkatan ' . $alumni->tahun_lulus">
-        <div class="d-flex gap-2 align-items-center">
-            <x-chip :tone="$evaluasi['tone_siklus_hidup']" :label="$evaluasi['label_siklus_hidup']" />
-            <a href="{{ route('admin.alumni.index') }}" class="btn-hifi btn-hifi--ghost">&larr; Kembali</a>
-        </div>
-    </x-page-head>
+<div class="alumni-show-view space-y-5">
+    <style>
+        .alumni-show-view .page-head {
+            margin-top: 8px !important;
+            margin-bottom: 24px !important;
+        }
+        .alumni-show-view .page-head__title {
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            line-height: 1.25 !important;
+            color: #111827 !important;
+            margin-bottom: 6px !important;
+        }
+        .alumni-show-view .page-head__sub {
+            font-size: 14px !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
+            color: #4b5563 !important;
+            margin: 0 !important;
+        }
+        .alumni-show-view .breadcrumb-nav {
+            font-size: 13px !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
+        }
+        .alumni-show-view .breadcrumb-nav a {
+            color: #4b5563 !important;
+        }
+        .alumni-show-view .breadcrumb-nav a:hover {
+            color: var(--primary, #3b5d32) !important;
+        }
+        .alumni-show-view .btn-hifi {
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+        }
+        .alumni-show-view .tbl th {
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+            padding: 10px 14px !important;
+        }
+        .alumni-show-view .tbl td {
+            font-size: 13.5px !important;
+            font-weight: 400 !important;
+            line-height: 1.5 !important;
+            padding: 10px 14px !important;
+        }
+        .bio-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .bio-row {
+            display: flex;
+            align-items: center;
+            padding: 13px 0;
+            border-bottom: 1px dashed #e5e7eb;
+            font-size: 14px;
+        }
+        .bio-row:last-child {
+            border-bottom: none;
+            padding-bottom: 4px;
+        }
+        .bio-row:first-child {
+            padding-top: 4px;
+        }
+        .bio-label {
+            width: 38%;
+            color: #6b7280;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .bio-val {
+            width: 62%;
+            color: #111827;
+            font-weight: 500;
+        }
+    </style>
 
-    {{-- Alert Kelayakan Penghapusan & Keamanan Data --}}
+    {{-- Breadcrumb Navigasi --}}
+    <nav class="breadcrumb-nav mb-3" aria-label="Breadcrumb">
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('admin.dashboard') }}" class="text-decoration-none">Dashboard</a>
+            <span class="text-muted">&rsaquo;</span>
+            <a href="{{ route('admin.alumni.index') }}" class="text-decoration-none">Data Alumni</a>
+            <span class="text-muted">&rsaquo;</span>
+            <span class="text-dark fw-semibold" aria-current="page">{{ $siswa->nama }}</span>
+        </div>
+    </nav>
+
+    {{-- Bento Hero Card Header --}}
+    <div class="card-hifi p-4 mb-4 border-l-4" style="border-left-color: var(--primary, #3b5d32);">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div class="pe-md-2">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <h2 class="page-head__title mb-0" style="font-size: 21px !important;">{{ $siswa->nama }}</h2>
+                    <x-chip :tone="$evaluasi['tone_siklus_hidup']" :label="$evaluasi['label_siklus_hidup']" />
+                </div>
+                <div class="page-head__sub d-flex flex-wrap align-items-center gap-2">
+                    <span>NIS: <strong>{{ $siswa->nis }}</strong></span>
+                    @if ($siswa->nisn)
+                        <span class="text-muted">&bull;</span>
+                        <span>NISN: <strong>{{ $siswa->nisn }}</strong></span>
+                    @endif
+                    <span class="text-muted">&bull;</span>
+                    <span>Alumni Angkatan:</span>
+                    <span class="chip chip--solid-lembut fw-bold" style="font-size: 13px; color: var(--primary, #3b5d32);">{{ $alumni->tahun_lulus }}</span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0 pe-md-1">
+                <a href="{{ route('admin.alumni.index') }}" class="btn-hifi btn-hifi--ghost">
+                    <x-ikon nama="arrow-left" /> Kembali ke Daftar Alumni
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- Alert Kelayakan Penghapusan & Keamanan Data Bento --}}
     @if ($evaluasi['memiliki_dependensi'])
-        <div class="alert alert-danger mb-4">
-            <h6 class="fw-bold mb-2">
-                <x-ikon nama="shield-lock" /> DIBLOKIR DARI PENGHAPUSAN PERMANEN
-            </h6>
-            <p class="mb-2 small">
-                Data alumni ini memiliki rekam jejak pendidikan historis yang dilindungi. Penghapusan fisik dilarang keras demi menjaga integritas rekapitulasi kehadiran, laporan pengajaran guru, dan arsip kelembagaan sekolah.
-            </p>
-            <ul class="mb-0 ps-3 small">
-                @foreach ($evaluasi['alasan_pemblokiran'] as $alasan)
-                    <li>{{ $alasan }}</li>
-                @endforeach
-            </ul>
+        <div class="card-hifi p-4 mb-4 border-l-4" style="border-left-color: #b91c1c; background: #fff5f5;">
+            <div class="d-flex align-items-start gap-3">
+                <div style="font-size: 24px; color: #b91c1c;">
+                    <x-ikon nama="shield-lock" />
+                </div>
+                <div>
+                    <h4 class="fw-bold text-danger mb-1" style="font-size: 16px;">DATA HISTORIS DILINDUNGI (RESTRICT)</h4>
+                    <p class="mb-2 text-muted" style="font-size: 13.5px; line-height: 1.5;">
+                        Data alumni ini memiliki rekam jejak pendidikan historis yang dilindungi. Penghapusan fisik dinonaktifkan demi menjaga keutuhan absensi kelas, jurnal pembelajaran guru, dan arsip legal sekolah.
+                    </p>
+                    <ul class="mb-0 ps-3 text-muted small" style="line-height: 1.6;">
+                        @foreach ($evaluasi['alasan_pemblokiran'] as $alasan)
+                            <li>{{ $alasan }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
         </div>
     @else
-        <div class="alert alert-info mb-4">
-            <h6 class="fw-bold mb-1">Status Kelayakan Retensi:</h6>
-            <p class="mb-0 small">{{ $evaluasi['status_kelayakan'] }}</p>
+        <div class="card-hifi p-4 mb-4 border-l-4 border-primary bg-primary-soft">
+            <div class="d-flex align-items-start gap-3">
+                <div style="font-size: 24px; color: var(--primary, #3b5d32);">
+                    <x-ikon nama="shield-check" />
+                </div>
+                <div>
+                    <h4 class="fw-bold text-dark mb-1" style="font-size: 16px;">Status Kebijakan Retensi</h4>
+                    <p class="mb-0 text-muted" style="font-size: 13.5px;">{{ $evaluasi['status_kelayakan'] }}</p>
+                </div>
+            </div>
         </div>
     @endif
 
-    <div class="grid-row grid-row--2 mb-4 align-items-start">
-        {{-- Card 1: Data Identitas & Kelulusan --}}
-        <x-card title="Informasi Alumni &amp; Akun">
-            <div class="detail-list">
-                <div class="detail-row">
-                    <span class="detail-label">Nomor Induk Siswa (NIS)</span>
-                    <span class="detail-val fw-semibold">{{ $siswa->nis }}</span>
+    {{-- Kartu Utama: Biodata Siswa & Kelulusan (Gaya List Bersih Bergaris Putus-Putus Sesuai Referensi) --}}
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;" class="mb-4">
+        {{-- Kartu 1: Biodata & Informasi Pribadi --}}
+        <div>
+            <x-card title="Biodata Siswa" class="h-100 border-l-4" style="border-left-color: var(--primary, #3b5d32);">
+                <div class="bio-list">
+                    <div class="bio-row">
+                        <span class="bio-label">Nama Lengkap</span>
+                        <span class="bio-val fw-bold text-dark">{{ $siswa->nama }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Nomor Induk Siswa (NIS)</span>
+                        <span class="bio-val font-monospace fw-bold">{{ $siswa->nis }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">NISN</span>
+                        <span class="bio-val font-monospace">{{ $siswa->nisn ?? '—' }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Jenis Kelamin</span>
+                        <span class="bio-val">{{ $siswa->jenis_kelamin === 'L' ? 'Laki-laki' : ($siswa->jenis_kelamin === 'P' ? 'Perempuan' : '—') }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Nomor Telepon / WA</span>
+                        <span class="bio-val">{{ $siswa->no_hp ?? '—' }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Alamat Tinggal</span>
+                        <span class="bio-val text-muted">{{ $siswa->alamat ?? '—' }}</span>
+                    </div>
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">NISN</span>
-                    <span class="detail-val">{{ $siswa->nisn ?? '—' }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Nama Lengkap</span>
-                    <span class="detail-val fw-semibold">{{ $siswa->nama }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Jenis Kelamin</span>
-                    <span class="detail-val">{{ $siswa->jenis_kelamin === 'L' ? 'Laki-laki (L)' : ($siswa->jenis_kelamin === 'P' ? 'Perempuan (P)' : '—') }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Tahun Kelulusan</span>
-                    <span class="detail-val fw-semibold">{{ $alumni->tahun_lulus }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Tanggal Kelulusan</span>
-                    <span class="detail-val">{{ $alumni->tanggal_lulus ? $alumni->tanggal_lulus->format('d/m/Y') : '—' }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Rombel Kelas Terakhir</span>
-                    <span class="detail-val">{{ $alumni->kelasTerakhir?->nama_kelas ?? '—' }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Keterangan Kelulusan</span>
-                    <span class="detail-val text-muted">{{ $alumni->keterangan ?? 'Lulus reguler' }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Akun Login Siswa</span>
-                    <span class="detail-val d-flex align-items-center gap-2">
-                        @if ($siswa->akun)
-                            <x-chip :tone="$siswa->akun->status === 'aktif' ? 'green' : 'neutral'" :label="ucfirst($siswa->akun->status)" />
-                            <form method="POST" action="{{ route('admin.alumni.akun', $alumni) }}" class="d-inline"
-                                  onsubmit="return confirm('Ubah status akun login alumni menjadi {{ $siswa->akun->status === 'aktif' ? 'nonaktif' : 'aktif' }}?');">
-                                @csrf
-                                <button type="submit" class="btn-hifi btn-hifi--ghost btn-hifi--sm">
-                                    {{ $siswa->akun->status === 'aktif' ? 'Deaktivasi Akun' : 'Aktifkan Akun' }}
-                                </button>
-                            </form>
-                        @else
-                            <span class="text-muted small">Tidak ada akun</span>
-                        @endif
-                    </span>
-                </div>
-            </div>
-        </x-card>
+            </x-card>
+        </div>
 
-        {{-- Card 2: Evaluasi Siklus Hidup & Retensi --}}
-        <x-card title="Evaluasi Kebijakan Retensi">
-            <div class="detail-list">
-                <div class="detail-row">
-                    <span class="detail-label">Tanggal Referensi Inaktivitas</span>
-                    <span class="detail-val fw-semibold">{{ $evaluasi['tanggal_referensi'] }}</span>
+        {{-- Kartu 2: Catatan Status Kelulusan Sekolah --}}
+        <div>
+            <x-card title="Status Kelulusan Sekolah" class="h-100 border-l-4" style="border-left-color: #166534;">
+                <div class="bio-list">
+                    <div class="bio-row">
+                        <span class="bio-label">Tahun Angkatan</span>
+                        <span class="bio-val">
+                            <span class="chip chip--solid-lembut fw-bold" style="font-size: 13px; color: var(--primary, #3b5d32);">{{ $alumni->tahun_lulus }}</span>
+                        </span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Tanggal Kelulusan</span>
+                        <span class="bio-val fw-semibold">{{ $alumni->tanggal_lulus ? $alumni->tanggal_lulus->format('d F Y') : '—' }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Rombel Kelas Terakhir</span>
+                        <span class="bio-val"><span class="chip chip--neutral">{{ $alumni->kelasTerakhir?->nama_kelas ?? '—' }}</span></span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Kompetensi Keahlian</span>
+                        <span class="bio-val fw-semibold">{{ $alumni->kelasTerakhir?->jurusan?->nama ?? $alumni->kelasTerakhir?->jurusan_kode ?? '—' }}</span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Status Siswa</span>
+                        <span class="bio-val">
+                            <span class="chip chip--green">Alumni Resmi Terdaftar</span>
+                        </span>
+                    </div>
+                    <div class="bio-row">
+                        <span class="bio-label">Predikat / Keterangan</span>
+                        <span class="bio-val text-muted">{{ $alumni->keterangan ?? 'Lulus Reguler' }}</span>
+                    </div>
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">Durasi Inaktivitas</span>
-                    <span class="detail-val">{{ $evaluasi['usia_inaktif_teks'] }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Kategori Ambang Retensi</span>
-                    <span class="detail-val">
-                        @if ($evaluasi['ambang_retensi'] === 'kurang_dari_1_tahun')
-                            <span class="badge bg-secondary">&lt; 1 Tahun (Aman / Retensi Aktif)</span>
-                        @elseif ($evaluasi['ambang_retensi'] === '1_sampai_2_tahun')
-                            <span class="badge bg-warning text-dark">1–2 Tahun (Masa Tinjauan Deaktivasi)</span>
-                        @else
-                            <span class="badge bg-danger">&gt; 2 Tahun (Ambang Tinjauan Hapus)</span>
-                        @endif
-                    </span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Status Siklus Hidup</span>
-                    <span class="detail-val">
-                        <x-chip :tone="$evaluasi['tone_siklus_hidup']" :label="$evaluasi['label_siklus_hidup']" />
-                    </span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Izin Penghapusan Permanen</span>
-                    <span class="detail-val text-danger fw-bold">
-                        DITOLAK (Fitur penghapusan fisik tidak diaktifkan)
-                    </span>
-                </div>
-            </div>
-
-            <div class="mt-3 p-3 bg-light rounded border">
-                <span class="field__label d-block mb-1">Prinsip Perlindungan Data:</span>
-                <p class="small text-muted mb-0">
-                    Sesuai kebijakan institusi pendidikan, bertambahnya usia data di atas 2 tahun <strong>tidak memberikan otorisasi</strong> untuk melakukan penghapusan otomatis. Data pendidikan yang memiliki catatan kehadiran atau jurnal dilindungi secara permanen.
-                </p>
-            </div>
-        </x-card>
+            </x-card>
+        </div>
     </div>
 
-    {{-- Card 3: Rincian Inspeksi Dependensi Relasional --}}
-    <x-card title="Inspeksi Dependensi Data Historis" class="mb-4" flush>
+    {{-- Card 2: Riwayat Akademik (Garis Waktu Kelas X, XI, XII) --}}
+    <x-card title="Riwayat Akademik" class="mb-4" flush>
         <div class="tbl-wrap">
             <table class="tbl">
                 <thead>
                     <tr>
-                        <th>Jenis Dependensi</th>
-                        <th>Jumlah Catatan</th>
-                        <th>Status Integritas</th>
-                        <th>Dampak Jika Dihapus Fisik</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="fw-semibold">Presensi Harian Siswa (Rombel)</td>
-                        <td class="is-strong">{{ number_format($evaluasi['ringkasan_dependensi']['presensi_harian']) }} baris</td>
-                        <td>
-                            @if ($evaluasi['ringkasan_dependensi']['presensi_harian'] > 0)
-                                <x-chip tone="red" label="Terkunci RESTRICT" />
-                            @else
-                                <x-chip tone="neutral" label="Kosong" />
-                            @endif
-                        </td>
-                        <td class="is-muted small">Merusak keabsahan rekapitulasi kehadiran kelas harian sekolah.</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-semibold">Presensi Per Pertemuan (Legacy)</td>
-                        <td class="is-strong">{{ number_format($evaluasi['ringkasan_dependensi']['presensi_legacy']) }} baris</td>
-                        <td>
-                            @if ($evaluasi['ringkasan_dependensi']['presensi_legacy'] > 0)
-                                <x-chip tone="red" label="Terkunci RESTRICT" />
-                            @else
-                                <x-chip tone="neutral" label="Kosong" />
-                            @endif
-                        </td>
-                        <td class="is-muted small">Menghilangkan riwayat absensi mata pelajaran di masa lampau.</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-semibold">Jurnal Kelas Diisi (Ketua Kelas)</td>
-                        <td class="is-strong">{{ number_format($evaluasi['ringkasan_dependensi']['jurnal_diisi']) }} pertemuan</td>
-                        <td>
-                            @if ($evaluasi['ringkasan_dependensi']['jurnal_diisi'] > 0)
-                                <x-chip tone="red" label="Terkunci RESTRICT" />
-                            @else
-                                <x-chip tone="neutral" label="Kosong" />
-                            @endif
-                        </td>
-                        <td class="is-muted small">Mengakibatkan catatan materi &amp; jurnal mengajar guru kehilangan pengisi.</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-semibold">Keanggotaan Kelas Historis</td>
-                        <td class="is-strong">{{ number_format($evaluasi['ringkasan_dependensi']['riwayat_kelas']) }} periode</td>
-                        <td>
-                            @if ($evaluasi['ringkasan_dependensi']['riwayat_kelas'] > 0)
-                                <x-chip tone="red" label="Terkunci RESTRICT" />
-                            @else
-                                <x-chip tone="neutral" label="Kosong" />
-                            @endif
-                        </td>
-                        <td class="is-muted small">Menghapus garis waktu mutasi dan kenaikan kelas siswa.</td>
-                    </tr>
-                    <tr>
-                        <td class="fw-semibold">Data Kelulusan Alumni</td>
-                        <td class="is-strong">{{ $evaluasi['ringkasan_dependensi']['data_alumni'] ? '1 rekaman' : '0' }}</td>
-                        <td>
-                            @if ($evaluasi['ringkasan_dependensi']['data_alumni'])
-                                <x-chip tone="red" label="Terkunci RESTRICT" />
-                            @else
-                                <x-chip tone="neutral" label="Kosong" />
-                            @endif
-                        </td>
-                        <td class="is-muted small">Menghilangkan arsip nomor kelulusan dan tanggal lulus sekolah.</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </x-card>
-
-    {{-- Card 4: Riwayat Keanggotaan Kelas Historis --}}
-    <x-card title="Garis Waktu Keanggotaan Kelas (Riwayat Akademik)" class="mb-4" flush>
-        <div class="tbl-wrap">
-            <table class="tbl">
-                <thead>
-                    <tr>
-                        <th>Tahun Ajaran</th>
-                        <th>Tingkat</th>
+                        <th style="width: 140px;">Tahun Ajaran</th>
+                        <th style="width: 120px;">Tingkat</th>
                         <th>Rombel Kelas</th>
-                        <th>Status</th>
-                        <th>Keanggotaan</th>
+                        <th style="width: 140px;">Status</th>
+                        <th style="width: 140px;">Keanggotaan</th>
                         <th>Periode</th>
                         <th>Catatan</th>
                     </tr>
@@ -233,10 +244,10 @@
                     @forelse ($riwayatKelas as $rk)
                         <tr>
                             <td class="is-strong">{{ $rk->tahun_ajaran_kode }}</td>
-                            <td><span class="badge bg-secondary">{{ $rk->tingkat ?? '—' }}</span></td>
+                            <td><span class="chip chip--neutral">Tingkat {{ $rk->tingkat ?? '—' }}</span></td>
                             <td class="fw-semibold">{{ $rk->kelas?->nama_kelas ?? '—' }}</td>
                             <td>
-                                <x-chip :tone="$rk->status === 'lulus' ? 'khaki' : ($rk->status === 'aktif' ? 'green' : 'neutral')" :label="ucfirst($rk->status)" />
+                                <x-chip :tone="$rk->status === 'lulus' ? 'green' : ($rk->status === 'aktif' ? 'green' : 'neutral')" :label="ucfirst($rk->status)" />
                             </td>
                             <td>
                                 <x-chip :tone="$rk->aktif ? 'green' : 'neutral'" :label="$rk->aktif ? 'Aktif' : 'Selesai'" />
@@ -248,7 +259,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="empty-state">Belum ada catatan riwayat kelas historis untuk siswa ini.</td>
+                            <td colspan="7" class="empty-state text-center py-4 text-muted">Belum ada catatan riwayat akademik untuk siswa ini.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -256,63 +267,40 @@
         </div>
     </x-card>
 
-    {{-- Card 5 & 6: Tinjauan Administratif & Riwayat --}}
-    <div class="grid-row grid-row--2 mb-4 align-items-start">
-        <x-card title="Formulir Tinjauan Administratif">
-            <p class="field__hint mb-3">
-                Catat hasil evaluasi administratif berkala mengenai status arsip data siswa ini. Seluruh pencatatan tinjauan akan direkam ke dalam audit log sistem.
-            </p>
-
-            <form method="POST" action="{{ route('admin.alumni.tinjauan', $alumni) }}" class="form-grid">
-                @csrf
-                <x-field label="Status Tinjauan" name="status_tinjauan" required>
-                    <select class="select-hifi" name="status_tinjauan" required>
-                        <option value="ditinjau">Ditinjau (Data valid &amp; dipertahankan sebagai arsip)</option>
-                        <option value="ditunda">Ditunda (Menunggu verifikasi lanjutan pihak sekolah)</option>
-                        <option value="disetujui_arsip">Disetujui Arsip Permanen (Data dibekukan secara aman)</option>
-                        <option value="perlu_tinjauan">Perlu Tinjauan Ulang</option>
-                    </select>
-                </x-field>
-
-                <x-field label="Catatan / Justifikasi Administratif" name="catatan">
-                    <textarea class="input-hifi" name="catatan" rows="3" placeholder="Contoh: Seluruh rekaman presensi telah diverifikasi utuh dan dipertahankan dalam arsip kelulusan."></textarea>
-                </x-field>
-
-                <div class="d-flex justify-content-end mt-2">
-                    <button class="btn-hifi" type="submit">Simpan Hasil Tinjauan</button>
+    {{-- Card 3: Akun Portal & Kebijakan Arsip Sekolah (Di Bawah) --}}
+    <x-card title="Akun Portal Siswa & Status Arsip Data" class="mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 p-2">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width: 44px; height: 44px; border-radius: 8px; background: rgba(30, 58, 138, 0.1); color: #1e3a8a; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                    <x-ikon nama="shield-check" />
                 </div>
-            </form>
-        </x-card>
-
-        <x-card title="Riwayat Keputusan Tinjauan" flush>
-            <div class="tbl-wrap">
-                <table class="tbl">
-                    <thead>
-                        <tr>
-                            <th>Waktu</th>
-                            <th>Status Tinjauan</th>
-                            <th>Peninjau</th>
-                            <th>Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($riwayatTinjauan as $rt)
-                            <tr>
-                                <td class="is-muted is-nowrap small">{{ $rt->ditinjau_pada ? $rt->ditinjau_pada->format('d/m/Y H:i') : $rt->created_at->format('d/m/Y H:i') }}</td>
-                                <td>
-                                    <x-chip tone="green" :label="ucfirst(str_replace('_', ' ', $rt->status_tinjauan))" />
-                                </td>
-                                <td class="is-muted small">{{ $rt->ditinjauOleh?->nama ?? $rt->ditinjauOleh?->username ?? 'Admin' }}</td>
-                                <td class="is-muted small">{{ $rt->catatan ?? '—' }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="empty-state">Belum ada catatan tinjauan administratif sebelumnya.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="fw-bold text-dark" style="font-size: 15px;">Akun Portal Siswa:</span>
+                        @if ($siswa->akun)
+                            <x-chip :tone="$siswa->akun->status === 'aktif' ? 'green' : 'neutral'" :label="ucfirst($siswa->akun->status)" />
+                            <span class="text-muted small">&bull; Username: <strong>{{ $siswa->akun->username }}</strong></span>
+                        @else
+                            <span class="text-muted small">Belum memiliki akun login</span>
+                        @endif
+                    </div>
+                    <p class="text-muted small mb-0">
+                        Durasi kelulusan: <strong>{{ $evaluasi['usia_inaktif_teks'] }}</strong> &bull; Seluruh data presensi dan nilai tetap terlindungi secara permanen di basis data sekolah.
+                    </p>
+                </div>
             </div>
-        </x-card>
-    </div>
+
+            @if ($siswa->akun)
+                <form method="POST" action="{{ route('admin.alumni.akun', $alumni->id ?? $alumni) }}" class="d-inline"
+                      onsubmit="return confirm('Ubah status akun login alumni menjadi {{ $siswa->akun->status === 'aktif' ? 'nonaktif' : 'aktif' }}?');">
+                    @csrf
+                    <button type="submit" class="btn-hifi {{ $siswa->akun->status === 'aktif' ? 'btn-hifi--ghost' : '' }}" style="padding: 9px 20px;">
+                        <x-ikon nama="{{ $siswa->akun->status === 'aktif' ? 'lock' : 'unlock' }}" />
+                        {{ $siswa->akun->status === 'aktif' ? 'Nonaktifkan Akun' : 'Aktifkan Akun' }}
+                    </button>
+                </form>
+            @endif
+        </div>
+    </x-card>
+</div>
 @endsection

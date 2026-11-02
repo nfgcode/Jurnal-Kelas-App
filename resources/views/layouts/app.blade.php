@@ -172,25 +172,9 @@
 
                 <div class="sidebar__section">Manajemen Akademik</div>
 
-                <a href="{{ route('admin.transisi.index') }}"
-                   class="sidebar__link {{ request()->routeIs('admin.transisi.*') ? 'is-active' : '' }}">
-                    <x-ikon nama="mortarboard" /><span>Kenaikan &amp; Kelulusan</span>
-                </a>
                 <a href="{{ route('admin.transisi-terpadu.index') }}"
                    class="sidebar__link {{ request()->routeIs('admin.transisi-terpadu.*') ? 'is-active' : '' }}">
                     <x-ikon nama="diagram-3" /><span>Transisi Terpadu</span>
-                </a>
-                <a href="{{ route('admin.kelulusan.index') }}"
-                   class="sidebar__link {{ request()->routeIs('admin.kelulusan.*') ? 'is-active' : '' }}">
-                    <x-ikon nama="mortarboard-fill" /><span>Kelulusan XII</span>
-                </a>
-                <a href="{{ route('admin.kenaikan.index') }}"
-                   class="sidebar__link {{ request()->routeIs('admin.kenaikan.*') ? 'is-active' : '' }}">
-                    <x-ikon nama="arrow-up-circle" /><span>Kenaikan X–XI</span>
-                </a>
-                <a href="{{ route('admin.intake.index') }}"
-                   class="sidebar__link {{ request()->routeIs('admin.intake.*') ? 'is-active' : '' }}">
-                    <x-ikon nama="person-plus" /><span>Penerimaan Siswa</span>
                 </a>
                 <a href="{{ route('admin.alumni.index') }}"
                    class="sidebar__link {{ request()->routeIs('admin.alumni.*') ? 'is-active' : '' }}">
@@ -452,6 +436,60 @@
             mEl.checked ? d.setAttribute('data-motion', 'reduced') : d.removeAttribute('data-motion');
             set('pref-motion', mEl.checked ? '1' : null);
         });
+    })();
+</script>
+
+{{-- Modal Informatif Khusus Layar Kecil (<1024px) --}}
+<div class="modal fade" id="desktopRecommendationModal" tabindex="-1" aria-labelledby="desktopModalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content card-hifi border-0 shadow">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <x-ikon nama="laptop" />
+                    <h5 class="modal-title fw-bold fs-6 mb-0" id="desktopModalLabel">Disarankan Menggunakan Komputer / Laptop</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup dialog"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-muted mb-3">
+                    Modul manajemen akademik dan alur kerja transisi tahun ajaran saat ini dioptimalkan untuk tampilan layar komputer (desktop) dengan resolusi minimal <strong>1024 piksel</strong>.
+                </p>
+                <div class="card-hifi p-3 bg-primary-soft border-l-4 border-primary">
+                    <div class="small text-primary fw-semibold">
+                        Gunakan laptop atau layar komputer untuk kemudahan memeriksa tabel, memvalidasi berkas spreadsheet, dan menjalankan orkestrasi transisi.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top d-flex justify-content-end gap-2">
+                <button type="button" class="btn-hifi btn-hifi--sm" data-bs-dismiss="modal" id="btnDismissDesktopModal">
+                    Lanjutkan Mengakses
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        // Cek apakah viewport < 1024px dan modal belum pernah ditutup pada sesi browser ini
+        try {
+            if (window.innerWidth < 1024 && !sessionStorage.getItem('dismissed_desktop_notice')) {
+                window.addEventListener('DOMContentLoaded', function () {
+                    const modalEl = document.getElementById('desktopRecommendationModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const modalInstance = new bootstrap.Modal(modalEl, { keyboard: true });
+                        modalInstance.show();
+
+                        document.getElementById('btnDismissDesktopModal')?.addEventListener('click', function () {
+                            sessionStorage.setItem('dismissed_desktop_notice', '1');
+                        });
+                        modalEl.addEventListener('hidden.bs.modal', function () {
+                            sessionStorage.setItem('dismissed_desktop_notice', '1');
+                        });
+                    }
+                });
+            }
+        } catch (e) {}
     })();
 </script>
 
