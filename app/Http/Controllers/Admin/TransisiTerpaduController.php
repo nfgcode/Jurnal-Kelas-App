@@ -32,6 +32,36 @@ class TransisiTerpaduController extends Controller
 
         $tahunTujuan = $request->query('tahun_tujuan') ?: $tahunTujuanList->first()?->kode;
 
+        // Hitung metrik siswa aktif murni per tingkat untuk tahun ajaran sumber yang dipilih
+        // Hindari double counting dari riwayat kelas; kecualikan alumni dan siswa nonaktif
+        $kpiSiswa = [
+            'total' => 0,
+            'X' => 0,
+            'XI' => 0,
+            'XII' => 0,
+        ];
+
+        if ($tahunAsal) {
+            $counts = \App\Models\Siswa::query()
+                ->where('siswa.status', 'aktif')
+                ->whereNotExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('alumni')
+                        ->whereColumn('alumni.siswa_nis', 'siswa.nis');
+                })
+                ->join('kelas', 'kelas.id', '=', 'siswa.kelas_id')
+                ->where('kelas.tahun_ajaran_kode', $tahunAsal)
+                ->select('kelas.tingkat', DB::raw('count(distinct siswa.nis) as total'))
+                ->groupBy('kelas.tingkat')
+                ->pluck('total', 'tingkat')
+                ->toArray();
+
+            $kpiSiswa['X'] = (int) ($counts['X'] ?? 0);
+            $kpiSiswa['XI'] = (int) ($counts['XI'] ?? 0);
+            $kpiSiswa['XII'] = (int) ($counts['XII'] ?? 0);
+            $kpiSiswa['total'] = $kpiSiswa['X'] + $kpiSiswa['XI'] + $kpiSiswa['XII'];
+        }
+
         // Cari sesi koordinator yang tersimpan
         $sessions = DB::table('academic_workflow_coordinators as c')
             ->leftJoin('users as u', 'u.id', '=', 'c.actor_id')
@@ -45,6 +75,7 @@ class TransisiTerpaduController extends Controller
             'tahunAsal' => $tahunAsal,
             'tahunTujuanList' => $tahunTujuanList,
             'tahunTujuan' => $tahunTujuan,
+            'kpiSiswa' => $kpiSiswa,
             'sessions' => $sessions,
         ]);
     }
@@ -54,7 +85,7 @@ class TransisiTerpaduController extends Controller
         $data = $request->validate([
             'tahun_asal' => ['required', 'string', 'exists:tahun_ajaran,kode'],
             'tahun_tujuan' => ['required', 'string', 'exists:tahun_ajaran,kode'],
-            'stages' => ['required', 'array', 'min:2', 'max:3'],
+            'stages' => ['required', 'array', 'min:1', 'max:3'],
             'stages.*' => ['required', 'in:graduation,promotion,intake'],
         ]);
 
@@ -80,6 +111,25 @@ class TransisiTerpaduController extends Controller
                     ->orWhere('o.state', '!=', 'completed');
             })
             ->value('c.id');
+
+        // Jika hanya memilih 1 tahap dan bukan terpadu multi-tahap, arahkan langsung ke modul mandiri yang bersangkutan
+        if (count($data['stages']) === 1) {
+            $singleStage = $data['stages'][0];
+            return match ($singleStage) {
+                'graduation' => redirect()->route('admin.kelulusan.index', [
+                    'tahun_asal' => $data['tahun_asal'],
+                    'tahun_tujuan' => $data['tahun_tujuan'],
+                ])->with('status', 'Anda dialihkan ke modul Kelulusan Kelas XII.'),
+                'promotion' => redirect()->route('admin.kenaikan.index', [
+                    'tahun_asal' => $data['tahun_asal'],
+                    'tahun_tujuan' => $data['tahun_tujuan'],
+                ])->with('status', 'Anda dialihkan ke modul Kenaikan Kelas X–XI.'),
+                'intake' => redirect()->route('admin.intake.index', [
+                    'tahun_tujuan' => $data['tahun_tujuan'],
+                ])->with('status', 'Anda dialihkan ke modul Penerimaan Siswa Baru.'),
+                default => back(),
+            };
+        }
 
         if ($activeSession) {
             return redirect()->route('admin.transisi-terpadu.show', $activeSession)

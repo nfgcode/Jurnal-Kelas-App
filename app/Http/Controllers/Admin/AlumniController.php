@@ -49,6 +49,12 @@ class AlumniController extends Controller
 
         // Statistik agregat
         $totalAlumni = Alumni::count();
+        $latestTahun = $tahunLulusList->first();
+        $alumniTerbaruCount = $latestTahun ? Alumni::where('tahun_lulus', $latestTahun)->count() : 0;
+
+        $tahunAjaranAktif = TahunAjaran::where('aktif', true)->value('kode')
+            ?? TahunAjaran::orderByDesc('mulai')->value('kode')
+            ?? '—';
 
         return view('admin.alumni.index', [
             'alumni' => $alumniEvaluasi,
@@ -56,6 +62,9 @@ class AlumniController extends Controller
             'tahunLulusList' => $tahunLulusList,
             'statistik' => [
                 'total' => $totalAlumni,
+                'alumni_terbaru_count' => $alumniTerbaruCount,
+                'tahun_lulus_terbaru' => $latestTahun,
+                'tahun_ajaran_aktif' => $tahunAjaranAktif,
             ],
         ]);
     }

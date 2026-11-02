@@ -13,7 +13,7 @@ final class Coordinator
     {
         return AcademicOperation::run(function () use ($kinds, $actor, $sourceYear, $targetYear) {
             $this->workflows->authorize($actor);
-            if (count($kinds) < 2 || count($kinds) > 3 || count(array_unique($kinds)) !== count($kinds) || array_diff($kinds, WorkflowService::KINDS)) {
+            if (count($kinds) < 1 || count($kinds) > 3 || count(array_unique($kinds)) !== count($kinds) || array_diff($kinds, WorkflowService::KINDS)) {
                 throw new DomainException('workflow_stages_invalid');
             }
 

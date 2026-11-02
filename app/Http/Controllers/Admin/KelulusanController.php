@@ -81,7 +81,7 @@ class KelulusanController extends Controller
             'tahun_asal' => ['required', 'string', 'exists:tahun_ajaran,kode'],
             'tahun_tujuan' => ['nullable', 'string', 'exists:tahun_ajaran,kode'],
             'effective_date' => ['required', 'date_format:Y-m-d'],
-            'official_reference' => ['required', 'string', 'max:80'],
+            'official_reference' => ['nullable', 'string', 'max:80'],
             'coordinator_id' => ['nullable', 'integer', 'exists:academic_workflow_coordinators,id'],
         ]);
 
@@ -99,9 +99,10 @@ class KelulusanController extends Controller
             return back()->withInput()->withErrors(['berkas' => 'Gagal membaca berkas: ' . $e->getMessage()]);
         }
 
+        $ref = $data['official_reference'] ?? ('KELULUSAN/' . str_replace('/', '-', $data['tahun_asal']) . '/' . date('Ymd'));
         $metadata = [
             'official_verified' => true,
-            'official_reference' => $data['official_reference'],
+            'official_reference' => $ref,
             'source_content_hash' => $parsed['file_hash'],
             'source_version' => 'v1',
             'effective_date' => $data['effective_date'],

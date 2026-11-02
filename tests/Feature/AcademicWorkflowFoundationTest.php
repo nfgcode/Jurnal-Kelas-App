@@ -164,7 +164,7 @@ class AcademicWorkflowFoundationTest extends TestCase
     public function test_coordinator_requires_two_fixed_order_stages(): void
     {
         $actor=$this->actor(); $coordinator=new \App\AcademicWorkflows\Coordinator(new WorkflowService);
-        try { $coordinator->create(['intake'],$actor); $this->fail('minimum two'); } catch (\DomainException $e) { $this->assertSame('workflow_stages_invalid',$e->getMessage()); }
+        try { $coordinator->create([],$actor); $this->fail('minimum one'); } catch (\DomainException $e) { $this->assertSame('workflow_stages_invalid',$e->getMessage()); }
         $id=$coordinator->create(['intake','graduation'],$actor);
         $stages=$coordinator->status($id,$actor);
         $this->assertSame(['graduation','intake'],array_column($stages,'kind'));
