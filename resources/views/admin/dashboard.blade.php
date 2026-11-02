@@ -29,22 +29,114 @@
         <a class="btn-hifi" href="{{ route('admin.laporan.jurnal') }}">Ekspor Data</a>
     </x-page-head>
 
-    {{-- Action cards (Figma "Row / Aksi Cepat"): the admin's four daily jobs,
-         each card itself the link — no button inside. --}}
-    {{-- An akun pantau has no Kelola Pengguna, so its row holds three. --}}
-    <div @class(['aksi-row', Auth::user()->isHanyaBaca() ? 'aksi-row--3' : 'aksi-row--4'])>
-        <x-aksi-card :href="route('admin.laporan.jurnal')" judul="Cek Jurnal Hari Ini" ikon="book" warna="hijau" ringkas
-                     :deskripsi="$jadwalHariIni
-                         ? $belumBerjurnal . ' dari ' . $jadwalHariIni . ' jadwal belum berjurnal.'
-                         : 'Tidak ada jadwal hari ini.'" />
-        <x-aksi-card :href="route('admin.laporan.presensi')" judul="Pantau Kehadiran" ikon="people" warna="oranye" ringkas
-                     deskripsi="Hadir, izin, sakit, dan alpa siswa hari ini." />
+    {{-- Action cards (Figma "Row / Aksi Cepat"): the admin's four daily jobs --}}
+    <style>
+        .bento-action-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none !important;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            color: inherit;
+        }
+        .bento-action-card:hover {
+            border-color: var(--primary, #3b5d32);
+            box-shadow: 0 4px 12px rgba(59, 93, 50, 0.09);
+            transform: translateY(-2px);
+            color: inherit;
+        }
+        .bento-action-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .bento-action-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+        }
+        @media (max-width: 1200px) {
+            .bento-action-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 640px) {
+            .bento-action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <div class="bento-action-grid mb-4">
+        {{-- 1. Cek Jurnal Hari Ini --}}
+        <a href="{{ route('admin.laporan.jurnal') }}" class="bento-action-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bento-action-icon" style="background: rgba(59, 93, 50, 0.12); color: var(--primary, #3b5d32);">
+                    <x-ikon nama="book" />
+                </div>
+                <div>
+                    <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Cek Jurnal Hari Ini</h4>
+                    <p class="text-muted small mb-0" style="font-size: 12px;">
+                        {{ $jadwalHariIni ? $belumBerjurnal . ' dari ' . $jadwalHariIni . ' jadwal belum diisi' : 'Tidak ada jadwal aktif' }}
+                    </p>
+                </div>
+            </div>
+            <span class="chip chip--neutral" style="font-size: 11px;">Buka &rsaquo;</span>
+        </a>
+
+        {{-- 2. Pantau Kehadiran Siswa --}}
+        <a href="{{ route('admin.laporan.presensi') }}" class="bento-action-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bento-action-icon" style="background: rgba(30, 58, 138, 0.10); color: #1e3a8a;">
+                    <x-ikon nama="people" />
+                </div>
+                <div>
+                    <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Pantau Kehadiran</h4>
+                    <p class="text-muted small mb-0" style="font-size: 12px;">Rekap presensi hadir, izin, sakit, alpa</p>
+                </div>
+            </div>
+            <span class="chip chip--neutral" style="font-size: 11px;">Buka &rsaquo;</span>
+        </a>
+
+        {{-- 3. Kelola Pengguna --}}
         @unless (Auth::user()->isHanyaBaca())
-        <x-aksi-card :href="route('admin.akun.index')" judul="Kelola Pengguna" ikon="person-plus" warna="khaki" ringkas
-                     deskripsi="Tambah atau impor akun guru dan siswa." />
+        <a href="{{ route('admin.akun.index') }}" class="bento-action-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bento-action-icon" style="background: rgba(180, 83, 9, 0.10); color: #b45309;">
+                    <x-ikon nama="person-plus" />
+                </div>
+                <div>
+                    <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Kelola Pengguna</h4>
+                    <p class="text-muted small mb-0" style="font-size: 12px;">Manajemen akun guru, staf, dan siswa</p>
+                </div>
+            </div>
+            <span class="chip chip--neutral" style="font-size: 11px;">Kelola &rsaquo;</span>
+        </a>
         @endunless
-        <x-aksi-card :href="route('jadwal.index')" judul="Atur Jadwal" ikon="calendar3" warna="sage" ringkas
-                     deskripsi="Susun jadwal pelajaran untuk tiap kelas." />
+
+        {{-- 4. Atur Jadwal --}}
+        <a href="{{ route('jadwal.index') }}" class="bento-action-card">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bento-action-icon" style="background: rgba(15, 118, 110, 0.10); color: #0f766e;">
+                    <x-ikon nama="calendar3" />
+                </div>
+                <div>
+                    <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Atur Jadwal Pelajaran</h4>
+                    <p class="text-muted small mb-0" style="font-size: 12px;">Penataan jam mengajar seluruh rombel</p>
+                </div>
+            </div>
+            <span class="chip chip--neutral" style="font-size: 11px;">Atur &rsaquo;</span>
+        </a>
     </div>
 
     {{-- KPI row --}}
@@ -91,6 +183,73 @@
             @endif
         </x-card>
     </div>
+
+    {{-- Cluster 2: Alat Administrasi, Pemeliharaan Data & Keamanan Sistem --}}
+    @unless (Auth::user()->isHanyaBaca())
+    <div class="mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h3 class="fw-bold text-dark mb-0" style="font-size: 16px;">Pusat Administrasi &amp; Keamanan Data</h3>
+            <span class="text-muted small" style="font-size: 12px;">Siklus tahunan, cadangan database, dan pemantauan sistem</span>
+        </div>
+        <div class="bento-action-grid">
+            {{-- 1. Transisi Terpadu --}}
+            <a href="{{ route('admin.transisi-terpadu.index') }}" class="bento-action-card border-l-4" style="border-left-color: var(--primary, #3b5d32);">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bento-action-icon" style="background: rgba(59, 93, 50, 0.12); color: var(--primary, #3b5d32);">
+                        <x-ikon nama="arrow-repeat" />
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Transisi Terpadu</h4>
+                        <p class="text-muted small mb-0" style="font-size: 12px;">Kelulusan, kenaikan tingkat, dan intake PPDB</p>
+                    </div>
+                </div>
+                <span class="chip chip--green" style="font-size: 11px;">Alur Tahunan &rsaquo;</span>
+            </a>
+
+            {{-- 2. Impor Massal Excel --}}
+            <a href="{{ route('admin.impor.index') }}" class="bento-action-card border-l-4" style="border-left-color: #166534;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bento-action-icon" style="background: rgba(22, 101, 52, 0.12); color: #166534;">
+                        <x-ikon nama="file-earmark-spreadsheet" />
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Impor Massal Excel</h4>
+                        <p class="text-muted small mb-0" style="font-size: 12px;">Pendaftaran akun siswa &amp; guru via spreadsheet</p>
+                    </div>
+                </div>
+                <span class="chip chip--neutral" style="font-size: 11px;">Template &amp; AI &rsaquo;</span>
+            </a>
+
+            {{-- 3. Cadangan & Arsip Data --}}
+            <a href="{{ route('admin.manajemen-data.cadangan.index') }}" class="bento-action-card border-l-4" style="border-left-color: #1e3a8a;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bento-action-icon" style="background: rgba(30, 58, 138, 0.10); color: #1e3a8a;">
+                        <x-ikon nama="shield-lock" />
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Cadangan &amp; Pemulihan</h4>
+                        <p class="text-muted small mb-0" style="font-size: 12px;">Snapshot berkala dan uji pemulihan staging</p>
+                    </div>
+                </div>
+                <span class="chip chip--neutral" style="font-size: 11px;">Arsip SHA-256 &rsaquo;</span>
+            </a>
+
+            {{-- 4. Sistem & Audit Log --}}
+            <a href="{{ route('admin.sistem.index') }}" class="bento-action-card border-l-4" style="border-left-color: #4b5563;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bento-action-icon" style="background: rgba(75, 85, 99, 0.10); color: #374151;">
+                        <x-ikon nama="activity" />
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">Sistem &amp; Audit Log</h4>
+                        <p class="text-muted small mb-0" style="font-size: 12px;">Kesehatan server, antrean, dan rekam audit</p>
+                    </div>
+                </div>
+                <span class="chip chip--neutral" style="font-size: 11px;">Kontrol &rsaquo;</span>
+            </a>
+        </div>
+    </div>
+    @endunless
 
     {{-- Latest journals --}}
     <x-card title="Jurnal Terbaru" flush>
