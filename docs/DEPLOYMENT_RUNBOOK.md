@@ -27,7 +27,9 @@ chmod -R 775 /var/www/jurnal-kelas/bootstrap/cache
 - Seluruh cadangan database SQL/GZ disimpan di direktori privat:
   `storage/app/private/backups/`
 - **Karakteristik Format Cadangan**:
-  Format cadangan `.sql.gz` adalah arsip terkompresi GZIP, **bukan terenkripsi secara kriptografis**. Enkripsi data-at-rest bergantung pada enkripsi level volume/filesystem penyimpanan server.
+  Format cadangan `.sql.gz` adalah arsip terkompresi GZIP dengan integritas SHA-256. Enkripsi data-at-rest diterapkan pada level volume/filesystem penyimpanan server.
+- **Persetujuan Staged Restore Sekali Pakai (Anti-Replay)**:
+  Tabel `staged_restore_approvals` (dimigrasikan via `2026_11_03_000002_create_staged_restore_approvals_table.php`) mencatat hash SHA-256 token persetujuan, mencegah submit ganda/replay secara kriptografis.
 - **Aturan Keamanan**: Direktori ini mutlak **tidak boleh di-symlink ke `public/`** atau dapat diakses langsung melalui browser via HTTP URL. Unduhan arsip hanya dilayani melalui otentikasi admin controller dengan stream download aman.
 
 ### C. Konfigurasi HTTPS, HSTS, dan Trusted Proxy

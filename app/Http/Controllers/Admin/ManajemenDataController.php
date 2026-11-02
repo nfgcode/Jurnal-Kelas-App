@@ -376,6 +376,7 @@ class ManajemenDataController extends Controller
             'status' => $stagingReport['status'],
             'created_at' => now()->timestamp,
             'admin_id' => auth()->id(),
+            'nonce' => bin2hex(random_bytes(16)),
         ], JSON_THROW_ON_ERROR));
 
         return view('admin.manajemen_data.pemulihan_laporan', [
@@ -423,19 +424,40 @@ class ManajemenDataController extends Controller
             return back()->withErrors(['approval' => 'Kondisi arsip telah berubah sejak uji staging dijalankan. Persetujuan dibatalkan.']);
         }
 
-        AuditAdmin::catat(
-            aksi: 'pemulihan.persetujuan_administratif',
-            tipeEntitas: 'cadangan_arsip',
-            entitasId: (string) $arsip->id,
-            deskripsi: "Admin " . auth()->user()->nama . " memberikan persetujuan administratif hasil staging arsip {$arsip->nama_berkas}",
-            metadata: [
-                'checksum' => $payload['checksum'],
+        // Anti-Replay: Verifikasi hash token pada tabel staged_restore_approvals
+        $tokenHash = hash('sha256', $data['approval_token']);
+        $sudahDigunakan = DB::table('staged_restore_approvals')->where('token_hash', $tokenHash)->exists();
+        if ($sudahDigunakan) {
+            return back()->withErrors(['approval' => 'Token persetujuan ini sudah pernah digunakan (Replay ditolak).']);
+        }
+
+        DB::transaction(function () use ($tokenHash, $arsip, $payload, $data) {
+            DB::table('staged_restore_approvals')->insert([
+                'token_hash' => $tokenHash,
+                'arsip_id' => $arsip->id,
+                'checksum_sha256' => $payload['checksum'],
+                'admin_id' => auth()->id(),
+                'used_at' => now(),
                 'catatan' => $data['catatan'] ?? null,
-                'staging_status' => $payload['status'],
-                'live_cutover' => 'DISABLED_BY_POLICY',
-            ],
-            status: 'berhasil'
-        );
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            AuditAdmin::catat(
+                aksi: 'pemulihan.persetujuan_administratif',
+                tipeEntitas: 'cadangan_arsip',
+                entitasId: (string) $arsip->id,
+                deskripsi: "Admin " . auth()->user()->nama . " memberikan persetujuan administratif hasil staging arsip {$arsip->nama_berkas}",
+                metadata: [
+                    'checksum' => $payload['checksum'],
+                    'catatan' => $data['catatan'] ?? null,
+                    'staging_status' => $payload['status'],
+                    'live_cutover' => 'DISABLED_BY_POLICY',
+                    'token_hash' => $tokenHash,
+                ],
+                status: 'berhasil'
+            );
+        });
 
         return redirect()->route('admin.manajemen-data.pemulihan.index')
             ->with('status', "Persetujuan administratif untuk arsip {$arsip->nama_berkas} berhasil dicatat dalam audit trail. (Catatan: Restore produksi tetap DISABLED).");

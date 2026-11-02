@@ -98,6 +98,22 @@ class Phase8PemulihanControllerTest extends TestCase
             'aksi' => 'pemulihan.persetujuan_administratif',
             'tipe_entitas' => 'cadangan_arsip',
         ]);
+
+        // Pastikan tabel staged_restore_approvals mencatat token hash
+        $tokenHash = hash('sha256', $validToken);
+        $this->assertDatabaseHas('staged_restore_approvals', [
+            'token_hash' => $tokenHash,
+            'arsip_id' => $backupResult['id'],
+            'admin_id' => $admin->id,
+        ]);
+
+        // 3. Replay token yang sama persis -> DITOLAK (Single-use token guarantee)
+        $responseReplay = $this->post(route('admin.manajemen-data.pemulihan.setujui'), [
+            'approval_token' => $validToken,
+            'password' => 'rahasia123',
+            'catatan' => 'Mencoba replay token persetujuan',
+        ]);
+        $responseReplay->assertSessionHasErrors('approval');
     }
 
     public function test_rejects_expired_or_tampered_approval_tokens(): void
